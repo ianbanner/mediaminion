@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Social Media Minion",
+  "description": "An AI-powered assistant to generate social media posts from podcast transcripts.",
+  "requestFramePermissions": []
+}
