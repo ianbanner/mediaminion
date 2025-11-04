@@ -1,5 +1,6 @@
 
-import { SavedTemplate, PlannedPost } from "../App";
+
+import { SavedTemplate, QueuedPost } from "../App";
 import { GenerationResults } from "./geminiService";
 
 export const LINKEDIN_GENERATION_EVALUATION_SCRIPT = `# LinkedIn Content Creation & Evaluation Script
@@ -156,16 +157,16 @@ export const getTemplatesForDownload = (templates: SavedTemplate[]): string => {
   
 export const formatPageDataForDownload = (
     genResults: GenerationResults | null,
-    planned: PlannedPost[]
+    queued: QueuedPost[]
 ): string => {
-    let content = `// ===== Stored Page Data =====\n\n`;
+    let content = `// ===== Page Data =====\n\n`;
 
-    content += `// --- Stored Generation Results ---\n`;
-    content += genResults ? JSON.stringify(genResults, null, 2) : '// No stored generation results.\n';
+    content += `// --- Current Generation Results ---\n`;
+    content += genResults ? JSON.stringify(genResults, null, 2) : '// No generation results available.\n';
     content += `\n\n`;
     
-    content += `// --- Stored Planned Posts ---\n`;
-    content += planned.length > 0 ? JSON.stringify(planned, null, 2) : '// No stored planned posts.\n';
+    content += `// --- Current Ayrshare Queue ---\n`;
+    content += queued.length > 0 ? JSON.stringify(queued, null, 2) : '// No posts in queue.\n';
     content += `\n`;
 
     return content;

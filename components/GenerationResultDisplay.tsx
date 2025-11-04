@@ -1,17 +1,41 @@
-import React from 'react';
+
+import React, { useState, useCallback, useEffect } from 'react';
 import { GenerationResults, TopPostAssessment } from '../services/geminiService';
 import PostCard from './PostCard';
-import Button from './Button';
 
 interface Props {
   results: GenerationResults;
   articleUrl: string;
-  selectedPosts: TopPostAssessment[];
-  onSelectionChange: (posts: TopPostAssessment[]) => void;
-  onMoveToPlanned: () => void;
+  onSendToAyrshareQueue: (post: TopPostAssessment) => void;
 }
 
-function GenerationResultDisplay({ results, articleUrl, selectedPosts, onSelectionChange, onMoveToPlanned }: Props) {
+function GenerationResultDisplay({ results, articleUrl, onSendToAyrshareQueue }: Props) {
+  const [editableAssessments, setEditableAssessments] = useState<TopPostAssessment[]>(results.top7Assessments);
+  const [queuedPostTitles, setQueuedPostTitles] = useState<string[]>([]);
+  const [copiedPostTitle, setCopiedPostTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    setEditableAssessments(results.top7Assessments);
+    setQueuedPostTitles([]); // Reset queued status when results change
+  }, [results]);
+
+  const handleContentChange = (index: number, newContent: string) => {
+    const updatedAssessments = [...editableAssessments];
+    updatedAssessments[index] = { ...updatedAssessments[index], content: newContent };
+    setEditableAssessments(updatedAssessments);
+  };
+
+  const handleCopy = useCallback((content: string, title: string) => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopiedPostTitle(title);
+      setTimeout(() => setCopiedPostTitle(null), 2000);
+    });
+  }, []);
+
+  const handleSendToQueue = (post: TopPostAssessment) => {
+    onSendToAyrshareQueue(post);
+    setQueuedPostTitles(prev => [...prev, post.title]);
+  };
 
   const handleDownloadMD = () => {
     const { rankedTable, top7Assessments } = results;
@@ -47,23 +71,6 @@ function GenerationResultDisplay({ results, articleUrl, selectedPosts, onSelecti
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  const handlePostSelection = (post: TopPostAssessment) => {
-    onSelectionChange(
-      selectedPosts.some(p => p.title === post.title)
-        ? selectedPosts.filter(p => p.title !== post.title)
-        : [...selectedPosts, post]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (selectedPosts.length === results.top7Assessments.length) {
-        onSelectionChange([]);
-    } else {
-        onSelectionChange(results.top7Assessments);
-    }
-  };
-
 
   return (
     <div className="w-full space-y-8 animate-fade-in">
@@ -107,42 +114,50 @@ function GenerationResultDisplay({ results, articleUrl, selectedPosts, onSelecti
        <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-4">
             <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
                 <h3 className="text-xl font-bold text-gray-200">Top 7 Post Assessments</h3>
-                <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={results.top7Assessments.length > 0 && selectedPosts.length === results.top7Assessments.length}
-                        onChange={handleSelectAll}
-                        className="h-5 w-5 rounded border-gray-500 bg-gray-700 text-teal-500 focus:ring-teal-500"
-                    />
-                    <span className="text-gray-300 font-semibold">Select All</span>
-                </label>
             </div>
             <div className="space-y-6">
-                {results.top7Assessments.map((item, index) => (
-                    <div key={index} className="pt-4 border-t border-slate-700/50 first:border-t-0 first:pt-0">
-                        <label className="flex items-start space-x-4 cursor-pointer">
-                             <input
-                                type="checkbox"
-                                checked={selectedPosts.some(p => p.title === item.title)}
-                                onChange={() => handlePostSelection(item)}
-                                className="h-5 w-5 rounded border-gray-500 bg-gray-700 text-teal-500 focus:ring-teal-500 mt-1 flex-shrink-0"
-                            />
+                {editableAssessments.map((item, index) => {
+                    const isCopied = copiedPostTitle === item.title;
+                    const isQueued = queuedPostTitles.includes(item.title);
+                    return (
+                        <div key={index} className="pt-4 border-t border-slate-700/50 first:border-t-0 first:pt-0">
                             <div className="flex-grow space-y-3">
                                 <h4 className="text-lg font-semibold text-teal-300">{index + 1}. {item.title}</h4>
                                 <p className="text-sm text-gray-400 italic">"{item.assessment}"</p>
-                                <pre className="mt-1 p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300">{item.content}</pre>
+                                <textarea 
+                                    value={item.content}
+                                    onChange={(e) => handleContentChange(index, e.target.value)}
+                                    rows={8}
+                                    className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"
+                                />
                             </div>
-                        </label>
-                    </div>
-                ))}
+                             <div className="flex items-center justify-end gap-3 mt-3">
+                                <button 
+                                    onClick={() => handleCopy(item.content, item.title)} 
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white"
+                                >
+                                    {isCopied ? (
+                                      <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Copied!</>
+                                    ) : (
+                                      <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> Copy Post</>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => handleSendToQueue(item)}
+                                    disabled={isQueued}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-teal-600 text-white hover:bg-teal-500 disabled:bg-teal-800/50 disabled:text-teal-400 disabled:cursor-not-allowed"
+                                >
+                                     {isQueued ? (
+                                        <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Queued</>
+                                     ) : (
+                                        <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>Send to Ayrshare Queue</>
+                                     )}
+                                </button>
+                            </div>
+                        </div>
+                    )
+                })}
             </div>
-            {selectedPosts.length > 0 && (
-                <div className="flex justify-end pt-4 border-t border-slate-700/50">
-                    <Button onClick={onMoveToPlanned}>
-                        Move {selectedPosts.length} Selected to Planned Posts
-                    </Button>
-                </div>
-            )}
        </div>
 
        <style>{`
