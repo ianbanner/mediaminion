@@ -1,6 +1,6 @@
 
 
-import { SavedTemplate, QueuedPost } from "../App";
+import { SavedTemplate, QueuedPost } from "../types";
 import { GenerationResults } from "./geminiService";
 
 export const LINKEDIN_GENERATION_EVALUATION_SCRIPT = `# LinkedIn Content Creation & Evaluation Script

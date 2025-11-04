@@ -1,6 +1,8 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
-import { GenerationResults, TopPostAssessment } from '../services/geminiService';
+import { GenerationResults } from '../services/geminiService';
+import { TopPostAssessment } from '../types';
 import PostCard from './PostCard';
 
 interface Props {

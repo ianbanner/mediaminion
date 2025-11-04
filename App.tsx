@@ -1,57 +1,25 @@
 
 
-import React, { useState, useCallback, useEffect } from 'react';
-// FIX: Import missing types, functions, and constants ('SocialPost', 'ResearchedPost', 'researchPopularPosts', 'scanContentForTemplates', 'LINKEDIN_GENERATION_EVALUATION_SCRIPT') to resolve reference errors.
-import { generateAndEvaluatePosts, GenerationResults, TopPostAssessment, SocialPost, ResearchedPost, researchPopularPosts, scanContentForTemplates } from './services/geminiService';
+
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { generateAndEvaluatePosts, GenerationResults, ResearchedPost, researchPopularPosts, scanContentForTemplates } from './services/geminiService';
 import { getCoreScriptsForDownload, getTemplatesForDownload, formatPageDataForDownload, LINKEDIN_GENERATION_EVALUATION_SCRIPT } from './services/scriptService';
-import { postToAyrshare } from './services/ayrshareService';
-import { initialTemplates } from './services/templateData';
+import { postToAyrshare, testAyrshareConnection } from './services/ayrshareService';
+import { initialTemplates, seedQueue, seedLog, seedUrls } from './services/templateData';
+import * as airtableService from './services/airtableService';
+import { SavedTemplate, QueuedPost, SentPost, ScheduledTask, AppSettings, TopPostAssessment, AirtableSyncStatus } from './types';
 import Button from './components/Button';
 import Sidebar from './components/Sidebar';
 import GenerationResultDisplay from './components/GenerationResultDisplay';
 import Scheduler from './components/Scheduler';
-
-
-export interface SavedTemplate {
-  id: string;
-  title: string;
-  template: string;
-  example: string;
-  instructions: string;
-  dateAdded: string;
-  usageCount: number;
-  lastUsed: string;
-}
-
-export interface QueuedPost extends TopPostAssessment {
-  id: string;
-}
-
-export interface SentPost {
-  id: string;
-  title: string;
-  content: string;
-  sentAt: string;
-}
-
-
-export interface ScheduledTask {
-  id: string;
-  name: string;
-  type: 'generate-posts' | 'ayrshare-api';
-  scheduleTime: string; // "HH:MM"
-  enabled: boolean;
-  lastRun: string | null;
-  nextRun: number | null; // timestamp
-  status: 'idle' | 'running' | 'success' | 'error';
-  statusMessage: string | null;
-}
-
-export interface AppSettings {
-  ayrshareApiKey: string;
-}
+import TemplateCard from './components/TemplateCard';
 
 type SaveStatus = 'idle' | 'saving' | 'saved';
+type TestStatus = {
+    status: 'idle' | 'testing' | 'success' | 'error';
+    message: string;
+};
+
 
 const DEFAULT_RESEARCH_SCRIPT = `You are my internet researcher, helping me find viral posts on LI and X that I can learn from. Find 10 high-performing hooks from Leadership and Product Thinking posts from LinkedIn from the past week. Focus on posts with 10K+ views or 100+ comments. 
 
@@ -81,9 +49,7 @@ const App: React.FC = () => {
   const [standardSummaryText, setStandardSummaryText] = useState<string>(DEFAULT_SUMMARY_TEXT);
   const [generationResults, setGenerationResults] = useState<GenerationResults | null>(null);
   const [ayrshareQueue, setAyrshareQueue] = useState<QueuedPost[]>([]);
-  const [linkedinExamples, setLinkedinExamples] = useState<string>('');
-  const [rankedPosts, setRankedPosts] = useState<SocialPost[] | null>(null);
-  const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>([]);
+  const [savedTemplates, setSavedTemplates] = useState<(SavedTemplate & { isNew?: boolean })[]>([]);
   const [scanContent, setScanContent] = useState<string>('');
   const [scannedTemplates, setScannedTemplates] = useState<SavedTemplate[] | null>(null);
   const [selectedScannedTemplateIds, setSelectedScannedTemplateIds] = useState<string[]>([]);
@@ -96,7 +62,15 @@ const App: React.FC = () => {
   const [urlCollectionInput, setUrlCollectionInput] = useState<string>('');
   const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
   const [ayrshareLog, setAyrshareLog] = useState<SentPost[]>([]);
-  const [settings, setSettings] = useState<AppSettings>({ ayrshareApiKey: '' });
+  const [settings, setSettings] = useState<AppSettings>({
+    ayrshareApiKey: '',
+    airtablePersonalAccessToken: '',
+    airtableBaseId: '',
+    airtableTemplatesTable: 'Templates',
+    airtableQueueTable: 'Queue',
+    airtableLogTable: 'Log',
+    airtableUrlsTable: 'URLs',
+  });
   
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,76 +82,146 @@ const App: React.FC = () => {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['linkedin']);
   const [postNowStatus, setPostNowStatus] = useState<{ status: 'idle' | 'loading' | 'error', message: string | null }>({ status: 'idle', message: null });
 
-
-  // Load all state from localStorage on initial mount
-  useEffect(() => {
-    try {
-      const savedResearchScript = localStorage.getItem('linkedinResearchScript');
-      if (savedResearchScript) setResearchScript(savedResearchScript);
-      const savedGenScript = localStorage.getItem('linkedinGenerationScript');
-      if (savedGenScript) setGenerationScript(savedGenScript);
-      const savedAudience = localStorage.getItem('targetAudience');
-      if (savedAudience) setTargetAudience(savedAudience);
-      const savedSummary = localStorage.getItem('standardSummaryText');
-      if (savedSummary) setStandardSummaryText(savedSummary);
-      const savedSettingsJson = localStorage.getItem('appSettings');
-      if (savedSettingsJson) setSettings(JSON.parse(savedSettingsJson));
-      
-      const savedGoogleConnection = localStorage.getItem('isGoogleConnected');
-      const savedGoogleUser = localStorage.getItem('googleUserEmail');
-      if (savedGoogleConnection === 'true' && savedGoogleUser) {
-          setIsGoogleConnected(true);
-          setGoogleUserEmail(savedGoogleUser);
-      }
-
-      const savedTemplatesJson = localStorage.getItem('savedTemplates');
-      setSavedTemplates(savedTemplatesJson ? JSON.parse(savedTemplatesJson) : initialTemplates);
-
-      const savedGenResultsJson = localStorage.getItem('generationResults');
-      if (savedGenResultsJson) setGenerationResults(JSON.parse(savedGenResultsJson));
-      
-      const savedQueueJson = localStorage.getItem('ayrshareQueue');
-      if (savedQueueJson) setAyrshareQueue(JSON.parse(savedQueueJson));
-
-      const savedUrlCollectionJson = localStorage.getItem('urlCollection');
-      if (savedUrlCollectionJson) {
-          const parsedUrls = JSON.parse(savedUrlCollectionJson);
-          setUrlCollection(parsedUrls);
-          setUrlCollectionInput(parsedUrls.join('\n'));
-      }
-      
-      const savedScheduledTasksJson = localStorage.getItem('scheduledTasks');
-      if (savedScheduledTasksJson) setScheduledTasks(JSON.parse(savedScheduledTasksJson));
-      
-      const savedLogJson = localStorage.getItem('ayrshareLog');
-      if (savedLogJson) setAyrshareLog(JSON.parse(savedLogJson));
-
-    } catch (e) {
-      console.error("Failed to parse saved data from localStorage", e);
-      setSavedTemplates(initialTemplates);
-    }
-  }, []);
-
-  // Persist all data to localStorage automatically on any change
-  useEffect(() => { localStorage.setItem('linkedinResearchScript', researchScript); }, [researchScript]);
-  useEffect(() => { localStorage.setItem('linkedinGenerationScript', generationScript); }, [generationScript]);
-  useEffect(() => { localStorage.setItem('targetAudience', targetAudience); }, [targetAudience]);
-  useEffect(() => { localStorage.setItem('standardSummaryText', standardSummaryText); }, [standardSummaryText]);
-  useEffect(() => { if (savedTemplates.length > 0) localStorage.setItem('savedTemplates', JSON.stringify(savedTemplates)); }, [savedTemplates]);
-  useEffect(() => { localStorage.setItem('scheduledTasks', JSON.stringify(scheduledTasks)); }, [scheduledTasks]);
-  useEffect(() => { localStorage.setItem('ayrshareLog', JSON.stringify(ayrshareLog)); }, [ayrshareLog]);
-  useEffect(() => { if(generationResults) localStorage.setItem('generationResults', JSON.stringify(generationResults)); }, [generationResults]);
-  useEffect(() => { localStorage.setItem('ayrshareQueue', JSON.stringify(ayrshareQueue)); }, [ayrshareQueue]);
+  // Airtable State
+  const [airtableSyncStatus, setAirtableSyncStatus] = useState<AirtableSyncStatus>('idle');
   
-  // Special handling for URL collection text input to avoid saving on every keystroke
+  // API Test State
+  const [ayrshareTestStatus, setAyrshareTestStatus] = useState<TestStatus>({ status: 'idle', message: '' });
+  const [airtableTestStatus, setAirtableTestStatus] = useState<TestStatus>({ status: 'idle', message: '' });
+  
+  // Seed Status State
+  const [seedTemplatesStatus, setSeedTemplatesStatus] = useState<TestStatus>({ status: 'idle', message: '' });
+  const [seedQueueStatus, setSeedQueueStatus] = useState<TestStatus>({ status: 'idle', message: '' });
+  const [seedLogStatus, setSeedLogStatus] = useState<TestStatus>({ status: 'idle', message: '' });
+  const [seedUrlsStatus, setSeedUrlsStatus] = useState<TestStatus>({ status: 'idle', message: '' });
+
+
+  const isAirtableConfigured = useMemo(() => {
+    return !!(settings.airtablePersonalAccessToken && settings.airtableBaseId);
+  }, [settings.airtablePersonalAccessToken, settings.airtableBaseId]);
+
+  const syncWithAirtable = useCallback(async () => {
+      if (!isAirtableConfigured) {
+          setAirtableSyncStatus('not-configured');
+          return;
+      }
+      setAirtableSyncStatus('syncing');
+      setError(null);
+      try {
+          const [templates, queue, log, urls] = await Promise.all([
+              airtableService.fetchRecords<SavedTemplate>(settings.airtableTemplatesTable, settings),
+              airtableService.fetchRecords<QueuedPost>(settings.airtableQueueTable, settings),
+              airtableService.fetchRecords<SentPost>(settings.airtableLogTable, settings),
+              airtableService.fetchRecords<{url: string}>(settings.airtableUrlsTable, settings),
+          ]);
+          setSavedTemplates(templates);
+          setAyrshareQueue(queue);
+          setAyrshareLog(log);
+          const urlStrings = urls.map(u => u.url);
+          setUrlCollection(urlStrings);
+          setUrlCollectionInput(urlStrings.join('\n'));
+          setAirtableSyncStatus('synced');
+      } catch (e) {
+          const message = e instanceof Error ? e.message : 'An unknown error occurred during Airtable sync.';
+          setError(`Airtable Sync Failed: ${message}`);
+          setAirtableSyncStatus('error');
+      }
+  }, [settings, isAirtableConfigured]);
+
+
+  // Load all state on initial mount
+  useEffect(() => {
+    let loadedSettings: any | null = null;
+    try {
+      const savedSettingsJson = localStorage.getItem('appSettings');
+      if (savedSettingsJson) {
+        loadedSettings = JSON.parse(savedSettingsJson);
+        // Handle migration for users who have the old key stored
+        if (loadedSettings.airtableApiKey && !loadedSettings.airtablePersonalAccessToken) {
+            loadedSettings.airtablePersonalAccessToken = loadedSettings.airtableApiKey;
+            delete loadedSettings.airtableApiKey;
+        }
+        setSettings(s => ({ ...s, ...loadedSettings }));
+      }
+    } catch (e) { console.error("Failed to parse settings from localStorage", e); }
+    
+    // Decide whether to sync with Airtable or load from localStorage
+    if (loadedSettings?.airtablePersonalAccessToken && loadedSettings.airtableBaseId) {
+        syncWithAirtable();
+    } else {
+        setAirtableSyncStatus('not-configured');
+        // Fallback to localStorage if Airtable is not configured
+        try {
+            const savedResearchScript = localStorage.getItem('linkedinResearchScript');
+            if (savedResearchScript) setResearchScript(savedResearchScript);
+            const savedGenScript = localStorage.getItem('linkedinGenerationScript');
+            if (savedGenScript) setGenerationScript(savedGenScript);
+            const savedAudience = localStorage.getItem('targetAudience');
+            if (savedAudience) setTargetAudience(savedAudience);
+            const savedSummary = localStorage.getItem('standardSummaryText');
+            if (savedSummary) setStandardSummaryText(savedSummary);
+            
+            const savedGoogleConnection = localStorage.getItem('isGoogleConnected');
+            const savedGoogleUser = localStorage.getItem('googleUserEmail');
+            if (savedGoogleConnection === 'true' && savedGoogleUser) {
+                setIsGoogleConnected(true);
+                setGoogleUserEmail(savedGoogleUser);
+            }
+      
+            const savedTemplatesJson = localStorage.getItem('savedTemplates');
+            setSavedTemplates(savedTemplatesJson ? JSON.parse(savedTemplatesJson) : initialTemplates);
+      
+            const savedGenResultsJson = localStorage.getItem('generationResults');
+            if (savedGenResultsJson) setGenerationResults(JSON.parse(savedGenResultsJson));
+            
+            const savedQueueJson = localStorage.getItem('ayrshareQueue');
+            if (savedQueueJson) setAyrshareQueue(JSON.parse(savedQueueJson));
+      
+            const savedUrlCollectionJson = localStorage.getItem('urlCollection');
+            if (savedUrlCollectionJson) {
+                const parsedUrls = JSON.parse(savedUrlCollectionJson);
+                setUrlCollection(parsedUrls);
+                setUrlCollectionInput(parsedUrls.join('\n'));
+            }
+            
+            const savedScheduledTasksJson = localStorage.getItem('scheduledTasks');
+            if (savedScheduledTasksJson) setScheduledTasks(JSON.parse(savedScheduledTasksJson));
+            
+            const savedLogJson = localStorage.getItem('ayrshareLog');
+            if (savedLogJson) setAyrshareLog(JSON.parse(savedLogJson));
+      
+          } catch (e) {
+            console.error("Failed to parse saved data from localStorage", e);
+            setSavedTemplates(initialTemplates);
+          }
+    }
+  }, [syncWithAirtable]); // syncWithAirtable is stable
+
+  // Persist non-Airtable data to localStorage automatically on any change
+  useEffect(() => { if (!isAirtableConfigured) localStorage.setItem('linkedinResearchScript', researchScript); }, [researchScript, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured) localStorage.setItem('linkedinGenerationScript', generationScript); }, [generationScript, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured) localStorage.setItem('targetAudience', targetAudience); }, [targetAudience, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured) localStorage.setItem('standardSummaryText', standardSummaryText); }, [standardSummaryText, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured && savedTemplates.length > 0) localStorage.setItem('savedTemplates', JSON.stringify(savedTemplates.filter(t => !t.isNew))); }, [savedTemplates, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured) localStorage.setItem('scheduledTasks', JSON.stringify(scheduledTasks)); }, [scheduledTasks, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured) localStorage.setItem('ayrshareLog', JSON.stringify(ayrshareLog)); }, [ayrshareLog, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured && generationResults) localStorage.setItem('generationResults', JSON.stringify(generationResults)); }, [generationResults, isAirtableConfigured]);
+  useEffect(() => { if (!isAirtableConfigured) localStorage.setItem('ayrshareQueue', JSON.stringify(ayrshareQueue)); }, [ayrshareQueue, isAirtableConfigured]);
+  
   useEffect(() => {
     const handler = setTimeout(() => {
-      const urls = urlCollectionInput.split('\n').map(u => u.trim()).filter(Boolean);
-      setUrlCollection(urls);
-      localStorage.setItem('urlCollection', JSON.stringify(urls));
-    }, 500); // Debounce saving
+        const urls = urlCollectionInput.split('\n').map(u => u.trim()).filter(Boolean);
+        setUrlCollection(urls);
+        if (!isAirtableConfigured) {
+            localStorage.setItem('urlCollection', JSON.stringify(urls));
+        } else {
+            // This is a bit tricky. A full sync on every change is too much.
+            // For now, we'll let the user manage URLs in Airtable directly.
+            // A more advanced implementation would diff and sync.
+        }
+    }, 500);
     return () => clearTimeout(handler);
-  }, [urlCollectionInput]);
+  }, [urlCollectionInput, isAirtableConfigured]);
 
 
   const calculateNextRun = (scheduleTime: string): number => {
@@ -205,11 +249,17 @@ const App: React.FC = () => {
       });
       if (results.top7Assessments && results.top7Assessments.length > 0) {
         const topPost = results.top7Assessments[0];
-        const newQueuedPost: QueuedPost = { ...topPost, id: `queued-${Date.now()}` };
-        setAyrshareQueue(prev => [newQueuedPost, ...prev]);
+        handleSendToAyrshareQueue(topPost);
         
         const newUrlCollection = currentUrls.slice(1);
         setUrlCollectionInput(newUrlCollection.join('\n'));
+        if (isAirtableConfigured) {
+            // Find the record ID for the URL that was just processed and delete it.
+            const recordToDelete = (await airtableService.fetchRecords<{url: string}>(settings.airtableUrlsTable, settings)).find(r => r.url === urlToProcess);
+            if (recordToDelete) {
+                airtableService.deleteRecord(settings.airtableUrlsTable, recordToDelete.id, settings);
+            }
+        }
 
         updateTask(taskId, { status: 'success', statusMessage: `Generated 1 post from ${urlToProcess}`, lastRun: new Date().toISOString(), nextRun: calculateNextRun(scheduledTasks.find(t=>t.id===taskId)!.scheduleTime) });
       } else {
@@ -224,20 +274,13 @@ const App: React.FC = () => {
   const runAyrshareTask = async (taskId: string) => {
     const task = scheduledTasks.find(t => t.id === taskId);
     if (!task) return;
-
     const apiKey = settings.ayrshareApiKey;
-
     if (!apiKey) {
       updateTask(taskId, { status: 'error', statusMessage: `Ayrshare API Key is not set in Settings.`, lastRun: new Date().toISOString(), nextRun: calculateNextRun(task.scheduleTime) });
       return;
     }
     
-    // Use a function callback with setAyrshareQueue to get the most up-to-date state
-    let postsToProcess: QueuedPost[] = [];
-    setAyrshareQueue(currentQueue => {
-        postsToProcess = [...currentQueue];
-        return currentQueue; // No change yet
-    });
+    let postsToProcess: QueuedPost[] = ayrshareQueue;
 
     if (postsToProcess.length === 0) {
       updateTask(taskId, { status: 'success', statusMessage: 'No posts were queued, nothing to do.', lastRun: new Date().toISOString(), nextRun: calculateNextRun(task.scheduleTime) });
@@ -251,7 +294,6 @@ const App: React.FC = () => {
 
     for (const post of postsToProcess) {
       try {
-        // By default, the scheduler posts to LinkedIn only
         const response = await postToAyrshare(post.content, apiKey, ['linkedin']);
         if (response.status === 'success') {
           successfulPosts.push(post);
@@ -267,13 +309,18 @@ const App: React.FC = () => {
     
     if (successfulPosts.length > 0) {
       const now = new Date().toISOString();
-      const justSent: SentPost[] = successfulPosts.map(p => ({
-        id: p.id.replace('queued-', 'sent-'),
+      const justSent: Omit<SentPost, 'id'>[] = successfulPosts.map(p => ({
         title: p.title,
         content: p.content,
         sentAt: now
       }));
-      setAyrshareLog(prev => [...justSent, ...prev]);
+
+      if(isAirtableConfigured) {
+        airtableService.createRecords(settings.airtableLogTable, justSent, settings);
+        airtableService.deleteRecords(settings.airtableQueueTable, successfulPosts.map(p => p.id), settings);
+      }
+      
+      setAyrshareLog(prev => [...prev, ...successfulPosts.map((p, i) => ({...justSent[i], id: `sent-${Date.now()}-${i}`}))]);
       setAyrshareQueue(prev => prev.filter(p => !successfulPosts.some(s => s.id === p.id)));
     }
     
@@ -298,11 +345,17 @@ const App: React.FC = () => {
       });
     }, 10000); // Check every 10 seconds
     return () => clearInterval(intervalId);
-  }, [scheduledTasks, urlCollectionInput, ayrshareQueue, savedTemplates, generationScript, targetAudience, standardSummaryText, settings.ayrshareApiKey]);
+  }, [scheduledTasks, urlCollectionInput, ayrshareQueue, savedTemplates, generationScript, targetAudience, standardSummaryText, settings.ayrshareApiKey, isAirtableConfigured]);
 
   const handleSaveSettings = () => {
     localStorage.setItem('appSettings', JSON.stringify(settings));
     setSaveSettingsStatus('saving');
+    // If Airtable settings are present, trigger a sync.
+    if (settings.airtablePersonalAccessToken && settings.airtableBaseId) {
+        syncWithAirtable();
+    } else {
+        setAirtableSyncStatus('not-configured');
+    }
     setTimeout(() => {
         setSaveSettingsStatus('saved');
         setTimeout(() => setSaveSettingsStatus('idle'), 2000);
@@ -323,35 +376,56 @@ const App: React.FC = () => {
       });
       setGenerationResults(results);
       const now = new Date().toLocaleDateString();
-      setSavedTemplates(prev => prev.map(t => ({...t, usageCount: t.usageCount + 1, lastUsed: now})));
+      const updatedTemplates = savedTemplates.map(t => ({...t, usageCount: t.usageCount + 1, lastUsed: now}));
+      setSavedTemplates(updatedTemplates);
+      if(isAirtableConfigured) {
+          airtableService.updateRecords(settings.airtableTemplatesTable, updatedTemplates.map(t => ({id: t.id, fields: {usageCount: t.usageCount, lastUsed: t.lastUsed}})), settings);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
-  }, [articleUrl, articleText, savedTemplates, generationScript, targetAudience, standardSummaryText]);
+  }, [articleUrl, articleText, savedTemplates, generationScript, targetAudience, standardSummaryText, isAirtableConfigured, settings]);
   
-  const handleSendToAyrshareQueue = (post: TopPostAssessment) => {
-    const newQueuedPost: QueuedPost = {
-        ...post,
-        id: `queued-${Date.now()}-${Math.random()}`
-    };
-    setAyrshareQueue(prev => [newQueuedPost, ...prev]);
-  };
+  const handleSendToAyrshareQueue = useCallback(async (post: TopPostAssessment) => {
+    const newQueuedPost: Omit<QueuedPost, 'id'> = { ...post };
+    if (isAirtableConfigured) {
+        try {
+            const createdRecord = await airtableService.createRecord<Omit<QueuedPost, 'id'>>(settings.airtableQueueTable, newQueuedPost, settings);
+            setAyrshareQueue(prev => [createdRecord, ...prev]);
+        } catch (e) {
+            setError(`Failed to add post to Airtable queue: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        }
+    } else {
+        setAyrshareQueue(prev => [{...newQueuedPost, id: `queued-${Date.now()}-${Math.random()}`}, ...prev]);
+    }
+  }, [isAirtableConfigured, settings]);
 
   const handleUpdateQueuedPost = (id: string, newContent: string) => {
     setAyrshareQueue(prev => prev.map(p => p.id === id ? { ...p, content: newContent } : p));
+    if (isAirtableConfigured) {
+      airtableService.updateRecord(settings.airtableQueueTable, id, { content: newContent }, settings);
+    }
   };
   
   const handleDeleteQueuedPost = (id: string) => {
-    if (window.confirm("Are you sure?")) setAyrshareQueue(prev => prev.filter(p => p.id !== id));
+    if (window.confirm("Are you sure?")) {
+        setAyrshareQueue(prev => prev.filter(p => p.id !== id));
+        if (isAirtableConfigured) {
+            airtableService.deleteRecord(settings.airtableQueueTable, id, settings);
+        }
+    }
   };
   
   const handleClearAyrshareQueue = useCallback(() => {
       if (window.confirm("Clear all posts from the queue?")) {
+          if (isAirtableConfigured) {
+              airtableService.deleteRecords(settings.airtableQueueTable, ayrshareQueue.map(p => p.id), settings);
+          }
           setAyrshareQueue([]);
       }
-  }, []);
+  }, [ayrshareQueue, isAirtableConfigured, settings]);
   
   // "Post Now" Modal Handlers
   const handleOpenPostModal = (post: QueuedPost) => {
@@ -376,27 +450,28 @@ const App: React.FC = () => {
 
   const handlePostNow = async () => {
     if (!postToShare || selectedPlatforms.length === 0) return;
-    
     const apiKey = settings.ayrshareApiKey;
-
     if (!apiKey) {
       setPostNowStatus({ status: 'error', message: `Ayrshare API Key is not set in Settings.` });
       return;
     }
-
     setPostNowStatus({ status: 'loading', message: 'Posting...' });
 
     try {
         const response = await postToAyrshare(postToShare.content, apiKey, selectedPlatforms);
         if (response.status === 'success') {
             const now = new Date().toISOString();
-            const sentPost: SentPost = {
-                id: postToShare.id.replace('queued-', 'sent-'),
+            const sentPostData: Omit<SentPost, 'id'> = {
                 title: postToShare.title,
                 content: postToShare.content,
                 sentAt: now
             };
-            setAyrshareLog(prev => [sentPost, ...prev]);
+            
+            if (isAirtableConfigured) {
+                airtableService.createRecord(settings.airtableLogTable, sentPostData, settings);
+                airtableService.deleteRecord(settings.airtableQueueTable, postToShare.id, settings);
+            }
+            setAyrshareLog(prev => [{...sentPostData, id: `sent-${Date.now()}`}, ...prev]);
             setAyrshareQueue(prev => prev.filter(p => p.id !== postToShare.id));
             handleClosePostModal();
         } else {
@@ -408,7 +483,6 @@ const App: React.FC = () => {
   };
 
 
-  // ... (other handlers remain the same)
   const handleResearchPosts = useCallback(async () => {
     if (!researchScript.trim()) { setError('Please provide a script.'); return; }
     setError(null); setResearchedPosts(null); setIsLoading(true);
@@ -430,30 +504,91 @@ const App: React.FC = () => {
 
   const handleAddSelectedToLibrary = () => {
     if (!scannedTemplates) return;
-    const selected = scannedTemplates.filter(t => selectedScannedTemplateIds.includes(t.id));
-    setSavedTemplates(prev => [...selected, ...prev]);
+    const selected = scannedTemplates.filter(t => selectedScannedTemplateIds.includes(t.id))
+      .map(({id, ...rest}) => rest); // remove temporary id
+    
+    setSavedTemplates(prev => [...selected.map(t => ({...t, id: `new-${Math.random()}`})), ...prev]); // Add with temp id for UI
+    if (isAirtableConfigured) {
+        airtableService.createRecords(settings.airtableTemplatesTable, selected, settings)
+            .then(() => syncWithAirtable()); // Re-sync to get proper IDs
+    }
     setScanContent(''); setScannedTemplates(null); setSelectedScannedTemplateIds([]);
     setView('linkedin-library');
   };
   const handleScannedTemplateSelection = (id: string) => { setSelectedScannedTemplateIds(prev => prev.includes(id) ? prev.filter(pId => pId !== id) : [...prev, id]); };
   const handleSelectAllScanned = () => { if (scannedTemplates) setSelectedScannedTemplateIds(selectedScannedTemplateIds.length === scannedTemplates.length ? [] : scannedTemplates.map(t => t.id)); };
-  const handleAddPostToReference = (content: string) => {
-    setView('linkedin-library');
-    setSavedTemplates(prev => {
-        const newTemplates = [...prev];
-        const index = newTemplates.findIndex(t => t.title.toLowerCase().includes('example') || t.title.toLowerCase().includes('pro method')) || 0;
-        if (newTemplates.length > 0) {
-            const template = {...newTemplates[index]};
-            template.template = template.template ? `${template.template}\n\n---\n\n${content}` : content;
-            newTemplates[index] = template;
-            return newTemplates;
-        }
-        return prev;
-    });
+  
+  const handleAddNewTemplate = () => {
+    const tempId = `new-template-${Date.now()}`;
+    const newTemplate: SavedTemplate & { isNew: boolean } = {
+        id: tempId,
+        title: 'New Untitled Template',
+        template: '',
+        example: '',
+        instructions: '',
+        dateAdded: new Date().toLocaleDateString(),
+        usageCount: 0,
+        lastUsed: 'Never',
+        isNew: true,
+    };
+    setSavedTemplates(prev => [newTemplate, ...prev]);
   };
-  const handleAddNewTemplate = () => { setSavedTemplates(prev => [{ id: `template-${Date.now()}`, title: 'New Untitled Template', template: '', example: '', instructions: '', dateAdded: new Date().toLocaleDateString(), usageCount: 0, lastUsed: 'Never' }, ...prev]); };
-  const handleUpdateTemplate = (id: string, field: keyof Omit<SavedTemplate, 'usageCount'|'dateAdded'|'lastUsed'|'id'>, value: string) => { setSavedTemplates(prev => prev.map(t => (t.id === id ? { ...t, [field]: value } : t))); };
-  const handleDeleteTemplate = (id: string) => { if (window.confirm("Delete this template?")) setSavedTemplates(prev => prev.filter(t => t.id !== id)); };
+  
+  const handleUpdateTemplate = async (id: string, updates: Partial<Omit<SavedTemplate, 'id'>>) => {
+      const templateToUpdate = savedTemplates.find(t => t.id === id);
+      if (!templateToUpdate) return;
+  
+      if (templateToUpdate.isNew) {
+          // This is a CREATION event
+          const { isNew, ...newTemplateData } = { ...templateToUpdate, ...updates };
+          const dataForApi = {
+              title: newTemplateData.title,
+              template: newTemplateData.template,
+              example: newTemplateData.example,
+              instructions: newTemplateData.instructions,
+              dateAdded: newTemplateData.dateAdded,
+              usageCount: newTemplateData.usageCount,
+              lastUsed: newTemplateData.lastUsed,
+          };
+  
+          if (isAirtableConfigured) {
+              try {
+                  const createdRecord = await airtableService.createRecord(settings.airtableTemplatesTable, dataForApi, settings);
+                  setSavedTemplates(prev => prev.map(t => t.id === id ? createdRecord : t));
+              } catch (e) {
+                  setError(`Failed to save template to Airtable: ${e instanceof Error ? e.message : 'Unknown error'}`);
+                  setSavedTemplates(prev => prev.filter(t => t.id !== id)); // Remove failed temp template
+              }
+          } else {
+              setSavedTemplates(prev => prev.map(t => t.id === id ? { ...newTemplateData, id: `template-${Date.now()}` } : t));
+          }
+      } else {
+          // This is an UPDATE event
+          setSavedTemplates(prev => prev.map(t => (t.id === id ? { ...t, ...updates } : t)));
+          if (isAirtableConfigured) {
+              airtableService.updateRecord(settings.airtableTemplatesTable, id, updates, settings);
+          }
+      }
+  };
+  
+  const handleDeleteTemplate = (id: string) => {
+      const templateToDelete = savedTemplates.find(t => t.id === id);
+      if (!templateToDelete) return;
+  
+      // No confirmation for new, unsaved templates.
+      if (templateToDelete.isNew) {
+        setSavedTemplates(prev => prev.filter(t => t.id !== id));
+        return;
+      }
+      
+      if (window.confirm("Delete this template?")) {
+        setSavedTemplates(prev => prev.filter(t => t.id !== id)); 
+        if (isAirtableConfigured) {
+            airtableService.deleteRecord(settings.airtableTemplatesTable, id, settings);
+        }
+      }
+  };
+
 
   const handleGoogleConnect = () => {
     setIsConnecting(true);
@@ -472,7 +607,7 @@ const App: React.FC = () => {
       if (window.confirm(`This will schedule ${ayrshareQueue.length} posts to your Google Calendar and clear the planner. Continue?`)) {
           console.log("Scheduling posts:", ayrshareQueue);
           alert(`${ayrshareQueue.length} posts have been scheduled to Google Calendar.`);
-          setAyrshareQueue([]);
+          handleClearAyrshareQueue();
       }
   };
 
@@ -514,6 +649,94 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleTestAyrshare = async () => {
+    setAyrshareTestStatus({ status: 'testing', message: 'Testing...' });
+    const result = await testAyrshareConnection(settings.ayrshareApiKey);
+    if (result.success) {
+        setAyrshareTestStatus({ status: 'success', message: result.message });
+    } else {
+        setAyrshareTestStatus({ status: 'error', message: result.message });
+    }
+    setTimeout(() => setAyrshareTestStatus(prev => ({ ...prev, status: 'idle' })), 5000);
+  };
+  
+  const handleTestAirtable = async () => {
+      setAirtableTestStatus({ status: 'testing', message: 'Testing...' });
+      const result = await airtableService.testAirtableConnection(settings);
+      if (result.success) {
+          setAirtableTestStatus({ status: 'success', message: result.message });
+      } else {
+          setAirtableTestStatus({ status: 'error', message: result.message });
+      }
+      setTimeout(() => setAirtableTestStatus(prev => ({ ...prev, status: 'idle' })), 5000);
+  };
+  
+  const handleSeedData = async (
+    dataType: 'templates' | 'queue' | 'log' | 'urls'
+  ) => {
+    const dataTypeMap = {
+        templates: {
+            tableName: settings.airtableTemplatesTable,
+            data: initialTemplates.map(({ id, ...rest }) => rest),
+            setStatus: setSeedTemplatesStatus,
+            confirmMessage: `This will add the 10 initial templates to your '${settings.airtableTemplatesTable}' table in Airtable.`
+        },
+        queue: {
+            tableName: settings.airtableQueueTable,
+            data: seedQueue,
+            setStatus: setSeedQueueStatus,
+            confirmMessage: `This will add 2 sample posts to your '${settings.airtableQueueTable}' table.`
+        },
+        log: {
+            tableName: settings.airtableLogTable,
+            data: seedLog,
+            setStatus: setSeedLogStatus,
+            confirmMessage: `This will add 1 sample post to your '${settings.airtableLogTable}' table.`
+        },
+        urls: {
+            tableName: settings.airtableUrlsTable,
+            data: seedUrls,
+            setStatus: setSeedUrlsStatus,
+            confirmMessage: `This will add 3 sample URLs to your '${settings.airtableUrlsTable}' table.`
+        }
+    };
+
+    const config = dataTypeMap[dataType];
+
+    if (!window.confirm(`${config.confirmMessage} This is a one-time setup action. Are you sure you want to proceed?`)) {
+        return;
+    }
+
+    config.setStatus({ status: 'testing', message: 'Seeding...' });
+    try {
+        // FIX: The type of `config.data` is a union of different array types. The generic `createRecords` function
+        // cannot infer a single type `T` from this union. By explicitly using the corresponding data from `dataTypeMap`
+        // inside the switch, we provide a concretely-typed array for each case, resolving the type error.
+        switch (dataType) {
+            case 'templates':
+                await airtableService.createRecords(config.tableName, dataTypeMap.templates.data, settings);
+                break;
+            case 'queue':
+                await airtableService.createRecords(config.tableName, dataTypeMap.queue.data, settings);
+                break;
+            case 'log':
+                await airtableService.createRecords(config.tableName, dataTypeMap.log.data, settings);
+                break;
+            case 'urls':
+                await airtableService.createRecords(config.tableName, dataTypeMap.urls.data, settings);
+                break;
+        }
+
+        config.setStatus({ status: 'success', message: 'Successfully seeded data!' });
+        syncWithAirtable(); // Re-sync to show the new data
+    } catch (e) {
+        const message = e instanceof Error ? e.message : "An unknown error occurred.";
+        config.setStatus({ status: 'error', message: `Seeding failed: ${message}` });
+    }
+    setTimeout(() => config.setStatus({ status: 'idle', message: '' }), 7000);
+  };
+
+
   const renderCurrentView = () => {
     switch (view) {
       case 'generate-posts':
@@ -540,7 +763,7 @@ const App: React.FC = () => {
               </div>
             </div>
              <div className="flex items-center justify-center gap-4">
-                  <label className="flex items-center space-x-3"><input type="checkbox" checked={true} disabled className="h-5 w-5" /><span className="text-gray-300">LinkedIn</span></label>
+                  <label className="flex items-center space-x-3"><input type="checkbox" defaultChecked={true} disabled className="h-5 w-5" /><span className="text-gray-300">LinkedIn</span></label>
                    <label className="flex items-center space-x-3 opacity-50"><input type="checkbox" disabled className="h-5 w-5" /><span className="text-gray-500">X</span></label>
                    <label className="flex items-center space-x-3 opacity-50"><input type="checkbox" disabled className="h-5 w-5" /><span className="text-gray-500">Facebook</span></label>
             </div>
@@ -554,351 +777,436 @@ const App: React.FC = () => {
           return (
             <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
                 <h2 className="text-2xl font-bold text-gray-200">Collect URLs</h2>
-                <p className="text-gray-400">Paste URLs below (one per line). The scheduler will pick the top one to generate posts. Data is saved automatically.</p>
+                <p className="text-gray-400">
+                  {isAirtableConfigured 
+                    ? `URLs are being synced from your Airtable base's '${settings.airtableUrlsTable}' table. Please manage your URLs there.`
+                    : 'Enter one URL per line. The "Generate Posts" scheduler task will process the top URL from this list and then remove it.'}
+                </p>
                 <div>
-                    <label htmlFor="url-collection" className="block text-sm font-medium text-gray-300 mb-2">URL List ({urlCollection.length} saved)</label>
-                    <textarea 
-                        id="url-collection" 
-                        value={urlCollectionInput} 
-                        onChange={(e) => setUrlCollectionInput(e.target.value)} 
-                        rows={15} 
-                        className="w-full p-4 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400 font-mono text-sm" 
-                        placeholder="https://example.com/article-1&#10;https://example.com/article-2"
-                    />
+                  <label htmlFor="url-collection" className="block text-sm font-medium text-gray-300 mb-2">URL Collection</label>
+                  <textarea 
+                    id="url-collection" 
+                    value={urlCollectionInput} 
+                    onChange={(e) => setUrlCollectionInput(e.target.value)} 
+                    rows={15} 
+                    className="w-full p-4 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400 font-mono text-sm"
+                    disabled={isAirtableConfigured}
+                    placeholder="https://example.com/article-1&#10;https://example.com/article-2&#10;https://example.com/article-3"
+                  />
                 </div>
             </div>
           );
       case 'ayrshare-queue':
         return (
-          <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
-            <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-200">Ayrshare Queue</h2>
-                  {ayrshareQueue.length > 0 && <button onClick={handleClearAyrshareQueue} className="text-sm text-red-400 hover:text-red-300">Clear All</button>}
-            </div>
-            <div className="space-y-4">
-                {ayrshareQueue.length > 0 ? ( ayrshareQueue.map(post => (
-                       <div key={post.id} className={`p-5 space-y-4 relative group bg-slate-800/50 border rounded-xl shadow-lg border-slate-700`}>
-                           <div className="flex-grow space-y-3">
-                               <div className="flex justify-between items-center">
-                                   <h4 className="font-semibold text-teal-300">{post.title}</h4>
-                                   <button onClick={() => handleDeleteQueuedPost(post.id)} className="p-1.5 hover:text-red-400"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                               </div>
-                               <textarea value={post.content} onChange={(e) => handleUpdateQueuedPost(post.id, e.target.value)} rows={8} className="w-full p-2 bg-gray-900 border border-slate-600 rounded-md text-sm font-mono focus:ring-2 focus:ring-teal-400" />
-                           </div>
-                           <div className="flex justify-end items-center mt-3">
-                                <button 
-                                    onClick={() => handleOpenPostModal(post)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-500"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
-                                    Post Now
-                                </button>
-                            </div>
+            <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-200">Ayrshare Queue ({ayrshareQueue.length})</h2>
+                    {ayrshareQueue.length > 0 && (
+                        <div className="flex gap-4">
+                             {isGoogleConnected && <Button onClick={handleScheduleWithGoogle}>Schedule with Google</Button>}
+                             <button onClick={handleClearAyrshareQueue} className="text-sm text-red-400 hover:text-red-300">Clear All</button>
                         </div>
-                    )) ) : ( <div className="text-center py-8 text-gray-500"><p>No posts in the queue. Go to "Generate Posts" to add some.</p></div> )}
+                    )}
+                </div>
+                 {ayrshareQueue.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">The queue is empty. Generate some posts to get started.</p>
+                 ) : (
+                    <div className="space-y-4">
+                        {ayrshareQueue.map((post) => (
+                           <div key={post.id} className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                               <h4 className="font-semibold text-teal-300">{post.title}</h4>
+                               <textarea 
+                                   value={post.content} 
+                                   onChange={(e) => handleUpdateQueuedPost(post.id, e.target.value)}
+                                   rows={6}
+                                   className="w-full mt-2 p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"
+                               />
+                               <div className="flex items-center justify-end gap-3 mt-3">
+                                   <Button onClick={() => handleOpenPostModal(post)}>Post Now</Button>
+                                   <button onClick={() => handleDeleteQueuedPost(post.id)} className="text-sm text-gray-500 hover:text-red-400">Delete</button>
+                               </div>
+                           </div>
+                        ))}
+                    </div>
+                 )}
             </div>
-          </div>
         );
       case 'ayrshare-log':
-        return (
-            <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
-                <h2 className="text-2xl font-bold text-gray-200">Ayrshare Sent Log</h2>
-                <p className="text-gray-400">A history of all posts successfully sent to Ayrshare via the scheduler.</p>
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                    {ayrshareLog.length > 0 ? ( ayrshareLog.map(post => (
-                           <div key={post.id} className={`p-4 space-y-2 bg-slate-900/60 border rounded-xl border-slate-700`}>
-                               <div className="flex justify-between items-center text-xs text-gray-400">
-                                   <h4 className="font-semibold text-teal-300">{post.title}</h4>
-                                   <span className="font-mono">{new Date(post.sentAt).toLocaleString()}</span>
+          return (
+             <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+                <h2 className="text-2xl font-bold text-gray-200">Ayrshare Log</h2>
+                 {ayrshareLog.length === 0 ? (
+                    <p className="text-center text-gray-500 py-8">No posts have been sent yet.</p>
+                 ) : (
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        {ayrshareLog.map((post) => (
+                           <div key={post.id} className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg">
+                               <div className="flex justify-between items-center">
+                                  <h4 className="font-semibold text-teal-300">{post.title}</h4>
+                                  <span className="text-xs text-gray-500">{new Date(post.sentAt).toLocaleString()}</span>
                                </div>
-                               <pre className="p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300">{post.content}</pre>
-                            </div>
-                        )) ) : ( <div className="text-center py-8 text-gray-500"><p>No posts have been sent yet.</p></div> )}
-                </div>
-            </div>
-        );
-      case 'scheduler':
-        return <Scheduler 
-                    tasks={scheduledTasks}
-                    onAddTask={addTask}
-                    onUpdateTask={updateTask}
-                    onDeleteTask={deleteTask}
-                    isGoogleConnected={isGoogleConnected}
-                    googleUserEmail={googleUserEmail}
-                    isConnecting={isConnecting}
-                    onGoogleConnect={handleGoogleConnect}
-                    onGoogleDisconnect={handleGoogleDisconnect}
-               />;
-      case 'settings':
-        return (
-            <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
-                <h2 className="text-2xl font-bold text-gray-200">Settings</h2>
-                <div className="space-y-4 pt-4 border-t border-slate-700/50">
-                    <div>
-                        <label htmlFor="ayrshare-key" className="block text-sm font-medium text-gray-300 mb-2">Ayrshare API Key</label>
-                        <p className="text-xs text-gray-500 mb-2">You can get your API key from your <a href="https://app.ayrshare.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline">Ayrshare Dashboard</a>.</p>
-                        <input 
-                            id="ayrshare-key" 
-                            type="password" 
-                            value={settings.ayrshareApiKey} 
-                            onChange={(e) => setSettings(prev => ({...prev, ayrshareApiKey: e.target.value}))} 
-                            placeholder="AY-..."
-                            className="w-full p-3 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400" 
-                        />
+                               <p className="mt-2 text-sm whitespace-pre-wrap text-gray-300 font-mono border-l-2 border-slate-600 pl-4">{post.content}</p>
+                           </div>
+                        ))}
                     </div>
+                 )}
+            </div>
+          );
+      case 'scheduler':
+          return (
+            <Scheduler 
+                tasks={scheduledTasks}
+                onAddTask={addTask}
+                onUpdateTask={updateTask}
+                onDeleteTask={deleteTask}
+                isGoogleConnected={isGoogleConnected}
+                googleUserEmail={googleUserEmail}
+                isConnecting={isConnecting}
+                onGoogleConnect={handleGoogleConnect}
+                onGoogleDisconnect={handleGoogleDisconnect}
+            />
+          );
+      case 'linkedin-researcher':
+          return (
+            <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+                <h2 className="text-2xl font-bold text-gray-200">LinkedIn Post Researcher</h2>
+                <div>
+                    <label htmlFor="research-script" className="block text-sm font-medium text-gray-300 mb-2">Research Script</label>
+                    <textarea id="research-script" value={researchScript} onChange={(e) => setResearchScript(e.target.value)} rows={8} className="w-full p-4 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400 font-mono text-xs" />
                 </div>
-                <div className="flex justify-end mt-6">
-                    <button
-                        onClick={handleSaveSettings}
-                        disabled={saveSettingsStatus !== 'idle'}
-                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                        {saveSettingsStatus === 'saved' ? (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                Saved!
-                            </>
-                        ) : 'Save Settings'}
-                    </button>
+                <div className="text-center">
+                    <Button onClick={handleResearchPosts} isLoading={isLoading}>
+                        {isLoading ? 'Researching...' : 'Research Popular Posts'}
+                    </Button>
                 </div>
             </div>
-        );
-      // ... (other cases remain the same)
+          );
       case 'linkedin-inspirations':
         return (
-          <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl space-y-6">
-            <label className="block text-sm mb-2">Your Example LinkedIn Posts</label>
-            <textarea value={linkedinExamples} onChange={(e) => setLinkedinExamples(e.target.value)} rows={10} className="w-full p-4 bg-gray-900 border-slate-600 rounded-md" />
-          </div>
-        );
-      case 'linkedin-researcher':
-        return (
-          <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl space-y-6">
-            <label className="block text-sm mb-2">Post Research Script</label>
-            <textarea value={researchScript} onChange={(e) => setResearchScript(e.target.value)} rows={8} className="w-full p-4 bg-gray-900 border-slate-600 rounded-md" />
-          </div>
+            <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6 text-center">
+              <h2 className="text-2xl font-bold text-gray-200">Inspiration Hub</h2>
+              <svg className="w-24 h-24 mx-auto text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+              <p className="text-gray-400 max-w-lg mx-auto">
+                This feature is coming soon. The Inspiration Hub will connect to your Google Drive to pull ideas, transcripts, and drafts, helping you generate content from your own knowledge base.
+              </p>
+            </div>
         );
       case 'linkedin-library':
-        return (
-            <div className="w-full space-y-8">
+          return (
+            <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold">LinkedIn Template Library</h2>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setView('linkedin-library-scan')} className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-indigo-600 rounded-md hover:bg-indigo-500"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" /><path d="M10.5 5.5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3h-3a1 1 0 110-2h3v-3a1 1 0 011-1z" /></svg>Scan Content</button>
-                        <button onClick={handleAddNewTemplate} className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-teal-600 rounded-md hover:bg-teal-500"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" /></svg>Add New Template</button>
-                    </div>
+                    <h2 className="text-2xl font-bold text-gray-200">LinkedIn Template Library</h2>
+                     <div className="flex gap-4">
+                        <Button onClick={() => setView('linkedin-library-scan')}>Scan Content for Templates</Button>
+                        <Button onClick={handleAddNewTemplate}>+ Add New Template</Button>
+                     </div>
                 </div>
-                <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl space-y-4">
-                    <h3 className="text-xl font-bold">Library Dashboard</h3>
-                    <p>Total Templates: <span className="font-bold text-teal-400">{savedTemplates.length}</span></p>
-                    <div className="overflow-x-auto rounded-lg border border-slate-700">
-                        <table className="min-w-full divide-y divide-slate-700">
-                            <thead className="bg-slate-800">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs uppercase">Title</th>
-                                    <th className="px-4 py-3 text-left text-xs uppercase">Date Added</th>
-                                    <th className="px-4 py-3 text-left text-xs uppercase">Last Used</th>
-                                    <th className="px-4 py-3 text-center text-xs uppercase">Usage</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-slate-900/50 divide-y divide-slate-700">
-                                {savedTemplates.map(t => (
-                                    <tr key={t.id} className="hover:bg-slate-800/60">
-                                        <td className="px-4 py-3">{t.title}</td>
-                                        <td className="px-4 py-3">{t.dateAdded}</td>
-                                        <td className="px-4 py-3">{t.lastUsed}</td>
-                                        <td className="px-4 py-3 text-center">{t.usageCount}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div className="space-y-6">
-                    {savedTemplates.map(t => (
-                        <div key={t.id} className="p-5 bg-slate-800/50 border border-slate-700 rounded-xl relative group">
-                            <button onClick={() => handleDeleteTemplate(t.id)} className="absolute top-4 right-4 p-1.5 hover:text-red-400 opacity-0 group-hover:opacity-100"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                            <input type="text" value={t.title} onChange={e => handleUpdateTemplate(t.id, 'title', e.target.value)} className="w-full text-lg font-bold bg-transparent border-0 border-b-2 border-slate-700 focus:border-teal-400 p-0" />
-                            <div className="grid md:grid-cols-2 gap-6 mt-4">
-                                <div><label className="block text-sm mb-1">Template</label><textarea value={t.template} onChange={e => handleUpdateTemplate(t.id, 'template', e.target.value)} rows={7} className="w-full p-2 bg-gray-900 rounded-md text-sm font-mono" /></div>
-                                <div><label className="block text-sm mb-1">Example</label><textarea value={t.example} onChange={e => handleUpdateTemplate(t.id, 'example', e.target.value)} rows={7} className="w-full p-2 bg-gray-900 rounded-md text-sm font-mono" /></div>
-                            </div>
-                            <div className="mt-2"><label className="block text-sm mb-1">Special Instructions</label><textarea value={t.instructions} onChange={e => handleUpdateTemplate(t.id, 'instructions', e.target.value)} rows={2} className="w-full p-2 bg-gray-900 rounded-md text-sm font-mono" /></div>
-                            <div className="flex justify-between items-center text-xs text-gray-500 pt-3 border-t border-slate-700/50 mt-4"><span>Added: {t.dateAdded}</span><span className="font-semibold text-teal-400">Used: {t.usageCount} time{t.usageCount !== 1 ? 's' : ''}</span></div>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {savedTemplates.map(template => (
+                        <TemplateCard 
+                            key={template.id}
+                            template={template}
+                            onSave={(updates) => handleUpdateTemplate(template.id, updates)}
+                            onDelete={() => handleDeleteTemplate(template.id)}
+                        />
                     ))}
                 </div>
             </div>
-        );
-       case 'linkedin-library-scan':
-         return (
-             <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl space-y-6">
-                 {!scannedTemplates ? (
-                     <>
-                         <h2 className="text-2xl font-bold">Scan Content for New Templates</h2>
-                         <p>Paste content... The AI will find templates.</p>
-                         <div>
-                             <label className="block text-sm mb-2">Content to Scan</label>
-                             <textarea value={scanContent} onChange={(e) => setScanContent(e.target.value)} rows={15} className="w-full p-4 bg-gray-900 rounded-md" />
-                         </div>
-                         <div className="flex items-center justify-end gap-4">
-                             <button onClick={() => setView('linkedin-library')}>Cancel</button>
-                             <Button onClick={handleScanContent} isLoading={isLoading}>{isLoading ? 'Scanning...' : 'Scan Content'}</Button>
-                         </div>
-                     </>
-                 ) : (
-                     <>
-                         <h2 className="text-2xl font-bold">Review Scanned Templates</h2>
-                         <p>Select templates to add to your library.</p>
-                         {scannedTemplates.length > 0 ? (
-                            <>
-                             <div className="flex items-center justify-between py-2 border-y border-slate-700">
-                                 <label className="flex items-center space-x-3"><input type="checkbox" checked={selectedScannedTemplateIds.length === scannedTemplates.length} onChange={handleSelectAllScanned} className="h-5 w-5" /><span>Select All</span></label>
-                                 <span>{selectedScannedTemplateIds.length} of {scannedTemplates.length} selected</span>
-                             </div>
-                             <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                                 {scannedTemplates.map(t => (
-                                     <div key={t.id} className={`p-4 bg-slate-800/70 border rounded-lg ${selectedScannedTemplateIds.includes(t.id) ? 'border-teal-500' : 'border-slate-700'}`}>
-                                         <label className="flex items-start space-x-4 cursor-pointer">
-                                             <input type="checkbox" checked={selectedScannedTemplateIds.includes(t.id)} onChange={() => handleScannedTemplateSelection(t.id)} className="h-5 w-5 mt-1" />
-                                             <div className="flex-grow">
-                                                 <h4 className="font-bold text-teal-300">{t.title}</h4>
-                                                 <pre className="mt-1 p-2 bg-gray-900 rounded-md text-xs font-mono">{t.template}</pre>
-                                             </div>
-                                         </label>
-                                     </div>
-                                 ))}
-                             </div>
-                            </>
-                         ) : ( <div className="text-center py-8"><p>No templates found.</p></div> )}
-                         <div className="flex items-center justify-end gap-4 pt-4 border-t border-slate-700">
-                             <button onClick={() => { setScannedTemplates(null); setSelectedScannedTemplateIds([]); }}>Back to Scan</button>
-                             <Button onClick={handleAddSelectedToLibrary} disabled={selectedScannedTemplateIds.length === 0}>Add Selected to Library</Button>
-                         </div>
-                     </>
-                 )}
-             </div>
-         );
-      case 'x':
-      case 'facebook':
-        return <div className="w-full p-10 bg-slate-800/50 border-slate-700 rounded-xl text-center"><h2>Coming Soon!</h2></div>
-      default:
-        return null;
-    }
-  };
-  
-// FIX: The component was missing a return statement and was not exported.
-// I have completed the component's structure, added a main layout,
-// and provided a default export to fix the compilation errors.
-  const getButtonProps = () => {
-    switch (view) {
-      case 'generate-posts':
-        return { onClick: handleGeneratePosts, text: 'Generate & Evaluate Posts' };
-      case 'linkedin-researcher':
-        return { onClick: handleResearchPosts, text: 'Research Popular Posts' };
-      default:
-        return null;
-    }
-  };
+          );
+    case 'linkedin-library-scan':
+      return (
+        <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+          <h2 className="text-2xl font-bold text-gray-200">Scan Content for Templates</h2>
+          <p className="text-gray-400">
+            Paste a blog post, article, or a collection of your favorite social media posts. The AI will analyze the content and extract reusable templates for your library.
+          </p>
+          <div>
+            <label htmlFor="scan-content" className="block text-sm font-medium text-gray-300 mb-2">Content to Scan</label>
+            <textarea
+              id="scan-content"
+              value={scanContent}
+              onChange={(e) => setScanContent(e.target.value)}
+              rows={15}
+              className="w-full p-4 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400 font-mono text-sm"
+              placeholder="Paste content here..."
+            />
+          </div>
+          <div className="text-center">
+            <Button onClick={handleScanContent} isLoading={isLoading}>
+              {isLoading ? 'Scanning...' : 'Scan for Templates'}
+            </Button>
+          </div>
 
-  const buttonProps = getButtonProps();
+          {scannedTemplates && (
+            <div className="space-y-4 pt-6 border-t border-slate-700">
+               <div className="flex justify-between items-center">
+                 <h3 className="text-xl font-bold text-gray-200">Found Templates</h3>
+                 <div className="flex items-center gap-4">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={scannedTemplates.length > 0 && selectedScannedTemplateIds.length === scannedTemplates.length}
+                        onChange={handleSelectAllScanned}
+                        className="h-5 w-5 mr-2"
+                      />
+                      Select All
+                    </label>
+                   <Button onClick={handleAddSelectedToLibrary} disabled={selectedScannedTemplateIds.length === 0}>
+                     Add ({selectedScannedTemplateIds.length}) to Library
+                   </Button>
+                 </div>
+               </div>
+
+              {scannedTemplates.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">No templates could be identified in the provided content.</p>
+              ) : (
+                <div className="space-y-4">
+                  {scannedTemplates.map(template => (
+                    <div key={template.id} className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg flex items-start gap-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedScannedTemplateIds.includes(template.id)}
+                        onChange={() => handleScannedTemplateSelection(template.id)}
+                        className="h-5 w-5 mt-1 flex-shrink-0"
+                      />
+                      <div className="flex-grow">
+                        <h4 className="font-semibold text-teal-300">{template.title}</h4>
+                        <p className="text-sm text-gray-400 mt-1 italic">{template.instructions || "No instructions provided."}</p>
+                        <div className="mt-2 p-3 bg-gray-900 rounded">
+                            <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Template:</p>
+                            <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">{template.template}</pre>
+                        </div>
+                        <div className="mt-2 p-3 bg-gray-900 rounded">
+                            <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Example:</p>
+                            <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">{template.example}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+      case 'settings':
+        const seedButton = (
+            dataType: 'templates' | 'queue' | 'log' | 'urls',
+            status: TestStatus,
+        ) => (
+            <div className="text-right">
+                <Button 
+                    onClick={() => handleSeedData(dataType)}
+                    isLoading={status.status === 'testing'}
+                    disabled={!isAirtableConfigured}
+                    className="px-4 py-1 text-sm"
+                >
+                    Seed
+                </Button>
+                {status.message && (
+                    <p className={`text-xs mt-1 text-right ${status.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                        {status.message}
+                    </p>
+                )}
+            </div>
+        );
+        return (
+            <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6 max-w-3xl mx-auto">
+                <h2 className="text-2xl font-bold text-gray-200">Settings</h2>
+                 <div className="space-y-4">
+                    <div>
+                        <h3 className="text-lg font-semibold text-teal-300">Ayrshare API Key</h3>
+                        <p className="text-sm text-gray-400 mb-2">Required for posting to social media and using the scheduler.</p>
+                        <div className="flex items-center gap-4">
+                            <input type="password" value={settings.ayrshareApiKey} onChange={e => setSettings(s => ({ ...s, ayrshareApiKey: e.target.value }))} className="flex-grow p-2 bg-gray-900 rounded-md" />
+                            <Button onClick={handleTestAyrshare} isLoading={ayrshareTestStatus.status === 'testing'}>Test</Button>
+                        </div>
+                        {ayrshareTestStatus.message && (
+                            <p className={`text-xs mt-2 ${ayrshareTestStatus.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                                {ayrshareTestStatus.message}
+                            </p>
+                        )}
+                    </div>
+                    <div className="pt-4 border-t border-slate-700">
+                         <div className="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 className="text-lg font-semibold text-teal-300">Airtable Integration (Optional)</h3>
+                                <p className="text-sm text-gray-400">Sync your data with Airtable using a Personal Access Token for easy external management. If not configured, data will be saved in your browser's local storage.</p>
+                            </div>
+                            <Button onClick={handleTestAirtable} isLoading={airtableTestStatus.status === 'testing'}>Test Connection</Button>
+                        </div>
+                        {airtableTestStatus.message && (
+                            <p className={`text-xs mb-2 text-right ${airtableTestStatus.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                                {airtableTestStatus.message}
+                            </p>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
+                          <div>
+                            <label className="block text-sm mb-1">Personal Access Token</label>
+                            <input type="password" value={settings.airtablePersonalAccessToken} onChange={e => setSettings(s => ({ ...s, airtablePersonalAccessToken: e.target.value }))} className="w-full p-2 bg-gray-900 rounded-md" />
+                          </div>
+                          <div>
+                            <label className="block text-sm mb-1">Base ID</label>
+                            <input type="text" value={settings.airtableBaseId} onChange={e => setSettings(s => ({ ...s, airtableBaseId: e.target.value }))} className="w-full p-2 bg-gray-900 rounded-md" />
+                          </div>
+                          
+                          <div className="sm:col-span-2 border-t border-slate-700 pt-4">
+                            <h4 className="text-md font-semibold text-gray-300">Table Configuration</h4>
+                            <p className="text-xs text-gray-500 mb-4">Specify the names of your tables. You can use the 'Seed' button for a one-time population of sample data.</p>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 items-end">
+                            <div className="col-span-2">
+                                <label className="block text-sm mb-1">Templates Table</label>
+                                <input type="text" value={settings.airtableTemplatesTable} onChange={e => setSettings(s => ({ ...s, airtableTemplatesTable: e.target.value }))} className="w-full p-2 bg-gray-900 rounded-md" />
+                            </div>
+                            {seedButton('templates', seedTemplatesStatus)}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 items-end">
+                             <div className="col-span-2">
+                                <label className="block text-sm mb-1">Queue Table</label>
+                                <input type="text" value={settings.airtableQueueTable} onChange={e => setSettings(s => ({ ...s, airtableQueueTable: e.target.value }))} className="w-full p-2 bg-gray-900 rounded-md" />
+                             </div>
+                            {seedButton('queue', seedQueueStatus)}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 items-end">
+                            <div className="col-span-2">
+                                <label className="block text-sm mb-1">Log Table</label>
+                                <input type="text" value={settings.airtableLogTable} onChange={e => setSettings(s => ({ ...s, airtableLogTable: e.target.value }))} className="w-full p-2 bg-gray-900 rounded-md" />
+                            </div>
+                            {seedButton('log', seedLogStatus)}
+                          </div>
+                           <div className="grid grid-cols-3 gap-2 items-end">
+                            <div className="col-span-2">
+                                <label className="block text-sm mb-1">URLs Table</label>
+                                <input type="text" value={settings.airtableUrlsTable} onChange={e => setSettings(s => ({ ...s, airtableUrlsTable: e.target.value }))} className="w-full p-2 bg-gray-900 rounded-md" />
+                            </div>
+                            {seedButton('urls', seedUrlsStatus)}
+                          </div>
+                        </div>
+                    </div>
+                 </div>
+                <div className="flex justify-end items-center gap-4 pt-4 border-t border-slate-700 mt-6">
+                  {isAirtableConfigured && (
+                    <button onClick={syncWithAirtable} disabled={airtableSyncStatus === 'syncing'} className="text-sm text-teal-400 hover:text-teal-300 disabled:opacity-50">
+                      {airtableSyncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}
+                    </button>
+                  )}
+                  <div className="relative">
+                     <Button onClick={handleSaveSettings}>
+                        {saveSettingsStatus === 'saving' ? 'Saving...' : saveSettingsStatus === 'saved' ? 'Saved!' : 'Save Settings'}
+                     </Button>
+                  </div>
+                </div>
+            </div>
+        );
+      default:
+        return <div>View not found</div>;
+    }
+  };
 
   return (
-    <div className="flex h-screen bg-slate-900 text-gray-200 font-sans overflow-hidden">
-      <Sidebar view={view} setView={setView} onDownloadData={handleDownloadData} />
-      
-      <div className="flex-1 flex flex-col">
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-          <div className="max-w-4xl mx-auto">
+    <div className="flex h-screen bg-gray-900 text-white font-sans">
+      <Sidebar view={view} setView={setView} onDownloadData={handleDownloadData} airtableSyncStatus={airtableSyncStatus} />
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 p-8 overflow-y-auto">
             {error && (
-              <div className="p-4 mb-4 text-sm text-red-400 bg-red-900/50 rounded-lg border border-red-800" role="alert">
-                <span className="font-medium">Error:</span> {error}
+                <div className="w-full p-4 mb-6 bg-red-900/50 border border-red-700 rounded-xl text-red-300 flex justify-between items-center animate-fade-in-fast">
+                    <span>{error}</span>
+                    <button onClick={() => setError(null)} className="p-1 rounded-full hover:bg-red-800/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    </button>
+                </div>
+            )}
+
+          {renderCurrentView()}
+          
+          <div className="mt-8">
+            {view === 'generate-posts' && (
+              <div className="text-center">
+                 <Button onClick={handleGeneratePosts} isLoading={isLoading}>
+                    {isLoading ? 'Generating...' : 'Generate & Evaluate Posts'}
+                 </Button>
               </div>
             )}
-            {renderCurrentView()}
+             {view === 'generate-posts' && generationResults && <div className="mt-8"><GenerationResultDisplay results={generationResults} articleUrl={articleUrl} onSendToAyrshareQueue={handleSendToAyrshareQueue} /></div>}
+             {view === 'linkedin-researcher' && researchedPosts && (
+                 <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {researchedPosts.map((post, index) => (
+                         <div key={index} className="p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
+                           <p className="text-gray-300 mb-2">"{post.hook}"</p>
+                           <div className="text-sm text-gray-400 space-y-1">
+                             <p><strong className="text-gray-300">Platform:</strong> {post.platform}</p>
+                             <p><strong className="text-gray-300">Engagement:</strong> {post.engagement}</p>
+                             <p><strong className="text-gray-300">Analysis:</strong> {post.analysis}</p>
+                             <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline">View Post</a>
+                           </div>
+                         </div>
+                    ))}
+                 </div>
+             )}
           </div>
-        </main>
-        
-        <footer className="flex-shrink-0 p-6 lg:px-8 border-t border-slate-800 bg-slate-900/50 flex items-center justify-between">
-          <div className="text-sm text-gray-500">Social Media Minion v1.0</div>
-          {buttonProps && (
-            <Button onClick={buttonProps.onClick} isLoading={isLoading} disabled={isLoading}>
-              {isLoading ? 'Processing...' : buttonProps.text}
-            </Button>
-          )}
-        </footer>
-      </div>
+        </div>
+      </main>
 
-      {((generationResults && view === 'generate-posts') || (researchedPosts && view === 'linkedin-researcher')) && (
-        <aside className="w-1/2 p-6 lg:p-8 overflow-y-auto bg-slate-900/60 border-l border-slate-800 flex-shrink-0">
-          {generationResults && view === 'generate-posts' && (
-            <GenerationResultDisplay 
-              results={generationResults} 
-              articleUrl={articleUrl} 
-              onSendToAyrshareQueue={handleSendToAyrshareQueue} 
-            />
-          )}
-          {researchedPosts && view === 'linkedin-researcher' && (
-            <div className="w-full space-y-4">
-              <h2 className="text-2xl font-bold text-gray-200">Research Results</h2>
-              {researchedPosts.map((post, index) => (
-                <div key={index} className="p-4 bg-slate-800/50 border border-slate-700 rounded-xl">
-                    <p className="font-bold text-teal-400">"{post.hook}"</p>
-                    <p className="mt-2 text-sm text-gray-300">{post.analysis}</p>
-                    <div className="mt-3 flex justify-between items-center text-xs text-gray-400">
-                        <span>{post.platform} - {post.engagement}</span>
-                        <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">View Post</a>
-                    </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </aside>
-      )}
-      
+      {/* Post Now Modal */}
       {isPostModalOpen && postToShare && (
-            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={handleClosePostModal}>
-                <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-6 w-full max-w-lg space-y-4" onClick={e => e.stopPropagation()}>
-                    <h3 className="text-xl font-bold text-teal-300">Post "{postToShare.title}" Now</h3>
-                    
-                    <div>
-                        <label className="block text-sm mb-2 font-medium text-gray-300">Select platforms to post to:</label>
-                        <div className="flex gap-4 p-4 bg-gray-900 rounded-md">
-                            {['linkedin', 'twitter', 'facebook'].map(platform => (
-                                <label key={platform} className="flex items-center gap-2 cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={selectedPlatforms.includes(platform)}
-                                        onChange={() => handlePlatformToggle(platform)}
-                                        className="h-5 w-5 rounded bg-gray-700 border-gray-600 text-teal-500 focus:ring-teal-500"
-                                    />
-                                    <span className="capitalize">{platform === 'twitter' ? 'X' : platform}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <pre className="p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 max-h-48 overflow-y-auto">{postToShare.content}</pre>
-                    
-                    {postNowStatus.status === 'error' && (
-                        <div className="p-3 text-sm text-red-400 bg-red-900/50 rounded-lg border border-red-800">
-                            {postNowStatus.message}
-                        </div>
-                    )}
-
-                    <div className="flex justify-end gap-4 pt-4">
-                        <button onClick={handleClosePostModal} className="px-4 py-2 rounded-md hover:bg-slate-700">Cancel</button>
-                        <Button 
-                            onClick={handlePostNow} 
-                            isLoading={postNowStatus.status === 'loading'} 
-                            disabled={selectedPlatforms.length === 0 || postNowStatus.status === 'loading'}
-                        >
-                            {postNowStatus.status === 'loading' ? 'Sending...' : 'Send Post'}
-                        </Button>
-                    </div>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in-fast" onClick={handleClosePostModal}>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl p-6 w-full max-w-2xl space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+                <h3 className="text-xl font-bold text-teal-300">Post Now</h3>
+                <button onClick={handleClosePostModal} className="text-2xl leading-none p-1 rounded-full hover:bg-slate-700">&times;</button>
+            </div>
+            <div>
+                <label className="text-sm font-medium text-gray-400">Content:</label>
+                <textarea
+                value={postToShare.content}
+                readOnly
+                rows={10}
+                className="w-full mt-1 p-3 bg-gray-900 rounded-md text-sm font-mono text-gray-300 border border-slate-600"
+                />
+            </div>
+            <div>
+                <label className="text-sm font-medium text-gray-400">Platforms:</label>
+                <div className="flex items-center gap-4 mt-2">
+                {['linkedin', 'x', 'facebook'].map(platform => (
+                    <label key={platform} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={selectedPlatforms.includes(platform)}
+                        onChange={() => handlePlatformToggle(platform)}
+                        disabled={platform !== 'linkedin'} // Only LinkedIn is enabled for now
+                        className="h-5 w-5"
+                    />
+                    <span className={`capitalize ${platform !== 'linkedin' ? 'text-gray-600' : 'text-gray-500'}`}>{platform}</span>
+                    </label>
+                ))}
                 </div>
             </div>
+            {postNowStatus.status === 'error' && (
+                <p className="text-red-400 text-sm">{postNowStatus.message}</p>
+            )}
+            <div className="flex justify-end gap-4 pt-4">
+                <button onClick={handleClosePostModal} className="px-4 py-2 rounded-md hover:bg-slate-700">Cancel</button>
+                <Button onClick={handlePostNow} isLoading={postNowStatus.status === 'loading'} disabled={selectedPlatforms.length === 0}>
+                {postNowStatus.status === 'loading' ? 'Posting...' : `Post to ${selectedPlatforms.length} platform(s)`}
+                </Button>
+            </div>
+            </div>
+        </div>
         )}
+
+      <style>{`
+        @keyframes fade-in-fast {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in-fast {
+          animation: fade-in-fast 0.2s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

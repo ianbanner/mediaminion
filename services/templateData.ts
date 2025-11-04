@@ -1,4 +1,5 @@
-import { SavedTemplate } from '../App';
+
+import { SavedTemplate, QueuedPost, SentPost } from '../types';
 
 const today = new Date().toLocaleDateString();
 
@@ -293,4 +294,31 @@ Not little thumbs and hearts.`,
     usageCount: 0,
     lastUsed: 'Never',
   }
+];
+
+export const seedQueue: Omit<QueuedPost, 'id'>[] = [
+  {
+    title: 'Sample Queued Post 1',
+    content: 'This is the first sample post waiting in the queue. It was generated using the "The List of Lessons" template.',
+    assessment: 'A solid post with a clear structure. Good for engagement.'
+  },
+  {
+    title: 'Sample Queued Post 2',
+    content: 'Working on a new project is hard, but working on it without a clear plan is harder. #productivity #planning',
+    assessment: 'This uses the "Hard vs. Harder" template. It is short, punchy, and relatable.'
+  }
+];
+
+export const seedLog: Omit<SentPost, 'id'>[] = [
+  {
+    title: 'Previously Sent Post',
+    content: 'This is an example of a post that has already been successfully sent to a social media platform via Ayrshare.',
+    sentAt: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+  }
+];
+
+export const seedUrls: { url: string }[] = [
+  { url: 'https://ai.google.dev/gemini-api/docs/get-started/web' },
+  { url: 'https://blog.google/technology/ai/google-gemini-ai/' },
+  { url: 'https://en.wikipedia.org/wiki/Artificial_intelligence' }
 ];

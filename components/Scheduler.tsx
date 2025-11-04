@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScheduledTask } from '../App';
+import { ScheduledTask } from '../types';
 import Button from './Button';
 
 interface SchedulerProps {

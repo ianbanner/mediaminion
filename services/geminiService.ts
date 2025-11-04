@@ -6,7 +6,7 @@ import {
   RESEARCH_POPULAR_POSTS_SCRIPT,
   SCAN_CONTENT_FOR_TEMPLATES_SCRIPT
 } from './scriptService';
-import { SavedTemplate } from "../App";
+import { SavedTemplate, TopPostAssessment } from "../types";
 
 export interface SocialPost {
   platform: string;
@@ -25,12 +25,6 @@ export interface PostEvaluation {
   title: string;
   score: number;
   content: string;
-}
-
-export interface TopPostAssessment {
-    title: string;
-    content: string;
-    assessment: string;
 }
 
 export interface GenerationResults {
