@@ -1,9 +1,7 @@
 
-
 import React, { useState, useCallback, useEffect } from 'react';
-import { GenerationResults } from '../services/geminiService';
-import { TopPostAssessment } from '../types';
-import PostCard from './PostCard';
+import { GenerationResults } from '../services/geminiService.ts';
+import { TopPostAssessment } from '../types.ts';
 
 interface Props {
   results: GenerationResults;
@@ -124,7 +122,10 @@ function GenerationResultDisplay({ results, articleUrl, onSendToAyrshareQueue }:
                     return (
                         <div key={index} className="pt-4 border-t border-slate-700/50 first:border-t-0 first:pt-0">
                             <div className="flex-grow space-y-3">
-                                <h4 className="text-lg font-semibold text-teal-300">{index + 1}. {item.title}</h4>
+                                <div className="flex justify-between items-center">
+                                    <h4 className="text-lg font-semibold text-teal-300">{index + 1}. {item.title}</h4>
+                                    <span className="px-3 py-1 text-sm font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{item.score}/100</span>
+                                </div>
                                 <p className="text-sm text-gray-400 italic">"{item.assessment}"</p>
                                 <textarea 
                                     value={item.content}
@@ -174,8 +175,5 @@ function GenerationResultDisplay({ results, articleUrl, onSendToAyrshareQueue }:
     </div>
   );
 };
-
-// Expose PostCard through the main component for namespacing in App.tsx
-GenerationResultDisplay.PostCard = PostCard;
 
 export default GenerationResultDisplay;

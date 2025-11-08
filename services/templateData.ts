@@ -1,5 +1,8 @@
 
-import { SavedTemplate, QueuedPost, SentPost } from '../types';
+
+
+
+import { SavedTemplate } from '../types.ts';
 
 const today = new Date().toLocaleDateString();
 
@@ -293,32 +296,113 @@ Not little thumbs and hearts.`,
     dateAdded: today,
     usageCount: 0,
     lastUsed: 'Never',
-  }
-];
-
-export const seedQueue: Omit<QueuedPost, 'id'>[] = [
-  {
-    title: 'Sample Queued Post 1',
-    content: 'This is the first sample post waiting in the queue. It was generated using the "The List of Lessons" template.',
-    assessment: 'A solid post with a clear structure. Good for engagement.'
   },
   {
-    title: 'Sample Queued Post 2',
-    content: 'Working on a new project is hard, but working on it without a clear plan is harder. #productivity #planning',
-    assessment: 'This uses the "Hard vs. Harder" template. It is short, punchy, and relatable.'
-  }
-];
+    id: 'template-11',
+    title: 'The Contrarian Take',
+    template: `Everyone thinks [CommonBelief].
+They're wrong.
 
-export const seedLog: Omit<SentPost, 'id'>[] = [
+The truth is [YourContrarianTake].
+
+Here's why:
+1. [Reason1]
+2. [Reason2]
+3. [Reason3]
+
+Stop [CommonBadPractice]. Start [YourGoodPractice].`,
+    example: `Everyone thinks you need more meetings to align your team.
+They're wrong.
+
+The truth is you need fewer, better meetings and more asynchronous communication.
+
+Here's why:
+1. Meetings interrupt deep work.
+2. Most meeting topics can be an email or a document.
+3. Asynchronous allows for more thoughtful responses.
+
+Stop booking back-to-back calls. Start protecting your team's focus time.`,
+    instructions: 'Be bold with your contrarian take, but make sure your reasons are logical and well-supported.',
+    dateAdded: today,
+    usageCount: 0,
+    lastUsed: 'Never',
+  },
   {
-    title: 'Previously Sent Post',
-    content: 'This is an example of a post that has already been successfully sent to a social media platform via Ayrshare.',
-    sentAt: new Date(Date.now() - 86400000).toISOString() // 1 day ago
-  }
-];
+    id: 'template-12',
+    title: 'The Transformation (Before/After)',
+    template: `BEFORE: [DescribeThePainfulInitialState]
 
-export const seedUrls: { url: string }[] = [
-  { url: 'https://ai.google.dev/gemini-api/docs/get-started/web' },
-  { url: 'https://blog.google/technology/ai/google-gemini-ai/' },
-  { url: 'https://en.wikipedia.org/wiki/Artificial_intelligence' }
+AFTER: [DescribeTheIdealNewState]
+
+The bridge between them? [YourSolutionOrKeyInsight].
+
+It wasn't about [CommonMisconception].
+It was about [TheRealFocus].`,
+    example: `BEFORE: My calendar was a nightmare. 8 hours of calls, zero time for actual work. I was burning out fast.
+
+AFTER: I work a 4-hour day, get more done, and my revenue has doubled.
+
+The bridge between them? A ruthless system of delegation and saying "no".
+
+It wasn't about time management hacks.
+It was about reclaiming my focus.`,
+    instructions: 'Use strong, contrasting descriptions for the before and after states to highlight the transformation.',
+    dateAdded: today,
+    usageCount: 0,
+    lastUsed: 'Never',
+  },
+  {
+    id: 'template-13',
+    title: 'The Actionable Quick Tip',
+    template: `Want to get better at [Skill]?
+
+Here's a simple tip you can use today:
+
+[YourActionableTip].
+
+Takes 5 minutes. The impact is huge.
+
+Try it and let me know how it goes.`,
+    example: `Want to get better at writing emails?
+
+Here's a simple tip you can use today:
+
+Write your subject line last. After you've written the email, you know exactly what it's about, making the subject line punchy and accurate.
+
+Takes 5 minutes. The impact is huge.
+
+Try it and let me know how it goes.`,
+    instructions: 'Keep the tip extremely simple and easy to implement immediately.',
+    dateAdded: today,
+    usageCount: 0,
+    lastUsed: 'Never',
+  },
+  {
+    id: 'template-14',
+    title: 'Busting a Myth',
+    template: `Common misconception about [Topic]:
+[TheMisconception].
+
+Reality:
+[TheTruth].
+
+Why does this matter?
+Because [TheConsequenceOfBelievingTheMyth].
+
+Don't fall for it.`,
+    example: `Common misconception about product management:
+You need to be the CEO of the product.
+
+Reality:
+You are more like a diplomat or an influencer. Your job is to align stakeholders around a shared vision, not to give orders.
+
+Why does this matter?
+Because thinking you're the CEO leads to a command-and-control mindset, which alienates your team and leads to poor outcomes.
+
+Don't fall for it.`,
+    instructions: 'Clearly state a common myth, then provide a concise and powerful reality check. Explain the negative impact of believing the myth.',
+    dateAdded: today,
+    usageCount: 0,
+    lastUsed: 'Never',
+  },
 ];

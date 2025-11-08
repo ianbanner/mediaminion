@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SavedTemplate } from '../types';
+import { SavedTemplate } from '../types.ts';
 
 interface TemplateCardProps {
   template: SavedTemplate & { isNew?: boolean };
@@ -102,6 +102,12 @@ const TemplateCard: React.FC<TemplateCardProps> = ({ template, onSave, onDelete 
         <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Example</p>
         <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono p-2 bg-gray-800/50 rounded-md max-h-24 overflow-y-auto">{template.example}</pre>
       </div>
+      {template.instructions && (
+        <div>
+          <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Instructions for AI</p>
+          <p className="text-xs text-gray-300 whitespace-pre-wrap p-2 bg-gray-800/50 rounded-md">{template.instructions}</p>
+        </div>
+      )}
     </div>
   );
 };
