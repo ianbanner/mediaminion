@@ -17,6 +17,8 @@ import ArticleTemplateLibrary from './components/ArticleTemplateLibrary.tsx';
 import CreateArticleTemplateModal from './components/CreateArticleTemplateModal.tsx';
 import QuickPostPanel from './components/QuickPostPanel.tsx';
 import QuickArticlePanel from './components/QuickArticlePanel.tsx';
+import PostingGuides from './components/PostingGuides.tsx';
+import NewUserGuide from './components/NewUserGuide.tsx';
 
 
 import {
@@ -871,7 +873,7 @@ export const App: React.FC = () => {
                 <QueuedPostsDisplay
                   queuedPosts={ayrshareLog.map(log => ({ ...log, assessment: '', score: 0, platforms: log.platforms || [] }))}
                   readOnly={true}
-                  title="Ayrshare Log"
+                  title="Posts Log"
                   emptyMessage="No posts have been sent yet."
                 />
               );
@@ -999,6 +1001,10 @@ export const App: React.FC = () => {
                   onSettingsChange={handleSaveAdminSettings}
                 />
               ) : null;
+            case 'posting-guides':
+                return <PostingGuides />;
+            case 'new-user-guide':
+                return <NewUserGuide />;
             default:
               return <div>View not found</div>;
           }

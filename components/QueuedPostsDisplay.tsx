@@ -63,7 +63,7 @@ const QueuedPostsDisplay: React.FC<QueuedPostsDisplayProps> = ({
   onDeletePost, 
   onUpdatePost, 
   readOnly = false,
-  title = "Ayrshare Queue",
+  title = "Posts Queue",
   emptyMessage = "No posts in the queue. Generate some posts to get started!"
 }) => {
   return (

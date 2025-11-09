@@ -15,10 +15,10 @@ const Scheduler: React.FC<SchedulerProps> = ({ instructions, onInstructionsChang
         <div className="w-full space-y-8">
             <div className="w-full p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
                 <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-gray-200">Ayrshare Queue Scheduler</h2>
+                    <h2 className="text-2xl font-bold text-gray-200">Posts Queue Scheduler</h2>
                 </div>
                 <p className="text-gray-400 text-sm">
-                    Automate posting from your Ayrshare Queue. Write your desired daily posting times in the box below using natural language. The scheduler will post the top item from the queue at the specified times within a 5-minute random window.
+                    Automate posting from your Posts Queue. Write your desired daily posting times in the box below using natural language. The scheduler will post the top item from the queue at the specified times within a 5-minute random window.
                 </p>
                 <div>
                     <label htmlFor="schedule-instructions" className="block text-sm font-medium text-gray-300 mb-2">Posting Schedule Instructions</label>
