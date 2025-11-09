@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   LINKEDIN_GENERATION_EVALUATION_SCRIPT,
