@@ -1,99 +1,64 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Button from './Button.tsx';
-import { TopPostAssessment } from '../types.ts';
+import { QueuedPost } from '../types.ts';
 
 interface QuickPostPanelProps {
-    onSendToQueue: (post: TopPostAssessment, platforms: string[]) => void;
+    topPost: QueuedPost | undefined;
+    onQuickPost: () => void;
+    isLoading: boolean;
+    error: React.ReactNode | null;
+    successMessage: string | null;
 }
 
-const platforms = ['linkedin', 'facebook', 'twitter'];
-
-const QuickPostPanel: React.FC<QuickPostPanelProps> = ({ onSendToQueue }) => {
-    const [generatedPost, setGeneratedPost] = useState<string | null>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [isQueued, setIsQueued] = useState(false);
-    const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['linkedin']);
-
-    const handleGenerate = () => {
-        setIsGenerating(true);
-        setGeneratedPost(null);
-        setIsQueued(false);
-        setTimeout(() => {
-            setGeneratedPost(`This is a simulated quick post generated from the top article idea in your queue.
-
-It uses a random high-performing template to create engaging content on the fly.
-
-#AI #Leadership #Productivity`);
-            setIsGenerating(false);
-        }, 1500);
-    };
-
-    const handlePlatformChange = (platform: string) => {
-        setSelectedPlatforms(prev => {
-            if (prev.includes(platform)) {
-                return prev.filter(p => p !== platform);
-            } else {
-                return [...prev, platform];
-            }
-        });
-    };
-    
-    const handleSend = () => {
-        if (generatedPost) {
-            onSendToQueue({
-                title: 'Quick Post',
-                content: generatedPost,
-                assessment: 'Generated via Quick Post feature.',
-                score: 0 // Score is not relevant here
-            }, selectedPlatforms);
-            setIsQueued(true);
-        }
-    };
-    
+const QuickPostPanel: React.FC<QuickPostPanelProps> = ({
+    topPost,
+    onQuickPost,
+    isLoading,
+    error,
+    successMessage
+}) => {
     return (
         <div className="space-y-8 animate-fade-in">
             <h1 className="text-3xl font-bold">Quick Post</h1>
-            <p className="text-gray-400">Generate a single, high-quality post based on your persona and templates without the full analysis workflow.</p>
+            <p className="text-gray-400">Instantly post the top item from your "Posts Queue".</p>
 
             <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6 max-w-2xl mx-auto">
-                <div className="text-center">
-                    <Button onClick={handleGenerate} isLoading={isGenerating} disabled={isGenerating || !!generatedPost}>
-                        {isGenerating ? 'Your Minion Is Working' : 'Generate New Post'}
-                    </Button>
-                </div>
-                
-                {generatedPost && (
-                    <div className="pt-6 border-t border-slate-700/50 space-y-4 animate-fade-in-fast">
-                        <h3 className="text-lg font-semibold text-gray-300">Generated Post</h3>
-                         <textarea
-                            value={generatedPost}
-                            readOnly
-                            rows={8}
-                            className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600"
-                        />
-                        <div className="flex items-center justify-center gap-4 py-2">
-                            <span className="text-sm font-semibold text-gray-400">Post to:</span>
-                            {platforms.map(platform => (
-                                <label key={platform} className="flex items-center gap-1.5 text-sm text-gray-300 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedPlatforms.includes(platform)}
-                                        onChange={() => handlePlatformChange(platform)}
-                                        className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500"
-                                    />
-                                    {platform.charAt(0).toUpperCase() + platform.slice(1)}
-                                </label>
-                            ))}
-                        </div>
-                        <div className="flex justify-center gap-4">
-                            <Button onClick={handleSend} className="bg-green-600 hover:bg-green-500" disabled={isQueued || selectedPlatforms.length === 0}>
-                                {isQueued ? 'Sent to Queue!' : 'Send to Queue'}
-                            </Button>
-                             <Button onClick={handleGenerate} className="bg-gray-600 hover:bg-gray-500" disabled={isGenerating || isQueued}>
-                                Discard & Try Again
-                            </Button>
-                        </div>
+                {error && (
+                    <div className="bg-red-900/50 p-4 rounded-lg border border-red-700 text-sm text-red-300">
+                        {error}
                     </div>
+                )}
+                {successMessage && (
+                    <div className="bg-green-900/50 p-4 rounded-lg border border-green-700 text-sm text-green-300 space-y-2">
+                        <p className="font-bold">Successfully Posted:</p>
+                        <pre className="whitespace-pre-wrap font-sans">{successMessage}</pre>
+                    </div>
+                )}
+                
+                {!successMessage && (
+                    <>
+                        <h2 className="text-lg font-semibold text-gray-300">Next Post in Queue</h2>
+                        {topPost ? (
+                            <div className="p-4 bg-gray-900/50 border border-slate-700 rounded-lg space-y-3">
+                                <h4 className="font-semibold text-teal-300">{topPost.title}</h4>
+                                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans p-2 bg-gray-800/50 rounded-md max-h-48 overflow-y-auto">
+                                    {topPost.content}
+                                </pre>
+                                <div className="flex items-center gap-2 pt-2 border-t border-slate-700/50">
+                                    <span className="text-xs font-semibold text-gray-400">Platforms:</span>
+                                    <span className="text-xs text-gray-300">{(topPost.platforms && topPost.platforms.length > 0) ? topPost.platforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ') : 'Not specified'}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="text-center text-gray-500 py-8">The posts queue is empty.</p>
+                        )}
+                        
+                        <div className="text-center pt-4 border-t border-slate-700/50">
+                            <Button onClick={onQuickPost} isLoading={isLoading} disabled={!topPost || isLoading}>
+                                {isLoading ? 'Your Minion Is Working' : 'Quick Post Top Item'}
+                            </Button>
+                        </div>
+                    </>
                 )}
             </div>
         </div>
