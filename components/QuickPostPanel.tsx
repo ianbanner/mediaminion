@@ -3,13 +3,16 @@ import Button from './Button.tsx';
 import { TopPostAssessment } from '../types.ts';
 
 interface QuickPostPanelProps {
-    onSendToQueue: (post: TopPostAssessment) => void;
+    onSendToQueue: (post: TopPostAssessment, platforms: string[]) => void;
 }
+
+const platforms = ['linkedin', 'facebook', 'twitter'];
 
 const QuickPostPanel: React.FC<QuickPostPanelProps> = ({ onSendToQueue }) => {
     const [generatedPost, setGeneratedPost] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [isQueued, setIsQueued] = useState(false);
+    const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['linkedin']);
 
     const handleGenerate = () => {
         setIsGenerating(true);
@@ -24,6 +27,16 @@ It uses a random high-performing template to create engaging content on the fly.
             setIsGenerating(false);
         }, 1500);
     };
+
+    const handlePlatformChange = (platform: string) => {
+        setSelectedPlatforms(prev => {
+            if (prev.includes(platform)) {
+                return prev.filter(p => p !== platform);
+            } else {
+                return [...prev, platform];
+            }
+        });
+    };
     
     const handleSend = () => {
         if (generatedPost) {
@@ -32,7 +45,7 @@ It uses a random high-performing template to create engaging content on the fly.
                 content: generatedPost,
                 assessment: 'Generated via Quick Post feature.',
                 score: 0 // Score is not relevant here
-            });
+            }, selectedPlatforms);
             setIsQueued(true);
         }
     };
@@ -58,9 +71,23 @@ It uses a random high-performing template to create engaging content on the fly.
                             rows={8}
                             className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600"
                         />
+                        <div className="flex items-center justify-center gap-4 py-2">
+                            <span className="text-sm font-semibold text-gray-400">Post to:</span>
+                            {platforms.map(platform => (
+                                <label key={platform} className="flex items-center gap-1.5 text-sm text-gray-300 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedPlatforms.includes(platform)}
+                                        onChange={() => handlePlatformChange(platform)}
+                                        className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500"
+                                    />
+                                    {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                                </label>
+                            ))}
+                        </div>
                         <div className="flex justify-center gap-4">
-                            <Button onClick={handleSend} className="bg-green-600 hover:bg-green-500" disabled={isQueued}>
-                                {isQueued ? 'Sent to Queue!' : 'Sent to Queue'}
+                            <Button onClick={handleSend} className="bg-green-600 hover:bg-green-500" disabled={isQueued || selectedPlatforms.length === 0}>
+                                {isQueued ? 'Sent to Queue!' : 'Send to Queue'}
                             </Button>
                              <Button onClick={handleGenerate} className="bg-gray-600 hover:bg-gray-500" disabled={isGenerating || isQueued}>
                                 Discard & Try Again

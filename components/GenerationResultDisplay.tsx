@@ -6,17 +6,21 @@ import { TopPostAssessment } from '../types.ts';
 interface Props {
   results: GenerationResults;
   articleUrl: string;
-  onSendToAyrshareQueue: (post: TopPostAssessment) => void;
+  onSendToAyrshareQueue: (post: TopPostAssessment, platforms: string[]) => void;
 }
+
+const platforms = ['linkedin', 'facebook', 'twitter'];
 
 function GenerationResultDisplay({ results, articleUrl, onSendToAyrshareQueue }: Props) {
   const [editableAssessments, setEditableAssessments] = useState<TopPostAssessment[]>(results.top7Assessments);
   const [queuedPostTitles, setQueuedPostTitles] = useState<string[]>([]);
   const [copiedPostTitle, setCopiedPostTitle] = useState<string | null>(null);
+  const [platformSelections, setPlatformSelections] = useState<{ [title: string]: string[] }>({});
 
   useEffect(() => {
     setEditableAssessments(results.top7Assessments);
     setQueuedPostTitles([]); // Reset queued status when results change
+    setPlatformSelections({}); // Reset platform selections
   }, [results]);
 
   const handleContentChange = (index: number, newContent: string) => {
@@ -32,8 +36,19 @@ function GenerationResultDisplay({ results, articleUrl, onSendToAyrshareQueue }:
     });
   }, []);
 
+  const handlePlatformChange = (title: string, platform: string) => {
+    setPlatformSelections(prev => {
+        const currentPlatforms = prev[title] || [];
+        const newPlatforms = currentPlatforms.includes(platform)
+            ? currentPlatforms.filter(p => p !== platform)
+            : [...currentPlatforms, platform];
+        return { ...prev, [title]: newPlatforms };
+    });
+  };
+
   const handleSendToQueue = (post: TopPostAssessment) => {
-    onSendToAyrshareQueue(post);
+    const selectedPlatforms = platformSelections[post.title] || ['linkedin']; // Default to LinkedIn if none selected
+    onSendToAyrshareQueue(post, selectedPlatforms);
     setQueuedPostTitles(prev => [...prev, post.title]);
   };
 
@@ -119,6 +134,7 @@ function GenerationResultDisplay({ results, articleUrl, onSendToAyrshareQueue }:
                 {editableAssessments.map((item, index) => {
                     const isCopied = copiedPostTitle === item.title;
                     const isQueued = queuedPostTitles.includes(item.title);
+                    const selectedPlatforms = platformSelections[item.title] || [];
                     return (
                         <div key={index} className="pt-4 border-t border-slate-700/50 first:border-t-0 first:pt-0">
                             <div className="flex-grow space-y-3">
@@ -134,28 +150,44 @@ function GenerationResultDisplay({ results, articleUrl, onSendToAyrshareQueue }:
                                     className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"
                                 />
                             </div>
-                             <div className="flex items-center justify-end gap-3 mt-3">
-                                <button 
-                                    onClick={() => handleCopy(item.content, item.title)} 
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white"
-                                >
-                                    {isCopied ? (
-                                      <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Copied!</>
-                                    ) : (
-                                      <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> Copy Post</>
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => handleSendToQueue(item)}
-                                    disabled={isQueued}
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-teal-600 text-white hover:bg-teal-500 disabled:bg-teal-800/50 disabled:text-teal-400 disabled:cursor-not-allowed"
-                                >
-                                     {isQueued ? (
-                                        <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Queued</>
-                                     ) : (
-                                        <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>Send to Posts Queue</>
-                                     )}
-                                </button>
+                            <div className="flex items-center justify-between gap-3 mt-3">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-xs font-semibold text-gray-400">Post to:</span>
+                                    {platforms.map(platform => (
+                                        <label key={platform} className="flex items-center gap-1.5 text-sm text-gray-300 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedPlatforms.includes(platform)}
+                                                onChange={() => handlePlatformChange(item.title, platform)}
+                                                className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500"
+                                            />
+                                            {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                                        </label>
+                                    ))}
+                                </div>
+                                <div className="flex items-center justify-end gap-3">
+                                    <button 
+                                        onClick={() => handleCopy(item.content, item.title)} 
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white"
+                                    >
+                                        {isCopied ? (
+                                        <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Copied!</>
+                                        ) : (
+                                        <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> Copy Post</>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => handleSendToQueue(item)}
+                                        disabled={isQueued}
+                                        className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-teal-600 text-white hover:bg-teal-500 disabled:bg-teal-800/50 disabled:text-teal-400 disabled:cursor-not-allowed"
+                                    >
+                                        {isQueued ? (
+                                            <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>Queued</>
+                                        ) : (
+                                            <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>Send to Posts Queue</>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )

@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -31,9 +32,10 @@ import {
   generateArticle,
   enhanceArticle,
   createArticleTemplateFromText,
+  GenerationResults,
+  ResearchedPost,
 } from './services/geminiService.ts';
 
-// Corrected imports for Ayrshare services
 import {
   testAyrshareConnection,
   postToAyrshare,
@@ -42,7 +44,7 @@ import {
 import {
   LINKEDIN_GENERATION_EVALUATION_SCRIPT,
   LINKEDIN_ANALYSIS_SCRIPT,
-  PARSE_SCHEDULE_SCRIPT, // Corrected export name
+  PARSE_SCHEDULE_SCRIPT, 
   DEFAULT_HEADLINE_EVAL_CRITERIA,
   GENERATE_HEADLINES_SCRIPT,
   GENERATE_ARTICLE_SCRIPT,
@@ -67,9 +69,8 @@ import {
 } from './types.ts';
 
 const LOCAL_STORAGE_KEY = 'socialMediaMinionData';
-const ADMIN_EMAIL = 'dave@bigagility.com'; // Default admin email
+const ADMIN_EMAIL = 'dave@bigagility.com'; 
 
-// Define default values locally as they are not exported from scriptService.ts
 const DEFAULT_USER_ROLE = `I am an executive business , Product & Transformation Coach 
 I use Agile, Lean, Coaching and Product Framework to get stuff done and help others do the same`;
 
@@ -140,404 +141,187 @@ If you liked this, please repost and share. It helps me a lot.
 
 Also - DM me for the details of courses on coaching, leadership and using AI to accelerate the boring bits and get to the good stuff. Remember you won't lose your job to AI, but you might lose your job to someone who gets the very best out of AI.`;
 
-
-// Utility to play a sound
 const playSound = (type: 'success' | 'error' | 'notification') => {
   if (window.AudioContext || (window as any).webkitAudioContext) {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
-
     oscillator.connect(gainNode);
     gainNode.connect(audioContext.destination);
-
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.5, audioContext.currentTime + 0.01);
     switch (type) {
       case 'success':
-        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.5);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.5);
         break;
       case 'error':
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
-        gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
         break;
       case 'notification':
       default:
-        oscillator.frequency.setValueAtTime(660, audioContext.currentTime); // E5
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.4);
         break;
     }
-
     oscillator.type = 'sine';
-    oscillator.start();
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
-    oscillator.stop(audioContext.currentTime + 0.3);
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.5);
   }
 };
 
 export const App: React.FC = () => {
-  // Authentication State - TEMPORARILY BYPASSED
   const [userEmail, setUserEmail] = useState<string | null>('dave@bigagility.com');
   const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [authError, setAuthError] = useState<React.ReactNode | null>(null);
   const isAdmin = useMemo(() => userEmail?.toLowerCase() === ADMIN_EMAIL, [userEmail]);
 
-  // Global UI State
   const [view, setView] = useState('generate-posts');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<React.ReactNode | null>(null);
+  const [queueError, setQueueError] = useState<React.ReactNode | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const handleToggleMobileMenu = useCallback(() => setShowMobileMenu(prev => !prev), []);
 
-
-  // Persona State
   const [userRole, setUserRole] = useState(DEFAULT_USER_ROLE);
   const [targetAudience, setTargetAudience] = useState(DEFAULT_TARGET_AUDIENCE);
   const [referenceWorldContent, setReferenceWorldContent] = useState('');
   const [thisIsHowIWriteArticles, setThisIsHowIWriteArticles] = useState(DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
 
-
-  // Generate Posts Panel State
   const [articleUrl, setArticleUrl] = useState('');
   const [articleText, setArticleText] = useState('');
   const [postSourceType, setPostSourceType] = useState<'url' | 'text'>('url');
   const [standardStarterText, setStandardStarterText] = useState(DEFAULT_POST_STARTER_TEXT);
   const [standardSummaryText, setStandardSummaryText] = useState(DEFAULT_POST_SUMMARY_TEXT);
   const [generationScript, setGenerationScript] = useState(LINKEDIN_GENERATION_EVALUATION_SCRIPT);
-  const [generationResults, setGenerationResults] = useState<any>(null);
+  const [generationResults, setGenerationResults] = useState<GenerationResults | null>(null);
 
-  // Template Library State
   const [savedTemplates, setSavedTemplates] = useState<SavedTemplate[]>(initialTemplates);
+  const [savedArticleTemplates, setSavedArticleTemplates] = useState<SavedArticleTemplate[]>(initialArticleTemplates);
+  const [showCreateArticleTemplateModal, setShowCreateArticleTemplateModal] = useState(false);
 
-  // Ayrshare Queue State
   const [ayrshareQueue, setAyrshareQueue] = useState<QueuedPost[]>([]);
+  const [ayrshareLog, setAyrshareLog] = useState<SentPost[]>([]);
   const [schedulingInstructions, setSchedulingInstructions] = useState(DEFAULT_SCHEDULING_INSTRUCTIONS);
   const [parsedSchedule, setParsedSchedule] = useState<string[]>([]);
   const [isParsingSchedule, setIsParsingSchedule] = useState(false);
-  const [ayrshareLog, setAyrshareLog] = useState<SentPost[]>([]);
-  const schedulerIntervalRef = useRef<number | null>(null);
+  const [postingNowId, setPostingNowId] = useState<string | null>(null);
 
-  // Post Researcher State
+  const [settings, setSettings] = useState<AppSettings>({ ayrshareApiKey: '' });
+  const [adminSettings, setAdminSettings] = useState<AdminSettings>({ authorizedEmails: [], secretPassword: '' });
+
   const [researchScript, setResearchScript] = useState(LINKEDIN_ANALYSIS_SCRIPT);
-  const [researchedPosts, setResearchedPosts] = useState<any[] | null>(null);
+  const [researchedPosts, setResearchedPosts] = useState<ResearchedPost[] | null>(null);
 
-  // Headline Generator State
   const [headlineEvalCriteria, setHeadlineEvalCriteria] = useState(DEFAULT_HEADLINE_EVAL_CRITERIA);
   const [headlineGenerationScript, setHeadlineGenerationScript] = useState(GENERATE_HEADLINES_SCRIPT);
   const [generatedHeadlines, setGeneratedHeadlines] = useState<GeneratedHeadline[] | null>(null);
   const [headlineSourceType, setHeadlineSourceType] = useState<'url' | 'text'>('url');
   const [headlineSourceUrl, setHeadlineSourceUrl] = useState('');
   const [headlineSourceText, setHeadlineSourceText] = useState('');
-  const [articleIdeas, setArticleIdeas] = useState<string[] | null>(null);
+  const [generatedArticleIdeas, setGeneratedArticleIdeas] = useState<string[] | null>(null);
   const [selectedArticleIdea, setSelectedArticleIdea] = useState<string | null>(null);
 
-  // Article Generator State
-  const [generateArticleWordCount, setGenerateArticleWordCount] = useState<number>(1000);
+  const [generateArticleWordCount, setGenerateArticleWordCount] = useState(1000);
   const [generateArticleSourceType, setGenerateArticleSourceType] = useState<'url' | 'text'>('url');
   const [generateArticleSourceUrl, setGenerateArticleSourceUrl] = useState('');
   const [generateArticleSourceText, setGenerateArticleSourceText] = useState('');
-  const [generateArticleStyleRefs, setGenerateArticleStyleRefs] = useState('');
   const [generateArticleScript, setGenerateArticleScript] = useState(GENERATE_ARTICLE_SCRIPT);
   const [generatedArticleHistory, setGeneratedArticleHistory] = useState<GeneratedArticle[]>([]);
   const [currentArticleIterationIndex, setCurrentArticleIterationIndex] = useState(0);
-  const [articleTitle, setArticleTitle] = useState('');
+  const [generateArticleTitle, setGenerateArticleTitle] = useState('');
   const [endOfArticleSummary, setEndOfArticleSummary] = useState(DEFAULT_END_OF_ARTICLE_SUMMARY);
   const [articleEvalCriteria, setArticleEvalCriteria] = useState(DEFAULT_ARTICLE_EVAL_CRITERIA);
 
-  // Article Template Library State
-  const [savedArticleTemplates, setSavedArticleTemplates] = useState<SavedArticleTemplate[]>(initialArticleTemplates);
-  const [showCreateArticleTemplateModal, setShowCreateArticleTemplateModal] = useState(false);
-  const [createArticleTemplateError, setCreateArticleTemplateError] = useState<React.ReactNode | null>(null);
+  const scheduleIntervalRef = useRef<number | null>(null);
 
-  // Settings State
-  const [appSettings, setAppSettings] = useState<AppSettings>({ ayrshareApiKey: '' });
-  const [adminSettings, setAdminSettings] = useState<AdminSettings>({ authorizedEmails: [], secretPassword: '' });
+  const stateToBackup = useMemo(() => ({
+    userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles,
+    articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText,
+    generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue,
+    schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings,
+    researchScript, researchedPosts, headlineEvalCriteria, headlineGenerationScript,
+    generatedHeadlines, headlineSourceType, headlineSourceUrl, headlineSourceText,
+    generatedArticleIdeas, selectedArticleIdea, generateArticleWordCount,
+    generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
+    generateArticleScript, generatedArticleHistory, currentArticleIterationIndex,
+    generateArticleTitle, endOfArticleSummary, articleEvalCriteria,
+    showCreateArticleTemplateModal,
+  }), [
+    userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles,
+    articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText,
+    generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue,
+    schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings,
+    researchScript, researchedPosts, headlineEvalCriteria, headlineGenerationScript,
+    generatedHeadlines, headlineSourceType, headlineSourceUrl, headlineSourceText,
+    generatedArticleIdeas, selectedArticleIdea, generateArticleWordCount,
+    generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
+    generateArticleScript, generatedArticleHistory, currentArticleIterationIndex,
+    generateArticleTitle, endOfArticleSummary, articleEvalCriteria,
+    showCreateArticleTemplateModal,
+  ]);
 
-  // --- Authentication Handlers ---
-  const handleSignIn = useCallback(async (email: string, password?: string) => {
-    setAuthError(null);
-    if (email.toLowerCase() === ADMIN_EMAIL) {
-      setIsAuthenticated(true);
-      setUserEmail(email);
-      return;
+  useEffect(() => {
+    try {
+      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (savedData) {
+        const data: BackupData = JSON.parse(savedData);
+        setUserRole(data.userRole || DEFAULT_USER_ROLE);
+        setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
+        setReferenceWorldContent(data.referenceWorldContent || '');
+        setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
+        setStandardStarterText(data.standardStarterText || DEFAULT_POST_STARTER_TEXT);
+        setStandardSummaryText(data.standardSummaryText || DEFAULT_POST_SUMMARY_TEXT);
+        setGenerationScript(data.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
+        setSavedTemplates(data.savedTemplates || initialTemplates);
+        setSavedArticleTemplates(data.savedArticleTemplates || initialArticleTemplates);
+        setAyrshareQueue(data.ayrshareQueue || []);
+        setSchedulingInstructions(data.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
+        setParsedSchedule(data.parsedSchedule || []);
+        setAyrshareLog(data.ayrshareLog || []);
+        setSettings(data.settings || { ayrshareApiKey: '' });
+        setAdminSettings(data.adminSettings || { authorizedEmails: [], secretPassword: '' });
+        setResearchScript(data.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
+        setHeadlineEvalCriteria(data.headlineEvalCriteria || DEFAULT_HEADLINE_EVAL_CRITERIA);
+        setHeadlineGenerationScript(data.headlineGenerationScript || GENERATE_HEADLINES_SCRIPT);
+        setGenerateArticleScript(data.generateArticleScript || GENERATE_ARTICLE_SCRIPT);
+        setEndOfArticleSummary(data.endOfArticleSummary || DEFAULT_END_OF_ARTICLE_SUMMARY);
+        setArticleEvalCriteria(data.articleEvalCriteria || DEFAULT_ARTICLE_EVAL_CRITERIA);
+      }
+    } catch (e) {
+      console.error("Failed to load data:", e);
+      setError("Failed to load saved data. Some settings may be reset.");
     }
+  }, []);
 
-    if (!adminSettings.authorizedEmails.includes(email)) {
-      setAuthError('Email not authorized.');
-      return;
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToBackup));
+    } catch (e) {
+      console.error("Failed to save data:", e);
+      setError("Failed to save session data. Changes may not be persisted.");
     }
-    if (password !== adminSettings.secretPassword) {
-      setAuthError('Incorrect secret password.');
-      return;
-    }
-    setIsAuthenticated(true);
-    setUserEmail(email);
-  }, [adminSettings.authorizedEmails, adminSettings.secretPassword]);
+  }, [stateToBackup]);
 
   const handleSignOut = useCallback(() => {
     setIsAuthenticated(false);
     setUserEmail(null);
-    setAuthError(null);
   }, []);
 
-  // --- Data Persistence (localStorage) ---
-  useEffect(() => {
-    const loadData = () => {
-      try {
-        const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (storedData) {
-          const data: BackupData = JSON.parse(storedData);
-          setUserRole(data.userRole || DEFAULT_USER_ROLE);
-          setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
-          setReferenceWorldContent(data.referenceWorldContent || '');
-          setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
-          setArticleUrl(data.articleUrl || '');
-          setArticleText(data.articleText || '');
-          setPostSourceType(data.postSourceType || 'url');
-          setStandardStarterText(data.standardStarterText || DEFAULT_POST_STARTER_TEXT);
-          setStandardSummaryText(data.standardSummaryText || DEFAULT_POST_SUMMARY_TEXT);
-          setGenerationScript(data.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
-          setSavedTemplates(data.savedTemplates || initialTemplates);
-          setAyrshareQueue(data.ayrshareQueue || []);
-          setSchedulingInstructions(data.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
-          setParsedSchedule(data.parsedSchedule || []);
-          setAyrshareLog(data.ayrshareLog || []);
-          setAppSettings(data.settings || { ayrshareApiKey: '' });
-          setAdminSettings(data.adminSettings || { authorizedEmails: [], secretPassword: '' });
-          setResearchScript(data.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
-          setResearchedPosts(data.researchedPosts || null);
-          setHeadlineEvalCriteria(data.headlineEvalCriteria || DEFAULT_HEADLINE_EVAL_CRITERIA);
-          setHeadlineGenerationScript(data.headlineGenerationScript || GENERATE_HEADLINES_SCRIPT);
-          setGeneratedHeadlines(data.generatedHeadlines || null);
-          setHeadlineSourceType(data.headlineSourceType || 'url');
-          setHeadlineSourceUrl(data.headlineSourceUrl || '');
-          setHeadlineSourceText(data.headlineSourceText || '');
-          setArticleIdeas(data.generatedArticleIdeas || null);
-          setSelectedArticleIdea(data.selectedArticleIdea || null);
-          setGenerateArticleWordCount(data.generateArticleWordCount || 1000);
-          setGenerateArticleSourceType(data.generateArticleSourceType || 'url');
-          setGenerateArticleSourceUrl(data.generateArticleSourceUrl || '');
-          setGenerateArticleSourceText(data.generateArticleSourceText || '');
-          setGenerateArticleStyleRefs(data.generateArticleStyleRefs || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
-          setGenerateArticleScript(data.generateArticleScript || GENERATE_ARTICLE_SCRIPT);
-          setGeneratedArticleHistory(data.generatedArticleHistory || []);
-          setCurrentArticleIterationIndex(data.currentArticleIterationIndex || 0);
-          setArticleTitle(data.generateArticleTitle || '');
-          setEndOfArticleSummary(data.endOfArticleSummary || DEFAULT_END_OF_ARTICLE_SUMMARY);
-          setArticleEvalCriteria(data.articleEvalCriteria || DEFAULT_ARTICLE_EVAL_CRITERIA);
-          setSavedArticleTemplates(data.savedArticleTemplates || initialArticleTemplates);
-          setShowCreateArticleTemplateModal(data.showCreateArticleTemplateModal || false);
-        }
-      } catch (e) {
-        console.error("Failed to load data from localStorage", e);
-        setError("Failed to load saved data. Data might be corrupted. Resetting.");
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-      }
-    };
-    loadData();
+  const handleSignIn = useCallback((email: string, password?: string) => {
+    setIsAuthenticated(true);
+    setUserEmail(email);
   }, []);
 
-  const backupData: BackupData = useMemo(() => ({
-    userRole,
-    targetAudience,
-    referenceWorldContent,
-    thisIsHowIWriteArticles,
-    articleUrl,
-    articleText,
-    postSourceType,
-    standardStarterText,
-    standardSummaryText,
-    generationScript,
-    savedTemplates,
-    ayrshareQueue,
-    schedulingInstructions,
-    parsedSchedule,
-    ayrshareLog,
-    settings: appSettings,
-    adminSettings,
-    researchScript,
-    researchedPosts,
-    headlineEvalCriteria,
-    headlineGenerationScript,
-    generatedHeadlines,
-    headlineSourceType,
-    headlineSourceUrl,
-    headlineSourceText,
-    generatedArticleIdeas: articleIdeas,
-    selectedArticleIdea,
-    generateArticleWordCount,
-    generateArticleSourceType,
-    generateArticleSourceUrl,
-    generateArticleSourceText,
-    generateArticleStyleRefs,
-    generateArticleScript,
-    generatedArticleHistory,
-    currentArticleIterationIndex,
-    generateArticleTitle: articleTitle,
-    endOfArticleSummary,
-    articleEvalCriteria,
-    savedArticleTemplates,
-    showCreateArticleTemplateModal,
-  }), [
-    userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType,
-    standardStarterText, standardSummaryText, generationScript, savedTemplates, ayrshareQueue,
-    schedulingInstructions, parsedSchedule, ayrshareLog, appSettings, adminSettings, researchScript,
-    researchedPosts, headlineEvalCriteria, headlineGenerationScript, generatedHeadlines,
-    headlineSourceType, headlineSourceUrl, headlineSourceText, articleIdeas, selectedArticleIdea,
-    generateArticleWordCount, generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
-    generateArticleStyleRefs, generateArticleScript, generatedArticleHistory, currentArticleIterationIndex, articleTitle,
-    endOfArticleSummary, articleEvalCriteria, savedArticleTemplates, showCreateArticleTemplateModal
-  ]);
-
-  useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(backupData));
-  }, [backupData]);
-
-  const handleRestoreBackup = useCallback((data: BackupData) => {
-    setUserRole(data.userRole || DEFAULT_USER_ROLE);
-    setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
-    setReferenceWorldContent(data.referenceWorldContent || '');
-    setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
-    setArticleUrl(data.articleUrl || '');
-    setArticleText(data.articleText || '');
-    setPostSourceType(data.postSourceType || 'url');
-    setStandardStarterText(data.standardStarterText || DEFAULT_POST_STARTER_TEXT);
-    setStandardSummaryText(data.standardSummaryText || DEFAULT_POST_SUMMARY_TEXT);
-    setGenerationScript(data.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
-    setSavedTemplates(data.savedTemplates || initialTemplates);
-    setAyrshareQueue(data.ayrshareQueue || []);
-    setSchedulingInstructions(data.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
-    setParsedSchedule(data.parsedSchedule || []);
-    setAyrshareLog(data.ayrshareLog || []);
-    setAppSettings(data.settings || { ayrshareApiKey: '' });
-    setAdminSettings(data.adminSettings || { authorizedEmails: [], secretPassword: '' });
-    setResearchScript(data.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
-    setResearchedPosts(data.researchedPosts || null);
-    setHeadlineEvalCriteria(data.headlineEvalCriteria || DEFAULT_HEADLINE_EVAL_CRITERIA);
-    setHeadlineGenerationScript(data.headlineGenerationScript || GENERATE_HEADLINES_SCRIPT);
-    setGeneratedHeadlines(data.generatedHeadlines || null);
-    setHeadlineSourceType(data.headlineSourceType || 'url');
-    setHeadlineSourceUrl(data.headlineSourceUrl || '');
-    setHeadlineSourceText(data.headlineSourceText || '');
-    setArticleIdeas(data.generatedArticleIdeas || null);
-    setSelectedArticleIdea(data.selectedArticleIdea || null);
-    setGenerateArticleWordCount(data.generateArticleWordCount || 1000);
-    setGenerateArticleSourceType(data.generateArticleSourceType || 'url');
-    setGenerateArticleSourceUrl(data.generateArticleSourceUrl || '');
-    setGenerateArticleSourceText(data.generateArticleSourceText || '');
-    setGenerateArticleStyleRefs(data.generateArticleStyleRefs || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
-    setGenerateArticleScript(data.generateArticleScript || GENERATE_ARTICLE_SCRIPT);
-    setGeneratedArticleHistory(data.generatedArticleHistory || []);
-    setCurrentArticleIterationIndex(data.currentArticleIterationIndex || 0);
-    setArticleTitle(data.generateArticleTitle || '');
-    setEndOfArticleSummary(data.endOfArticleSummary || DEFAULT_END_OF_ARTICLE_SUMMARY);
-    setArticleEvalCriteria(data.articleEvalCriteria || DEFAULT_ARTICLE_EVAL_CRITERIA);
-    setSavedArticleTemplates(data.savedArticleTemplates || initialArticleTemplates);
-    setShowCreateArticleTemplateModal(data.showCreateArticleTemplateModal || false);
-    setError(null);
-  }, []);
-
-  // --- General UI Handlers ---
-  const handleClearError = useCallback(() => setError(null), []);
-
-  // --- Template Library Handlers ---
-  const handleAddNewTemplate = useCallback(() => {
-    const newId = uuidv4();
-    setSavedTemplates(prev => [
-      ...prev,
-      {
-        id: newId,
-        title: 'New Template',
-        template: '{{Hook}}\n{{MainPoint}}\n{{CallToAction}}',
-        example: 'Hook example.\nMain point example.\nCTA example.',
-        instructions: '',
-        dateAdded: new Date().toLocaleDateString(),
-        usageCount: 0,
-        lastUsed: 'Never',
-        isNew: true,
-      },
-    ]);
-    setView('template-library');
-  }, []);
-
-  const handleSaveTemplate = useCallback((id: string, updates: Partial<Omit<SavedTemplate, 'id'>>) => {
-    setSavedTemplates(prev =>
-      prev.map(t => (t.id === id ? { ...t, ...updates, isNew: false } : t))
-    );
-  }, []);
-
-  const handleDeleteTemplate = useCallback((id: string) => {
-    const templateToDelete = savedTemplates.find(t => t.id === id);
-    if (templateToDelete?.isNew) {
-      setSavedTemplates(prev => prev.filter(t => t.id !== id));
-      return;
-    }
-    if (window.confirm('Are you sure you want to delete this template?')) {
-      setSavedTemplates(prev => prev.filter(t => t.id !== id));
-    }
-  }, [savedTemplates]);
-
-  // --- Article Template Library Handlers ---
-  const handleOpenCreateArticleTemplateModal = useCallback(() => {
-    setShowCreateArticleTemplateModal(true);
-    setCreateArticleTemplateError(null);
-  }, []);
-
-  const handleCloseCreateArticleTemplateModal = useCallback(() => {
-    setShowCreateArticleTemplateModal(false);
-    setCreateArticleTemplateError(null);
-  }, []);
-
-  const handleCreateArticleTemplateFromText = useCallback(async (articleText: string): Promise<boolean> => {
-    setIsLoading(true);
-    setCreateArticleTemplateError(null);
-    try {
-      const newTemplate = await createArticleTemplateFromText({ articleText, existingTemplates: savedArticleTemplates });
-      setSavedArticleTemplates(prev => [
-        ...prev,
-        { ...newTemplate, id: uuidv4(), isNew: false },
-      ]);
-      playSound('success');
-      return true;
-    } catch (err: any) {
-      console.error("Error creating article template from text:", err);
-      setCreateArticleTemplateError(`Failed to create template: ${err.message}`);
-      playSound('error');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [savedArticleTemplates]);
-
-  const handleSaveArticleTemplate = useCallback((id: string, updates: Partial<Omit<SavedArticleTemplate, 'id'>>) => {
-    setSavedArticleTemplates(prev =>
-      prev.map(t => (t.id === id ? { ...t, ...updates, isNew: false } : t))
-    );
-  }, []);
-
-  const handleDeleteArticleTemplate = useCallback((id: string) => {
-    const templateToDelete = savedArticleTemplates.find(t => t.id === id);
-    if (templateToDelete?.isNew) {
-      setSavedArticleTemplates(prev => prev.filter(t => t.id !== id));
-      return;
-    }
-    if (window.confirm('Are you sure you want to delete this article template?')) {
-      setSavedArticleTemplates(prev => prev.filter(t => t.id !== id));
-    }
-  }, [savedArticleTemplates]);
-
-  // --- Generate Posts Handlers ---
   const handleGeneratePosts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setGenerationResults(null);
     try {
-      if (!articleUrl && !articleText) throw new Error("Please provide an article URL or text.");
-      if (!userRole) throw new Error("Please define your professional role in the Persona section.");
-      if (!targetAudience) throw new Error("Please define your target audience in the Persona section.");
-
       const results = await generateAndEvaluatePosts({
-        articleUrl,
-        articleText,
+        articleUrl: postSourceType === 'url' ? articleUrl : '',
+        articleText: postSourceType === 'text' ? articleText : '',
         templates: savedTemplates,
         script: generationScript,
         targetAudience,
@@ -546,27 +330,60 @@ export const App: React.FC = () => {
         userRole,
       });
       setGenerationResults(results);
-      setView('generate-posts');
-    } catch (err: any) {
-      setError(`Failed to generate posts: ${err.message}`);
+      playSound('success');
+    } catch (e: any) {
+      setError(e.message || 'An unknown error occurred during post generation.');
+      playSound('error');
     } finally {
       setIsLoading(false);
     }
-  }, [articleUrl, articleText, userRole, targetAudience, savedTemplates, generationScript, standardStarterText, standardSummaryText]);
+  }, [postSourceType, articleUrl, articleText, savedTemplates, generationScript, targetAudience, standardSummaryText, standardStarterText, userRole]);
 
-  // --- Ayrshare Queue Handlers ---
-  const handleSendToAyrshareQueue = useCallback((post: TopPostAssessment) => {
-    setAyrshareQueue(prev => [...prev, { ...post, id: uuidv4(), platforms: ['linkedin'] }]);
-    alert(`Post "${post.title}" added to queue.`);
+  const handleSendToAyrshareQueue = useCallback((post: TopPostAssessment, platforms: string[]) => {
+    const newQueuedPost: QueuedPost = {
+      ...post,
+      id: uuidv4(),
+      platforms,
+    };
+    setAyrshareQueue(prev => [...prev, newQueuedPost]);
   }, []);
-
+  
   const handleDeleteQueuedPost = useCallback((id: string) => {
-    setAyrshareQueue(prev => prev.filter(post => post.id !== id));
+    setAyrshareQueue(prev => prev.filter(p => p.id !== id));
   }, []);
 
   const handleUpdateQueuedPost = useCallback((id: string, updates: Partial<QueuedPost>) => {
-    setAyrshareQueue(prev => prev.map(post => (post.id === id ? { ...post, ...updates } : post)));
+    setAyrshareQueue(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
   }, []);
+
+  const handlePostNow = useCallback(async (id: string) => {
+    if (!settings.ayrshareApiKey) {
+      setQueueError("Ayrshare API Key is missing. Please add it in Settings.");
+      playSound('error');
+      return;
+    }
+    const postToSend = ayrshareQueue.find(p => p.id === id);
+    if (!postToSend) return;
+
+    setPostingNowId(id);
+    setQueueError(null);
+    try {
+      await postToAyrshare(postToSend.content, settings.ayrshareApiKey, postToSend.platforms);
+      const newSentPost: SentPost = {
+          ...postToSend,
+          sentAt: new Date().toISOString(),
+          platforms: postToSend.platforms || ['linkedin'],
+      };
+      setAyrshareLog(prev => [newSentPost, ...prev]);
+      setAyrshareQueue(prev => prev.filter(p => p.id !== id));
+      playSound('notification');
+    } catch (e: any) {
+      setQueueError(e.message || "An unknown error occurred while posting.");
+      playSound('error');
+    } finally {
+      setPostingNowId(null);
+    }
+  }, [ayrshareQueue, settings.ayrshareApiKey]);
 
   const handleParseSchedule = useCallback(async () => {
     setIsParsingSchedule(true);
@@ -574,120 +391,156 @@ export const App: React.FC = () => {
     try {
       const times = await parseSchedule(schedulingInstructions);
       setParsedSchedule(times);
-      playSound('success');
-    } catch (err: any) {
-      setError(`Failed to parse schedule: ${err.message}`);
-      playSound('error');
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setIsParsingSchedule(false);
     }
   }, [schedulingInstructions]);
 
-  // --- Scheduling Logic ---
-  useEffect(() => {
-    if (parsedSchedule.length > 0 && appSettings.ayrshareApiKey && isAuthenticated) {
-      if (schedulerIntervalRef.current) clearInterval(schedulerIntervalRef.current);
-      schedulerIntervalRef.current = window.setInterval(async () => {
-        const now = new Date();
-        const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-        if (parsedSchedule.includes(currentTime)) {
-          const postToSend = ayrshareQueue[0];
-          if (postToSend) {
-            try {
-              await postToAyrshare(postToSend.content, appSettings.ayrshareApiKey, postToSend.platforms);
-              setAyrshareLog(prev => [{ ...postToSend, sentAt: new Date().toISOString() } as SentPost, ...prev]);
-              setAyrshareQueue(prev => prev.slice(1));
-              new Notification('Post Sent!', { 
-                body: `"${postToSend.title}" was successfully posted.`,
-                icon: '/icon.png' 
-              });
-              playSound('notification');
-            } catch (err: any) {
-              console.error("[Scheduler] Error posting:", err);
-              new Notification('Post Failed!', {
-                body: `Failed to post "${postToSend.title}": ${err.message}`,
-                icon: '/icon.png',
-              });
-              playSound('error');
-            }
-          } else {
-            console.log("[Scheduler] No posts in queue to send.");
-            new Notification('Scheduler Idle', {
-              body: 'No posts in queue to send at scheduled time.',
-              icon: '/icon.png',
-            });
-          }
-        }
-      }, 60 * 1000); // Check every minute
+  const handleSaveSettings = useCallback(async (newSettings: AppSettings) => {
+    const { success, message } = await testAyrshareConnection(newSettings.ayrshareApiKey);
+    if (success) {
+      setSettings(newSettings);
+      setError(null);
+    } else {
+      setError(`Ayrshare connection failed: ${message}`);
     }
+    return success;
+  }, []);
+  
+  const handleSaveAdminSettings = useCallback((newSettings: AdminSettings) => {
+    setAdminSettings(newSettings);
+  }, []);
 
-    return () => {
-      if (schedulerIntervalRef.current) {
-        clearInterval(schedulerIntervalRef.current);
-      }
-    };
-  }, [ayrshareQueue, parsedSchedule, appSettings.ayrshareApiKey, isAuthenticated]);
+  const handleRestore = useCallback((data: BackupData) => {
+    // This function will just set all the states. The useEffects will handle saving.
+    Object.keys(data).forEach(key => {
+        const setterName = `set${key.charAt(0).toUpperCase() + key.slice(1)}`;
+        const stateSetters: { [key: string]: Function } = {
+            setUserRole, setTargetAudience, setReferenceWorldContent, setThisIsHowIWriteArticles,
+            setArticleUrl, setArticleText, setPostSourceType, setStandardStarterText, setStandardSummaryText,
+            setGenerationScript, setSavedTemplates, setSavedArticleTemplates, setAyrshareQueue,
+            setSchedulingInstructions, setParsedSchedule, setAyrshareLog, setSettings, setAdminSettings,
+            setResearchScript, setResearchedPosts, setHeadlineEvalCriteria, setHeadlineGenerationScript,
+            setGeneratedHeadlines, setHeadlineSourceType, setHeadlineSourceUrl, setHeadlineSourceText,
+            setGeneratedArticleIdeas, setSelectedArticleIdea, setGenerateArticleWordCount,
+            setGenerateArticleSourceType, setGenerateArticleSourceUrl, setGenerateArticleSourceText,
+            setGenerateArticleScript, setGeneratedArticleHistory, setCurrentArticleIterationIndex,
+            setGenerateArticleTitle, setEndOfArticleSummary, setArticleEvalCriteria,
+            setShowCreateArticleTemplateModal,
+        };
+        if (setterName in stateSetters) {
+            stateSetters[setterName]((data as any)[key]);
+        }
+    });
+  }, []);
 
-
-  // --- Post Researcher Handlers ---
   const handleResearchPosts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setResearchedPosts(null);
     try {
-      const results = await researchPopularPosts(researchScript);
-      setResearchedPosts(results);
-    } catch (err: any) {
-      setError(`Failed to research posts: ${err.message}`);
+      const scriptWithUrl = researchScript.replace('{linkedin_profile_url}', headlineSourceUrl);
+      const posts = await researchPopularPosts(scriptWithUrl);
+      setResearchedPosts(posts);
+    } catch(e: any) {
+      setError(e.message || 'An unknown error occurred while researching posts.');
     } finally {
       setIsLoading(false);
     }
-  }, [researchScript]);
+  }, [researchScript, headlineSourceUrl]);
 
-  // --- Headline Generator Handlers ---
-  const handleGenerateIdeas = useCallback(async () => {
+  // Template Handlers
+  const handleSaveTemplate = useCallback((id: string, updates: Partial<Omit<SavedTemplate, 'id'>>) => {
+    setSavedTemplates(prev => prev.map(t => (t.id === id ? { ...t, ...updates, isNew: false } : t)));
+  }, []);
+  const handleDeleteTemplate = useCallback((id: string) => {
+    setSavedTemplates(prev => prev.filter(t => t.id !== id));
+  }, []);
+  const handleAddNewTemplate = useCallback(() => {
+    setSavedTemplates(prev => [{
+      id: uuidv4(),
+      title: 'New Template',
+      template: '',
+      example: '',
+      instructions: '',
+      dateAdded: new Date().toLocaleDateString(),
+      usageCount: 0,
+      lastUsed: 'Never',
+      isNew: true
+    }, ...prev]);
+  }, []);
+  
+  // Article Template Handlers
+  const handleSaveArticleTemplate = useCallback((id: string, updates: Partial<Omit<SavedArticleTemplate, 'id'>>) => {
+    setSavedArticleTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates, isNew: false } : t));
+  }, []);
+  const handleDeleteArticleTemplate = useCallback((id: string) => {
+    setSavedArticleTemplates(prev => prev.filter(t => t.id !== id));
+  }, []);
+  const handleAddNewArticleTemplate = useCallback(() => {
+    setSavedArticleTemplates(prev => [{
+      id: uuidv4(),
+      title: 'New Article Template',
+      description: '',
+      structure: '',
+      isNew: true,
+    }, ...prev]);
+    setView('article-template-library');
+  }, []);
+  
+  const handleCreateArticleTemplateFromText = useCallback(async (text: string) => {
     setIsLoading(true);
     setError(null);
-    setArticleIdeas(null);
+    try {
+      const newTemplateData = await createArticleTemplateFromText({ articleText: text, existingTemplates: savedArticleTemplates });
+      setSavedArticleTemplates(prev => [{ ...newTemplateData, id: uuidv4(), isNew: true }, ...prev]);
+      setView('article-template-library');
+      return true;
+    } catch(e: any) {
+      setError(e.message || 'Failed to create template from text.');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [savedArticleTemplates]);
+
+  // Headline Handlers
+  const handleGenerateArticleIdeas = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setGeneratedArticleIdeas(null);
     setSelectedArticleIdea(null);
     setGeneratedHeadlines(null);
     try {
-      const source = headlineSourceType === 'url' ? headlineSourceUrl : headlineSourceText;
-      if (!source.trim()) throw new Error("Please provide a source article (URL or text) to generate ideas.");
-      if (!userRole.trim() || !targetAudience.trim()) throw new Error("Please define your professional role and target audience in the Persona section.");
-      const ideas = await generateArticleIdeas({ sourceArticle: source, userRole, targetAudience });
-      setArticleIdeas(ideas);
-    } catch (err: any) {
-      setError(`Failed to generate article ideas: ${err.message}`);
+      const sourceContent = headlineSourceType === 'url' ? headlineSourceUrl : headlineSourceText;
+      const ideas = await generateArticleIdeas({ sourceArticle: sourceContent, userRole, targetAudience });
+      setGeneratedArticleIdeas(ideas);
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setIsLoading(false);
     }
   }, [headlineSourceType, headlineSourceUrl, headlineSourceText, userRole, targetAudience]);
 
-  const handleSelectArticleIdea = useCallback((idea: string) => {
-    setSelectedArticleIdea(idea);
-    setGeneratedHeadlines(null);
-  }, []);
-
   const handleGenerateHeadlines = useCallback(async () => {
+    if (!selectedArticleIdea) return;
     setIsLoading(true);
     setError(null);
     setGeneratedHeadlines(null);
     try {
-      if (!selectedArticleIdea) throw new Error("Please select an article idea first.");
-      const source = headlineSourceType === 'url' ? headlineSourceUrl : headlineSourceText;
-      const results = await generateAndEvaluateHeadlines({
+      const sourceContent = headlineSourceType === 'url' ? headlineSourceUrl : headlineSourceText;
+      const headlines = await generateAndEvaluateHeadlines({
         chosenArticleIdea: selectedArticleIdea,
-        sourceArticle: source,
+        sourceArticle: sourceContent,
         generationScript: headlineGenerationScript,
         evalScript: headlineEvalCriteria,
       });
-      // Fix: Add unique IDs to the generated headlines before setting state to match the GeneratedHeadline[] type.
-      const resultsWithIds = results.map(h => ({ ...h, id: uuidv4() }));
-      setGeneratedHeadlines(resultsWithIds.sort((a, b) => b.score - a.score));
-    } catch (err: any) {
-      setError(`Failed to generate headlines: ${err.message}`);
+      const headlinesWithIds = headlines.map(h => ({ ...h, id: `headline-${Date.now()}-${Math.random()}` }));
+      setGeneratedHeadlines(headlinesWithIds.sort((a, b) => b.score - a.score));
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setIsLoading(false);
     }
@@ -695,330 +548,207 @@ export const App: React.FC = () => {
 
   const handleReevaluateHeadline = useCallback(async (id: string, newText: string) => {
     setIsLoading(true);
-    setError(null);
     try {
-      const result = await reevaluateHeadline({ headline: newText, evalScript: headlineEvalCriteria });
-      setGeneratedHeadlines(prev => {
-        if (!prev) return null;
-        const updatedHeadlines = prev.map(h =>
-          h.id === id ? { ...h, headline: newText, score: result.score, reasoning: result.reasoning } : h
-        );
-        return updatedHeadlines.sort((a, b) => b.score - a.score);
-      });
-      playSound('notification');
-    } catch (err: any) {
-      setError(`Failed to re-evaluate headline: ${err.message}`);
-      playSound('error');
+        const { score, reasoning } = await reevaluateHeadline({ headline: newText, evalScript: headlineEvalCriteria });
+        setGeneratedHeadlines(prev => {
+            if (!prev) return null;
+            const updated = prev.map(h => h.id === id ? { ...h, headline: newText, score, reasoning } : h);
+            return updated.sort((a, b) => b.score - a.score);
+        });
+    } catch (e: any) {
+        setError(e.message);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   }, [headlineEvalCriteria]);
 
-  const handleSelectHeadlineForArticle = useCallback((headline: GeneratedHeadline) => {
-    setArticleTitle(headline.headline);
+  const handleGenerateArticleFromHeadline = useCallback((headline: GeneratedHeadline) => {
+    setGenerateArticleTitle(headline.headline);
     setGenerateArticleSourceType(headlineSourceType);
     setGenerateArticleSourceUrl(headlineSourceUrl);
     setGenerateArticleSourceText(headlineSourceText);
+    setGeneratedArticleHistory([]);
+    setCurrentArticleIterationIndex(0);
     setView('generate-articles');
   }, [headlineSourceType, headlineSourceUrl, headlineSourceText]);
 
-  // --- Article Generator Handlers ---
+  // Article Handlers
   const handleGenerateArticle = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    setGeneratedArticleHistory([]);
-    setCurrentArticleIterationIndex(0);
     try {
-      if (!articleTitle) throw new Error("A working title is required.");
-      if (!generateArticleSourceUrl && !generateArticleSourceText) throw new Error("Please provide a primary source (URL or text).");
-      if (!userRole.trim() || !targetAudience.trim()) throw new Error("Please define your role and audience in the Persona section.");
-      const newArticle = await generateArticle({
-        script: generateArticleScript,
-        wordCount: generateArticleWordCount,
-        styleReferences: thisIsHowIWriteArticles,
-        sourceContent: generateArticleSourceType === 'url' ? generateArticleSourceUrl : generateArticleSourceText,
-        referenceWorld: referenceWorldContent,
-        userRole,
-        targetAudience,
-        title: articleTitle,
-        endOfArticleSummary,
-        evalCriteria: articleEvalCriteria,
-      });
-      setGeneratedArticleHistory([newArticle]);
-      setCurrentArticleIterationIndex(0);
-      playSound('success');
-    } catch (err: any) {
-      setError(`Failed to generate article: ${err.message}`);
-      playSound('error');
+        const sourceContent = generateArticleSourceType === 'url' ? generateArticleSourceUrl : generateArticleSourceText;
+        const result = await generateArticle({
+            script: generateArticleScript,
+            wordCount: generateArticleWordCount,
+            styleReferences: thisIsHowIWriteArticles,
+            sourceContent: sourceContent,
+            referenceWorld: referenceWorldContent,
+            userRole: userRole,
+            targetAudience: targetAudience,
+            title: generateArticleTitle,
+            endOfArticleSummary: endOfArticleSummary,
+            evalCriteria: articleEvalCriteria,
+        });
+        setGeneratedArticleHistory([result]);
+        setCurrentArticleIterationIndex(0);
+    } catch (e: any) {
+        setError(e.message);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
   }, [
-    articleTitle, generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
-    userRole, targetAudience, generateArticleScript, generateArticleWordCount,
-    thisIsHowIWriteArticles, referenceWorldContent, endOfArticleSummary, articleEvalCriteria
+    generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
+    generateArticleScript, generateArticleWordCount, thisIsHowIWriteArticles,
+    referenceWorldContent, userRole, targetAudience, generateArticleTitle,
+    endOfArticleSummary, articleEvalCriteria
   ]);
 
-  const handleRevertToIteration = useCallback((index: number) => {
-    if (index >= 0 && index < generatedArticleHistory.length) {
-      setCurrentArticleIterationIndex(index);
-    }
-  }, [generatedArticleHistory]);
-
-  const handleEnhanceArticle = useCallback(async (selectedSuggestions: Suggestion[]) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      if (!generatedArticleHistory.length || currentArticleIterationIndex === -1) throw new Error("No article found to enhance.");
-      if (selectedSuggestions.length === 0) throw new Error("Please select at least one suggestion to apply.");
+  const handleEnhanceArticle = useCallback(async (suggestions: Suggestion[]) => {
       const currentArticle = generatedArticleHistory[currentArticleIterationIndex];
-      const enhancedArticle = await enhanceArticle({
-        originalTitle: currentArticle.title,
-        originalContent: currentArticle.content,
-        evalCriteria: articleEvalCriteria,
-        suggestions: selectedSuggestions,
-      });
-      setGeneratedArticleHistory(prev => [...prev, enhancedArticle]);
-      setCurrentArticleIterationIndex(generatedArticleHistory.length);
-      playSound('notification');
-    } catch (err: any) {
-      setError(`Failed to enhance article: ${err.message}`);
-      playSound('error');
-    } finally {
-      setIsLoading(false);
-    }
+      if (!currentArticle) return;
+      setIsLoading(true);
+      setError(null);
+      try {
+          const result = await enhanceArticle({
+              originalTitle: currentArticle.title,
+              originalContent: currentArticle.content,
+              evalCriteria: articleEvalCriteria,
+              suggestions: suggestions,
+          });
+          const newHistory = generatedArticleHistory.slice(0, currentArticleIterationIndex + 1);
+          newHistory.push(result);
+          setGeneratedArticleHistory(newHistory);
+          setCurrentArticleIterationIndex(newHistory.length - 1);
+      } catch (e: any) {
+          setError(e.message);
+      } finally {
+          setIsLoading(false);
+      }
   }, [generatedArticleHistory, currentArticleIterationIndex, articleEvalCriteria]);
-
-  // --- Settings Handlers ---
-  const handleSaveAppSettings = useCallback(async (newSettings: AppSettings) => {
-    setError(null);
-    try {
-      const testResult = await testAyrshareConnection(newSettings.ayrshareApiKey);
-      if (!testResult.success) throw new Error(testResult.message);
-      setAppSettings(newSettings);
-      return true;
-    } catch (err: any) {
-      setError(`Failed to save settings: ${err.message}`);
-      return false;
+  
+  const renderView = () => {
+    switch (view) {
+      case 'generate-posts':
+        return <GenerationPanel 
+          {...{ articleUrl, articleText, sourceType: postSourceType, standardStarterText, standardSummaryText, generationScript, isLoading, results: generationResults }}
+          onArticleUrlChange={setArticleUrl}
+          onArticleTextChange={setArticleText}
+          onSourceTypeChange={setPostSourceType}
+          onStandardStarterTextChange={setStandardStarterText}
+          onStandardSummaryTextChange={setStandardSummaryText}
+          onGenerationScriptChange={setGenerationScript}
+          onGenerate={handleGeneratePosts}
+          onSendToAyrshareQueue={handleSendToAyrshareQueue}
+        />;
+      case 'template-library':
+        return <PostsTemplateLibrary templates={savedTemplates} onSave={handleSaveTemplate} onDelete={handleDeleteTemplate} onAddNew={handleAddNewTemplate} />;
+      case 'ayrshare-queue':
+        return <QueuedPostsDisplay 
+            queuedPosts={ayrshareQueue}
+            onDeletePost={handleDeleteQueuedPost}
+            onUpdatePost={handleUpdateQueuedPost}
+            onPostNow={handlePostNow}
+            postingNowId={postingNowId}
+            error={queueError}
+            onClearError={() => setQueueError(null)}
+        />;
+      case 'ayrshare-log':
+        return <QueuedPostsDisplay queuedPosts={ayrshareLog} readOnly title="Posts Log" emptyMessage="No posts have been sent yet." />;
+      case 'scheduler':
+        return <Scheduler instructions={schedulingInstructions} onInstructionsChange={setSchedulingInstructions} onParseSchedule={handleParseSchedule} isParsing={isParsingSchedule} parsedSchedule={parsedSchedule} />;
+      case 'persona':
+        return <PersonaPanel 
+            userRole={userRole} onUserRoleChange={setUserRole}
+            targetAudience={targetAudience} onTargetAudienceChange={setTargetAudience}
+            referenceWorldContent={referenceWorldContent} onReferenceWorldContentChange={setReferenceWorldContent}
+            thisIsHowIWriteArticles={thisIsHowIWriteArticles} onThisIsHowIWriteArticlesChange={setThisIsHowIWriteArticles}
+        />;
+      case 'settings':
+        return <SettingsPanel settings={settings} onSettingsChange={handleSaveSettings} isAdmin={isAdmin} />;
+      case 'admin':
+        return isAdmin ? <AdminPanel settings={adminSettings} onSettingsChange={handleSaveAdminSettings} /> : <div>Access Denied</div>;
+      case 'backup-restore':
+        return <BackupRestorePanel backupData={stateToBackup} onRestore={handleRestore} />;
+      case 'researcher':
+          return <PostResearcherPanel researchScript={researchScript} onResearchScriptChange={setResearchScript} onResearchPosts={handleResearchPosts} isLoading={isLoading} results={researchedPosts} />;
+      case 'generate-headlines':
+        return <HeadlineGeneratorPanel 
+            evalCriteria={headlineEvalCriteria} onEvalCriteriaChange={setHeadlineEvalCriteria}
+            onGenerateHeadlines={handleGenerateHeadlines} isLoading={isLoading} headlines={generatedHeadlines}
+            onReevaluate={handleReevaluateHeadline} onGenerateArticle={handleGenerateArticleFromHeadline}
+            sourceType={headlineSourceType} onSourceTypeChange={setHeadlineSourceType}
+            sourceUrl={headlineSourceUrl} onSourceUrlChange={setHeadlineSourceUrl}
+            sourceText={headlineSourceText} onSourceTextChange={setHeadlineSourceText}
+            generationScript={headlineGenerationScript} onGenerationScriptChange={setHeadlineGenerationScript}
+            onGenerateIdeas={handleGenerateArticleIdeas} articleIdeas={generatedArticleIdeas}
+            selectedArticleIdea={selectedArticleIdea} onSelectArticleIdea={setSelectedArticleIdea}
+        />;
+      case 'generate-articles':
+        return <ArticleGeneratorPanel 
+            wordCount={generateArticleWordCount} onWordCountChange={setGenerateArticleWordCount}
+            sourceType={generateArticleSourceType} onSourceTypeChange={setGenerateArticleSourceType}
+            sourceUrl={generateArticleSourceUrl} onSourceUrlChange={setGenerateArticleSourceUrl}
+            sourceText={generateArticleSourceText} onSourceTextChange={setGenerateArticleSourceText}
+            generationScript={generateArticleScript} onGenerationScriptChange={setGenerateArticleScript}
+            onGenerate={handleGenerateArticle} isLoading={isLoading}
+            generatedArticleHistory={generatedArticleHistory} currentArticleIterationIndex={currentArticleIterationIndex}
+            onRevertToIteration={setCurrentArticleIterationIndex}
+            articleTitle={generateArticleTitle} onArticleTitleChange={setGenerateArticleTitle}
+            endOfArticleSummary={endOfArticleSummary} onEndOfArticleSummaryChange={setEndOfArticleSummary}
+            articleEvalCriteria={articleEvalCriteria} onArticleEvalCriteriaChange={setArticleEvalCriteria}
+            onEnhanceArticle={handleEnhanceArticle}
+        />;
+      case 'article-template-library':
+          return <ArticleTemplateLibrary templates={savedArticleTemplates} onSave={handleSaveArticleTemplate} onDelete={handleDeleteArticleTemplate} onAddNew={() => setShowCreateArticleTemplateModal(true)} />;
+      case 'quick-post':
+          return <QuickPostPanel onSendToQueue={handleSendToAyrshareQueue} />;
+      case 'quick-article':
+          return <QuickArticlePanel />;
+      case 'posting-guides':
+          return <PostingGuides />;
+      case 'new-user-guide':
+          return <NewUserGuide />;
+      default:
+        return <div>Select a view</div>;
     }
-  }, []);
+  };
 
-  const handleSaveAdminSettings = useCallback((newSettings: AdminSettings) => {
-    setAdminSettings(newSettings);
-  }, []);
-
-  // if (!isAuthenticated) {
-  //   return <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} />;
-  // }
+  if (!isAuthenticated) {
+    return <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} />;
+  }
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white">
-      <Sidebar
-        view={view}
-        setView={setView}
-        onSignOut={handleSignOut}
-        userEmail={userEmail || ''}
-        isAdmin={isAdmin}
+    <div className="flex h-screen bg-gray-900 text-white font-sans">
+      <Sidebar 
+        view={view} 
+        setView={setView} 
+        onSignOut={handleSignOut} 
+        userEmail={userEmail || ''} 
+        isAdmin={isAdmin} 
         templateCount={savedTemplates.length}
         articleTemplateCount={savedArticleTemplates.length}
         showMobileMenu={showMobileMenu}
-        onToggleMobileMenu={handleToggleMobileMenu}
+        onToggleMobileMenu={() => setShowMobileMenu(!showMobileMenu)}
         setShowMobileMenu={setShowMobileMenu}
       />
-      <main className="flex-1 overflow-y-auto p-8">
+      <main className="flex-1 p-8 overflow-y-auto bg-slate-900">
         {error && (
-          <div className="bg-red-900/50 p-4 rounded-lg border border-red-700 text-sm text-red-300 mb-6 flex justify-between items-center animate-fade-in">
-            <span>{error}</span>
-            <button onClick={handleClearError} className="ml-4 px-3 py-1 bg-red-800/50 rounded-md hover:bg-red-700">Dismiss</button>
-          </div>
+            <div className="bg-red-900/50 p-4 rounded-lg border border-red-700 text-sm text-red-300 mb-6 flex justify-between items-center">
+                <span>{error}</span>
+                <button onClick={() => setError(null)} className="font-bold text-lg">&times;</button>
+            </div>
         )}
-        
-        {(() => {
-          switch (view) {
-            case 'generate-posts':
-              return (
-                <GenerationPanel
-                  articleUrl={articleUrl}
-                  onArticleUrlChange={setArticleUrl}
-                  articleText={articleText}
-                  onArticleTextChange={setArticleText}
-                  sourceType={postSourceType}
-                  onSourceTypeChange={setPostSourceType}
-                  standardStarterText={standardStarterText}
-                  onStandardStarterTextChange={setStandardStarterText}
-                  standardSummaryText={standardSummaryText}
-                  onStandardSummaryTextChange={setStandardSummaryText}
-                  generationScript={generationScript}
-                  onGenerationScriptChange={setGenerationScript}
-                  onGenerate={handleGeneratePosts}
-                  isLoading={isLoading}
-                  results={generationResults}
-                  onSendToAyrshareQueue={handleSendToAyrshareQueue}
-                />
-              );
-            case 'quick-post':
-                return <QuickPostPanel onSendToQueue={handleSendToAyrshareQueue} />;
-            case 'quick-article':
-                return <QuickArticlePanel />;
-            case 'ayrshare-queue':
-              return (
-                <QueuedPostsDisplay
-                  queuedPosts={ayrshareQueue}
-                  onDeletePost={handleDeleteQueuedPost}
-                  onUpdatePost={handleUpdateQueuedPost}
-                />
-              );
-            case 'ayrshare-log':
-               return (
-                <QueuedPostsDisplay
-                  queuedPosts={ayrshareLog.map(log => ({ ...log, assessment: '', score: 0, platforms: log.platforms || [] }))}
-                  readOnly={true}
-                  title="Posts Log"
-                  emptyMessage="No posts have been sent yet."
-                />
-              );
-            case 'scheduler':
-              return (
-                <Scheduler
-                  instructions={schedulingInstructions}
-                  onInstructionsChange={setSchedulingInstructions}
-                  onParseSchedule={handleParseSchedule}
-                  isParsing={isParsingSchedule}
-                  parsedSchedule={parsedSchedule}
-                />
-              );
-            case 'template-library':
-              return (
-                <PostsTemplateLibrary
-                  templates={savedTemplates}
-                  onSave={handleSaveTemplate}
-                  onDelete={handleDeleteTemplate}
-                  onAddNew={handleAddNewTemplate}
-                />
-              );
-            case 'researcher':
-              return (
-                <PostResearcherPanel
-                  researchScript={researchScript}
-                  onResearchScriptChange={setResearchScript}
-                  onResearchPosts={handleResearchPosts}
-                  isLoading={isLoading}
-                  results={researchedPosts}
-                />
-              );
-            case 'generate-headlines':
-              return (
-                <HeadlineGeneratorPanel
-                  evalCriteria={headlineEvalCriteria}
-                  onEvalCriteriaChange={setHeadlineEvalCriteria}
-                  onGenerateHeadlines={handleGenerateHeadlines}
-                  isLoading={isLoading}
-                  headlines={generatedHeadlines}
-                  onReevaluate={handleReevaluateHeadline}
-                  onGenerateArticle={handleSelectHeadlineForArticle}
-                  sourceType={headlineSourceType}
-                  onSourceTypeChange={setHeadlineSourceType}
-                  sourceUrl={headlineSourceUrl}
-                  onSourceUrlChange={setHeadlineSourceUrl}
-                  sourceText={headlineSourceText}
-                  onSourceTextChange={setHeadlineSourceText}
-                  generationScript={headlineGenerationScript}
-                  onGenerationScriptChange={setHeadlineGenerationScript}
-                  onGenerateIdeas={handleGenerateIdeas}
-                  articleIdeas={articleIdeas}
-                  selectedArticleIdea={selectedArticleIdea}
-                  onSelectArticleIdea={handleSelectArticleIdea}
-                />
-              );
-            case 'generate-articles':
-              return (
-                <ArticleGeneratorPanel
-                  wordCount={generateArticleWordCount}
-                  onWordCountChange={setGenerateArticleWordCount}
-                  sourceType={generateArticleSourceType}
-                  onSourceTypeChange={setGenerateArticleSourceType}
-                  sourceUrl={generateArticleSourceUrl}
-                  onSourceUrlChange={setGenerateArticleSourceUrl}
-                  sourceText={generateArticleSourceText}
-                  onSourceTextChange={setGenerateArticleSourceText}
-                  generationScript={generateArticleScript}
-                  onGenerationScriptChange={setGenerateArticleScript}
-                  onGenerate={handleGenerateArticle}
-                  isLoading={isLoading}
-                  generatedArticleHistory={generatedArticleHistory}
-                  currentArticleIterationIndex={currentArticleIterationIndex}
-                  onRevertToIteration={handleRevertToIteration}
-                  articleTitle={articleTitle}
-                  onArticleTitleChange={setArticleTitle}
-                  endOfArticleSummary={endOfArticleSummary}
-                  onEndOfArticleSummaryChange={setEndOfArticleSummary}
-                  articleEvalCriteria={articleEvalCriteria}
-                  onArticleEvalCriteriaChange={setArticleEvalCriteria}
-                  onEnhanceArticle={handleEnhanceArticle}
-                />
-              );
-            case 'article-template-library':
-              return (
-                <ArticleTemplateLibrary
-                  templates={savedArticleTemplates}
-                  onSave={handleSaveArticleTemplate}
-                  onDelete={handleDeleteArticleTemplate}
-                  onAddNew={handleOpenCreateArticleTemplateModal}
-                />
-              );
-            case 'persona':
-              return (
-                <PersonaPanel
-                  userRole={userRole}
-                  onUserRoleChange={setUserRole}
-                  targetAudience={targetAudience}
-                  onTargetAudienceChange={setTargetAudience}
-                  referenceWorldContent={referenceWorldContent}
-                  onReferenceWorldContentChange={setReferenceWorldContent}
-                  thisIsHowIWriteArticles={thisIsHowIWriteArticles}
-                  onThisIsHowIWriteArticlesChange={setThisIsHowIWriteArticles}
-                />
-              );
-            case 'backup-restore':
-              return (
-                <BackupRestorePanel
-                  backupData={backupData}
-                  onRestore={handleRestoreBackup}
-                />
-              );
-            case 'settings':
-              return (
-                <SettingsPanel
-                  settings={appSettings}
-                  onSettingsChange={handleSaveAppSettings}
-                  isAdmin={isAdmin}
-                />
-              );
-            case 'admin':
-              return isAdmin ? (
-                <AdminPanel
-                  settings={adminSettings}
-                  onSettingsChange={handleSaveAdminSettings}
-                />
-              ) : null;
-            case 'posting-guides':
-                return <PostingGuides />;
-            case 'new-user-guide':
-                return <NewUserGuide />;
-            default:
-              return <div>View not found</div>;
-          }
-        })()}
-
-        {showCreateArticleTemplateModal && (
-          <CreateArticleTemplateModal
-            onCreateTemplate={handleCreateArticleTemplateFromText}
-            onClose={handleCloseCreateArticleTemplateModal}
-            isLoading={isLoading}
-            error={createArticleTemplateError}
-          />
-        )}
+        {renderView()}
       </main>
+      {showCreateArticleTemplateModal && (
+        <CreateArticleTemplateModal 
+            onClose={() => setShowCreateArticleTemplateModal(false)}
+            onCreateTemplate={handleCreateArticleTemplateFromText}
+            isLoading={isLoading}
+            error={error}
+        />
+      )}
     </div>
   );
 };

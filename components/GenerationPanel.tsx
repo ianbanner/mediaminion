@@ -22,7 +22,7 @@ interface GenerationPanelProps {
   onGenerate: () => void;
   isLoading: boolean;
   results: GenerationResults | null;
-  onSendToAyrshareQueue: (post: TopPostAssessment) => void;
+  onSendToAyrshareQueue: (post: TopPostAssessment, platforms: string[]) => void;
 }
 
 const GenerationPanel: React.FC<GenerationPanelProps> = ({

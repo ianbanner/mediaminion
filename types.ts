@@ -35,10 +35,8 @@ export interface QueuedPost extends TopPostAssessment {
   sentAt?: string;
 }
 
-export interface SentPost {
+export interface SentPost extends TopPostAssessment {
   id: string;
-  title: string;
-  content: string;
   sentAt: string;
   platforms: string[];
 }
