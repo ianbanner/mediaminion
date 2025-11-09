@@ -1,4 +1,5 @@
 
+
 export interface TopPostAssessment {
     title: string;
     content: string;
@@ -30,6 +31,8 @@ export interface QueuedPost extends TopPostAssessment {
   id: string;
   scheduledTime?: string;
   platforms?: string[];
+  // Fix: Add optional sentAt property to support displaying sent posts in the same component.
+  sentAt?: string;
 }
 
 export interface SentPost {

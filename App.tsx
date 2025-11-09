@@ -1,5 +1,3 @@
-
-
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -17,7 +15,9 @@ import HeadlineGeneratorPanel from './components/HeadlineGeneratorPanel.tsx';
 import ArticleGeneratorPanel from './components/ArticleGeneratorPanel.tsx';
 import ArticleTemplateLibrary from './components/ArticleTemplateLibrary.tsx';
 import CreateArticleTemplateModal from './components/CreateArticleTemplateModal.tsx';
-import MobileCompanionPanel from './components/MobileCompanionPanel.tsx';
+import QuickPostPanel from './components/QuickPostPanel.tsx';
+import QuickArticlePanel from './components/QuickArticlePanel.tsx';
+
 
 import {
   generateAndEvaluatePosts,
@@ -65,7 +65,7 @@ import {
 } from './types.ts';
 
 const LOCAL_STORAGE_KEY = 'socialMediaMinionData';
-const ADMIN_EMAIL = 'admin@example.com'; // Default admin email
+const ADMIN_EMAIL = 'dave@bigagility.com'; // Default admin email
 
 // Define default values locally as they are not exported from scriptService.ts
 const DEFAULT_END_OF_ARTICLE_SUMMARY = `
@@ -155,6 +155,9 @@ export const App: React.FC = () => {
   const [view, setView] = useState('generate-posts');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<React.ReactNode | null>(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const handleToggleMobileMenu = useCallback(() => setShowMobileMenu(prev => !prev), []);
+
 
   // Persona State
   const [userRole, setUserRole] = useState('');
@@ -650,7 +653,9 @@ export const App: React.FC = () => {
         generationScript: headlineGenerationScript,
         evalScript: headlineEvalCriteria,
       });
-      setGeneratedHeadlines(results.sort((a, b) => b.score - a.score));
+      // Fix: Add unique IDs to the generated headlines before setting state to match the GeneratedHeadline[] type.
+      const resultsWithIds = results.map(h => ({ ...h, id: uuidv4() }));
+      setGeneratedHeadlines(resultsWithIds.sort((a, b) => b.score - a.score));
     } catch (err: any) {
       setError(`Failed to generate headlines: ${err.message}`);
     } finally {
@@ -786,6 +791,9 @@ export const App: React.FC = () => {
         isAdmin={isAdmin}
         templateCount={savedTemplates.length}
         articleTemplateCount={savedArticleTemplates.length}
+        showMobileMenu={showMobileMenu}
+        onToggleMobileMenu={handleToggleMobileMenu}
+        setShowMobileMenu={setShowMobileMenu}
       />
       <main className="flex-1 overflow-y-auto p-8">
         {error && (
@@ -818,6 +826,10 @@ export const App: React.FC = () => {
                   onSendToAyrshareQueue={handleSendToAyrshareQueue}
                 />
               );
+            case 'quick-post':
+                return <QuickPostPanel onSendToQueue={handleSendToAyrshareQueue} />;
+            case 'quick-article':
+                return <QuickArticlePanel />;
             case 'ayrshare-queue':
               return (
                 <QueuedPostsDisplay
@@ -959,8 +971,6 @@ export const App: React.FC = () => {
                   onSettingsChange={handleSaveAdminSettings}
                 />
               ) : null;
-            case 'mobile-companion':
-                return <MobileCompanionPanel />;
             default:
               return <div>View not found</div>;
           }

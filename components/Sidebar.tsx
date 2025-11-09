@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 
 interface SidebarProps {
@@ -10,6 +8,9 @@ interface SidebarProps {
   isAdmin: boolean;
   templateCount: number;
   articleTemplateCount: number;
+  showMobileMenu: boolean;
+  onToggleMobileMenu: () => void;
+  setShowMobileMenu: (show: boolean) => void;
 }
 
 const NavItem: React.FC<{
@@ -46,13 +47,20 @@ const NavHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 
-const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, isAdmin, templateCount, articleTemplateCount }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+    view, setView, onSignOut, userEmail, isAdmin, templateCount, 
+    articleTemplateCount, showMobileMenu, onToggleMobileMenu, setShowMobileMenu 
+}) => {
   return (
-    <div className="w-72 bg-slate-900/50 border-r border-slate-800 p-4 flex flex-col flex-shrink-0">
+    <div className="relative w-72 bg-slate-900/50 border-r border-slate-800 p-4 flex flex-col flex-shrink-0">
       <div className="flex-grow">
         <div className="mb-8">
-           <h2 className="text-xl font-bold text-white flex items-start">
-              <svg className="w-8 h-8 mr-3 text-teal-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+           <h2 
+              className="text-xl font-bold text-white flex items-start cursor-pointer group"
+              onClick={onToggleMobileMenu}
+              title="Open Quick Actions Menu"
+            >
+              <svg className="w-8 h-8 mr-3 text-teal-400 flex-shrink-0 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
               <div>
                 Social Media Minion
                 <span className="block text-sm font-normal text-gray-400 truncate" title={userEmail}>{userEmail}</span>
@@ -64,6 +72,19 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
             <NavHeader>Posts</NavHeader>
             <NavItem label="Generate Posts" viewName="generate-posts" currentView={view} onClick={() => setView('generate-posts')}>
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            </NavItem>
+
+            <NavItem label="Quick Post" viewName="quick-post" currentView={view} onClick={() => setView('quick-post')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            </NavItem>
+
+             <NavItem label="Quick Article" viewName="quick-article" currentView={view} onClick={() => setView('quick-article')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z M15 12h-3" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 9.5l-4 4" />
+                </svg>
             </NavItem>
 
             <NavItem label="Posts Queue" viewName="ayrshare-queue" currentView={view} onClick={() => setView('ayrshare-queue')}>
@@ -120,7 +141,7 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
                 currentView={view} 
                 onClick={() => setView('settings')}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c-1.756.426-1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c-1.756.426-1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573" /></svg>
             </NavItem>
             {isAdmin && (
                 <NavItem 
@@ -129,14 +150,9 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
                     currentView={view} 
                     onClick={() => setView('admin')}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573" /></svg>
                 </NavItem>
             )}
-
-            <NavHeader>Labs</NavHeader>
-            <NavItem label="Mobile Companion" viewName="mobile-companion" currentView={view} onClick={() => setView('mobile-companion')}>
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-            </NavItem>
 
             <div className="pt-4 border-t border-slate-700/50">
                 <button onClick={onSignOut} className="w-full flex items-center p-3 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-md transition-colors duration-200">
@@ -146,6 +162,53 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
             </div>
         </nav>
       </div>
+
+       {showMobileMenu && (
+        <div 
+            className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-20 flex flex-col justify-center items-stretch p-8 animate-fade-in-fast"
+            onClick={() => setShowMobileMenu(false)}
+        >
+          <div className="space-y-4">
+            <button
+              onClick={() => { setView('quick-post'); setShowMobileMenu(false); }}
+              className="w-full flex flex-col items-center justify-center p-6 text-center text-white bg-teal-600/50 rounded-lg border border-teal-500 hover:bg-teal-500/50 transition-colors"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                <span className="text-lg font-semibold">Quick Post</span>
+            </button>
+            <button
+              onClick={() => { setView('quick-article'); setShowMobileMenu(false); }}
+              className="w-full flex flex-col items-center justify-center p-6 text-center text-white bg-indigo-600/50 rounded-lg border border-indigo-500 hover:bg-indigo-500/50 transition-colors"
+            >
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z M15 12h-3" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 9.5l-4 4" />
+                </svg>
+                <span className="text-lg font-semibold">Quick Article</span>
+            </button>
+          </div>
+           <button 
+              onClick={() => setShowMobileMenu(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white"
+              aria-label="Close menu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+           </button>
+        </div>
+      )}
+      <style>{`
+        @keyframes fade-in-fast {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in-fast {
+          animation: fade-in-fast 0.2s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };
