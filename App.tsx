@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -16,6 +17,7 @@ import HeadlineGeneratorPanel from './components/HeadlineGeneratorPanel.tsx';
 import ArticleGeneratorPanel from './components/ArticleGeneratorPanel.tsx';
 import ArticleTemplateLibrary from './components/ArticleTemplateLibrary.tsx';
 import CreateArticleTemplateModal from './components/CreateArticleTemplateModal.tsx';
+import MobileCompanionPanel from './components/MobileCompanionPanel.tsx';
 
 import {
   generateAndEvaluatePosts,
@@ -957,6 +959,8 @@ export const App: React.FC = () => {
                   onSettingsChange={handleSaveAdminSettings}
                 />
               ) : null;
+            case 'mobile-companion':
+                return <MobileCompanionPanel />;
             default:
               return <div>View not found</div>;
           }

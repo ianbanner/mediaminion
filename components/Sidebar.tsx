@@ -133,6 +133,11 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
                 </NavItem>
             )}
 
+            <NavHeader>Labs</NavHeader>
+            <NavItem label="Mobile Companion" viewName="mobile-companion" currentView={view} onClick={() => setView('mobile-companion')}>
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+            </NavItem>
+
             <div className="pt-4 border-t border-slate-700/50">
                 <button onClick={onSignOut} className="w-full flex items-center p-3 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-md transition-colors duration-200">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
