@@ -213,7 +213,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
 
              <div className="text-center pt-4">
                 <Button onClick={onGenerate} isLoading={isLoading && generatedArticleHistory.length === 0}>
-                  {isLoading && generatedArticleHistory.length === 0 ? 'Minion at Work...' : 'Generate Article'}
+                  {isLoading && generatedArticleHistory.length === 0 ? 'Your Minion Is Working' : 'Generate Article'}
                 </Button>
             </div>
         </div>
@@ -290,7 +290,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                     </div>
                     <div className="text-center pt-4">
                         <Button onClick={() => onEnhanceArticle(selectedSuggestions)} isLoading={isLoading} disabled={selectedSuggestions.length === 0}>
-                            {isLoading ? 'Enhancing...' : `Enhance Article (${selectedSuggestions.length} selected)`}
+                            {isLoading ? 'Your Minion Is Working' : `Enhance Article (${selectedSuggestions.length} selected)`}
                         </Button>
                     </div>
                 </div>

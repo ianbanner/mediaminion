@@ -45,7 +45,7 @@ It uses a random high-performing template to create engaging content on the fly.
             <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6 max-w-2xl mx-auto">
                 <div className="text-center">
                     <Button onClick={handleGenerate} isLoading={isGenerating} disabled={isGenerating || !!generatedPost}>
-                        {isGenerating ? 'Generating...' : 'Generate New Post'}
+                        {isGenerating ? 'Your Minion Is Working' : 'Generate New Post'}
                     </Button>
                 </div>
                 

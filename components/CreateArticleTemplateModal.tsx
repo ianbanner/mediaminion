@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect } from 'react';
 import Button from './Button.tsx';
 
@@ -67,19 +68,10 @@ const CreateArticleTemplateModal: React.FC<CreateArticleTemplateModalProps> = ({
         <div className="flex justify-end gap-3">
           <Button onClick={onClose} className="bg-gray-700 hover:bg-gray-600">Cancel</Button>
           <Button onClick={handleSubmit} isLoading={isLoading} disabled={!articleText.trim() || isLoading}>
-            {isLoading ? 'Analyzing...' : 'Create Template'}
+            {isLoading ? 'Your Minion Is Working' : 'Create Template'}
           </Button>
         </div>
       </div>
-      <style>{`
-        @keyframes fade-in-fast {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-fast {
-          animation: fade-in-fast 0.3s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };

@@ -25,7 +25,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange }) =
 
   const buttonText = () => {
       switch (saveStatus) {
-          case 'saving': return 'Saving...';
+          case 'saving': return 'Your Minion Is Working';
           case 'saved': return 'Saved!';
           default: return 'Save Admin Settings';
       }
@@ -68,15 +68,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange }) =
           </Button>
         </div>
       </div>
-      <style>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 };

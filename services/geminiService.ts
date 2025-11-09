@@ -1,8 +1,9 @@
 
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   LINKEDIN_GENERATION_EVALUATION_SCRIPT,
-  RESEARCH_POPULAR_POSTS_SCRIPT,
+  LINKEDIN_ANALYSIS_SCRIPT,
   SCAN_CONTENT_FOR_TEMPLATES_SCRIPT,
   CREATE_TEMPLATES_FROM_POSTS_SCRIPT,
   PARSE_SCHEDULE_SCRIPT,
@@ -22,11 +23,10 @@ export interface SocialPost {
 }
 
 export interface ResearchedPost {
-  hook: string;
-  platform: string;
-  engagement: string;
+  postContent: string;
+  engagementMetrics: string;
+  postUrl: string;
   analysis: string;
-  url: string;
 }
 
 export interface PostEvaluation {
@@ -169,7 +169,7 @@ export async function generateAndEvaluatePosts({ articleUrl, articleText, templa
 export async function researchPopularPosts(script: string): Promise<ResearchedPost[]> {
   try {
     const ai = getAI();
-    const prompt = RESEARCH_POPULAR_POSTS_SCRIPT.replace('{script}', script);
+    const prompt = script; // The script from the state is now the full prompt.
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-pro',
@@ -180,28 +180,27 @@ export async function researchPopularPosts(script: string): Promise<ResearchedPo
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            researchedPosts: {
+            topPosts: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  hook: { type: Type.STRING },
-                  platform: { type: Type.STRING },
-                  engagement: { type: Type.STRING },
+                  postContent: { type: Type.STRING },
+                  engagementMetrics: { type: Type.STRING },
+                  postUrl: { type: Type.STRING },
                   analysis: { type: Type.STRING },
-                  url: { type: Type.STRING },
                 },
-                required: ['hook', 'platform', 'engagement', 'analysis', 'url'],
+                required: ['postContent', 'engagementMetrics', 'postUrl', 'analysis'],
               },
             },
           },
-          required: ['researchedPosts'],
+          required: ['topPosts'],
         },
       },
     });
 
-    const { researchedPosts } = JSON.parse(response.text);
-    return researchedPosts;
+    const { topPosts } = JSON.parse(response.text);
+    return topPosts;
   } catch (error) {
     console.error("Error researching posts:", error);
     if (error instanceof Error) {

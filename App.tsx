@@ -39,7 +39,7 @@ import {
 
 import {
   LINKEDIN_GENERATION_EVALUATION_SCRIPT,
-  RESEARCH_POPULAR_POSTS_SCRIPT, // Corrected export name
+  LINKEDIN_ANALYSIS_SCRIPT,
   PARSE_SCHEDULE_SCRIPT, // Corrected export name
   DEFAULT_HEADLINE_EVAL_CRITERIA,
   GENERATE_HEADLINES_SCRIPT,
@@ -68,14 +68,34 @@ const LOCAL_STORAGE_KEY = 'socialMediaMinionData';
 const ADMIN_EMAIL = 'dave@bigagility.com'; // Default admin email
 
 // Define default values locally as they are not exported from scriptService.ts
-const DEFAULT_END_OF_ARTICLE_SUMMARY = `
----
-Want to master AI for leadership?
+const DEFAULT_USER_ROLE = `I am an executive business , Product & Transformation Coach 
+I use Agile, Lean, Coaching and Product Framework to get stuff done and help others do the same`;
 
-Join our exclusive "AI for Leaders" workshop series and transform your strategic capabilities.
+const DEFAULT_TARGET_AUDIENCE = `- Executive leaders in large organisations
+- Change agents in large companies
+- Mid-level Project Managers and PMO officers`;
 
-Click here to learn more and sign up! [Link to your website/course]
-`;
+const DEFAULT_SCHEDULING_INSTRUCTIONS = "Please release one post at 8am UK and one at 1300 UK and one at 17:00UK";
+
+const DEFAULT_END_OF_ARTICLE_SUMMARY = `**Thanks for reading.** If this article resonated with you, here are three ways to go deeper:
+
+**🎧 Listen to the full conversation:** This article was inspired by insights from my Future of Work podcast.
+Hear the complete discussion about temporal intelligence and real practitioner stories →
+
+**📬 Get weekly frameworks:** Join 2,400+ transformation leaders who receive my newsletter every week. Each edition includes one actionable framework you can implement immediately to build agile leadership capabilities in the knowledge economy.
+[Subscribe Now](https://futureofwork.site/subscribe)
+
+**🤝 Work together:** I help C-level executives and transformation teams navigate digital change and build varifocal leadership capabilities. Book a strategic conversation
+[30 mins with Ian](https://calendly.com/bigagility/30min)
+
+**New to the Future of Work insights?** Start here: [Use AI to Accelerate the Boring Bits and Get To The Good Stuff](https://thefutureofworksite.substack.com/p/use-ai-to-accelerate-the-boring-bits) - it's been shared by 500+ senior leaders and shows you how to [specific valuable outcome].
+
+**Already part of the community?** Hit the ❤️ if this was valuable and share it with one colleague who's struggling with temporal leadership challenges. The best insights come from peer discussions in the comments below.
+
+**What's your biggest temporal leadership challenge?** I read every comment and often turn your questions into future articles. Let me know what you're wrestling with.
+
+***P.S.*** *Next week I'm diving into "You Are the Product Owner of You: Taking Complete Control of Your Professional Growth". Make sure you're subscribed so you don't miss it.*`;
+
 const DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES = `# My Personal Article Writing Style & Philosophy
 
 ## Core Principles
@@ -109,6 +129,14 @@ I often use a variation of the PAS (Problem-Agitate-Solution) framework, but ext
 -   **Bold Text**: Used sparingly to highlight key terms or phrases.
 -   **Subheadings**: Every 200-300 words to break up text and guide the reader.
 `;
+
+const DEFAULT_POST_STARTER_TEXT = "Quick Tip:";
+const DEFAULT_POST_SUMMARY_TEXT = `If you want to know more, here is a great article that takes this further:
+[ARTICLE_URL]
+
+If you liked this, please repost and share. It helps me a lot.
+
+Also - DM me for the details of courses on coaching, leadership and using AI to accelerate the boring bits and get to the good stuff. Remember you won't lose your job to AI, but you might lose your job to someone who gets the very best out of AI.`;
 
 
 // Utility to play a sound
@@ -160,8 +188,8 @@ export const App: React.FC = () => {
 
 
   // Persona State
-  const [userRole, setUserRole] = useState('');
-  const [targetAudience, setTargetAudience] = useState('');
+  const [userRole, setUserRole] = useState(DEFAULT_USER_ROLE);
+  const [targetAudience, setTargetAudience] = useState(DEFAULT_TARGET_AUDIENCE);
   const [referenceWorldContent, setReferenceWorldContent] = useState('');
   const [thisIsHowIWriteArticles, setThisIsHowIWriteArticles] = useState(DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
 
@@ -170,8 +198,8 @@ export const App: React.FC = () => {
   const [articleUrl, setArticleUrl] = useState('');
   const [articleText, setArticleText] = useState('');
   const [postSourceType, setPostSourceType] = useState<'url' | 'text'>('url');
-  const [standardStarterText, setStandardStarterText] = useState('');
-  const [standardSummaryText, setStandardSummaryText] = useState('');
+  const [standardStarterText, setStandardStarterText] = useState(DEFAULT_POST_STARTER_TEXT);
+  const [standardSummaryText, setStandardSummaryText] = useState(DEFAULT_POST_SUMMARY_TEXT);
   const [generationScript, setGenerationScript] = useState(LINKEDIN_GENERATION_EVALUATION_SCRIPT);
   const [generationResults, setGenerationResults] = useState<any>(null);
 
@@ -180,14 +208,14 @@ export const App: React.FC = () => {
 
   // Ayrshare Queue State
   const [ayrshareQueue, setAyrshareQueue] = useState<QueuedPost[]>([]);
-  const [schedulingInstructions, setSchedulingInstructions] = useState('');
+  const [schedulingInstructions, setSchedulingInstructions] = useState(DEFAULT_SCHEDULING_INSTRUCTIONS);
   const [parsedSchedule, setParsedSchedule] = useState<string[]>([]);
   const [isParsingSchedule, setIsParsingSchedule] = useState(false);
   const [ayrshareLog, setAyrshareLog] = useState<SentPost[]>([]);
   const schedulerIntervalRef = useRef<number | null>(null);
 
   // Post Researcher State
-  const [researchScript, setResearchScript] = useState(RESEARCH_POPULAR_POSTS_SCRIPT);
+  const [researchScript, setResearchScript] = useState(LINKEDIN_ANALYSIS_SCRIPT);
   const [researchedPosts, setResearchedPosts] = useState<any[] | null>(null);
 
   // Headline Generator State
@@ -256,24 +284,24 @@ export const App: React.FC = () => {
         const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (storedData) {
           const data: BackupData = JSON.parse(storedData);
-          setUserRole(data.userRole || '');
-          setTargetAudience(data.targetAudience || '');
+          setUserRole(data.userRole || DEFAULT_USER_ROLE);
+          setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
           setReferenceWorldContent(data.referenceWorldContent || '');
           setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
           setArticleUrl(data.articleUrl || '');
           setArticleText(data.articleText || '');
           setPostSourceType(data.postSourceType || 'url');
-          setStandardStarterText(data.standardStarterText || '');
-          setStandardSummaryText(data.standardSummaryText || '');
+          setStandardStarterText(data.standardStarterText || DEFAULT_POST_STARTER_TEXT);
+          setStandardSummaryText(data.standardSummaryText || DEFAULT_POST_SUMMARY_TEXT);
           setGenerationScript(data.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
           setSavedTemplates(data.savedTemplates || initialTemplates);
           setAyrshareQueue(data.ayrshareQueue || []);
-          setSchedulingInstructions(data.schedulingInstructions || '');
+          setSchedulingInstructions(data.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
           setParsedSchedule(data.parsedSchedule || []);
           setAyrshareLog(data.ayrshareLog || []);
           setAppSettings(data.settings || { ayrshareApiKey: '' });
           setAdminSettings(data.adminSettings || { authorizedEmails: [], secretPassword: '' });
-          setResearchScript(data.researchScript || RESEARCH_POPULAR_POSTS_SCRIPT);
+          setResearchScript(data.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
           setResearchedPosts(data.researchedPosts || null);
           setHeadlineEvalCriteria(data.headlineEvalCriteria || DEFAULT_HEADLINE_EVAL_CRITERIA);
           setHeadlineGenerationScript(data.headlineGenerationScript || GENERATE_HEADLINES_SCRIPT);
@@ -363,24 +391,24 @@ export const App: React.FC = () => {
   }, [backupData]);
 
   const handleRestoreBackup = useCallback((data: BackupData) => {
-    setUserRole(data.userRole || '');
-    setTargetAudience(data.targetAudience || '');
+    setUserRole(data.userRole || DEFAULT_USER_ROLE);
+    setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
     setReferenceWorldContent(data.referenceWorldContent || '');
     setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
     setArticleUrl(data.articleUrl || '');
     setArticleText(data.articleText || '');
     setPostSourceType(data.postSourceType || 'url');
-    setStandardStarterText(data.standardStarterText || '');
-    setStandardSummaryText(data.standardSummaryText || '');
+    setStandardStarterText(data.standardStarterText || DEFAULT_POST_STARTER_TEXT);
+    setStandardSummaryText(data.standardSummaryText || DEFAULT_POST_SUMMARY_TEXT);
     setGenerationScript(data.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
     setSavedTemplates(data.savedTemplates || initialTemplates);
     setAyrshareQueue(data.ayrshareQueue || []);
-    setSchedulingInstructions(data.schedulingInstructions || '');
+    setSchedulingInstructions(data.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
     setParsedSchedule(data.parsedSchedule || []);
     setAyrshareLog(data.ayrshareLog || []);
     setAppSettings(data.settings || { ayrshareApiKey: '' });
     setAdminSettings(data.adminSettings || { authorizedEmails: [], secretPassword: '' });
-    setResearchScript(data.researchScript || RESEARCH_POPULAR_POSTS_SCRIPT);
+    setResearchScript(data.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
     setResearchedPosts(data.researchedPosts || null);
     setHeadlineEvalCriteria(data.headlineEvalCriteria || DEFAULT_HEADLINE_EVAL_CRITERIA);
     setHeadlineGenerationScript(data.headlineGenerationScript || GENERATE_HEADLINES_SCRIPT);

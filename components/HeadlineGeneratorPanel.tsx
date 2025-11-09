@@ -125,7 +125,7 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
             </div>
             <div className="text-center">
                  <Button onClick={onGenerateIdeas} isLoading={isLoading && !articleIdeas} disabled={!isSourceProvided}>
-                    {isLoading && !articleIdeas ? 'Generating Ideas...' : 'Generate 10 Article Ideas'}
+                    {isLoading && !articleIdeas ? 'Your Minion Is Working' : 'Generate 10 Article Ideas'}
                  </Button>
             </div>
             
@@ -168,7 +168,7 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
                 
                 <div className="text-center pt-4 border-t border-slate-700/50">
                     <Button onClick={onGenerateHeadlines} isLoading={isLoading && !!selectedArticleIdea && !headlines}>
-                        {isLoading && !!selectedArticleIdea && !headlines ? 'Generating Headlines...' : 'Generate 20 Headlines'}
+                        {isLoading && !!selectedArticleIdea && !headlines ? 'Your Minion Is Working' : 'Generate 20 Headlines'}
                     </Button>
                 </div>
             </div>

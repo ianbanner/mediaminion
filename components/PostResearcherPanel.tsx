@@ -40,7 +40,7 @@ const PostResearcherPanel: React.FC<PostResearcherPanelProps> = ({
 
         <div className="text-center pt-4 border-t border-slate-700/50">
           <Button onClick={onResearchPosts} isLoading={isLoading}>
-            {isLoading ? 'Researching...' : 'Research Popular Posts'}
+            {isLoading ? 'Your Minion Is Working' : 'Research Popular Posts'}
           </Button>
         </div>
       </div>
@@ -54,14 +54,13 @@ const PostResearcherPanel: React.FC<PostResearcherPanelProps> = ({
                 <div key={index} className="pt-4 border-t border-slate-700/50 first:border-t-0 first:pt-0">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2 space-y-2">
-                      <h3 className="font-semibold text-teal-300">Hook & Analysis</h3>
-                      <p className="text-sm text-gray-200 p-3 bg-gray-900/70 rounded-lg border border-slate-700">"{post.hook}"</p>
+                      <h3 className="font-semibold text-teal-300">Post Content & Analysis</h3>
+                      <pre className="text-sm text-gray-200 p-3 bg-gray-900/70 rounded-lg border border-slate-700 whitespace-pre-wrap font-sans">{post.postContent}</pre>
                       <p className="text-sm text-gray-400"><strong className="text-gray-300">Analysis:</strong> {post.analysis}</p>
                     </div>
                     <div className="space-y-2 text-sm">
-                        <p><strong className="text-gray-400">Platform:</strong> {post.platform}</p>
-                        <p><strong className="text-gray-400">Engagement:</strong> {post.engagement}</p>
-                        <p><strong className="text-gray-400">Source:</strong> <a href={post.url} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline break-all">View Post</a></p>
+                        <p><strong className="text-gray-400">Engagement:</strong> {post.engagementMetrics}</p>
+                        <p><strong className="text-gray-400">Source:</strong> <a href={post.postUrl} target="_blank" rel="noopener noreferrer" className="text-teal-400 hover:underline break-all">View Post</a></p>
                     </div>
                   </div>
                 </div>

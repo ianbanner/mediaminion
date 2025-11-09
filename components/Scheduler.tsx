@@ -33,7 +33,7 @@ const Scheduler: React.FC<SchedulerProps> = ({ instructions, onInstructionsChang
                 </div>
                 <div className="text-center">
                     <Button onClick={onParseSchedule} isLoading={isParsing}>
-                        {isParsing ? 'Updating Schedule...' : 'Update Schedule with AI'}
+                        {isParsing ? 'Your Minion Is Working' : 'Update Schedule with AI'}
                     </Button>
                 </div>
                  <div className="pt-4 border-t border-slate-700">

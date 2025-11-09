@@ -33,7 +33,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ settings, onSettingsChang
 
   const buttonText = () => {
     switch (saveStatus) {
-      case 'saving': return 'Testing & Saving...';
+      case 'saving': return 'Your Minion Is Working';
       case 'saved': return 'Saved!';
       default: return 'Save Settings';
     }

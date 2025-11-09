@@ -1,4 +1,5 @@
 
+
 export const LINKEDIN_GENERATION_EVALUATION_SCRIPT = `# LinkedIn Content Creation & Evaluation Script
 
 ## Introduction
@@ -42,42 +43,52 @@ For each template in the Template Library provided below, I will:
 4. Incorporate relevant keywords for search visibility.
 5. End with effective calls-to-action.
 6. **IMPORTANT:** After generating the content from the template, you MUST append the full "Standard Summary Text" provided below to the end of EVERY post. The summary text should be separated by two line breaks from the main post content.
-7. Follow any special instructions provided with each template.
+7. Follow any special instructions for specific templates.
 
-### Template Library
-{templates_document}
+## Step 3: Post Evaluation
+I will evaluate each generated post against these criteria (10 points each, for a total of 100):
+1. Hook Strength (Opening Line)
+2. Visual Structure & Readability
+3. Emotional Resonance
+4. Value Proposition & Actionable Insights
+5. Storytelling Elements
+6. Engagement Potential
+7. Keyword Optimization
+8. Timing & Relevance
+9. Thought Leadership Position
+10. Connection to Business Goals
 
-### Standard Summary Text
-"""
+## Step 4: Results Presentation
+I will present the results in the specified JSON format containing:
+1. A ranked table ('rankedTable') of all posts by score.
+2. A detailed assessment ('top7Assessments') of the top 7 posts.
+
+## Standard Summary Text
 {standard_summary_text}
+
+## LinkedIn Templates Document
+Here are all the templates you must use for this task, sourced from your Template Library:
+"""
+{templates_document}
 """
 
-## Step 3: Evaluation
-After generating all posts, I will evaluate each one based on the following criteria and award a score out of 100.
+Now, begin the process and provide the final output in the required JSON format.
+`;
 
-### Evaluation Criteria (100 points total)
-- **Hook Strength (25 points):** How well does the opening line grab attention and create curiosity?
-- **Clarity & Value (25 points):** Is the core message clear, concise, and valuable to the target audience?
-- **Engagement Potential (20 points):** Does the post encourage likes, comments, and shares? Does it ask a question or state a controversial opinion?
-- **Tone & Brand Alignment (15 points):** Does the post's tone align with the user's professional role?
-- **Structure & Readability (15 points):** Is the post well-formatted (e.g., using whitespace, short paragraphs, lists) for easy reading on mobile?
+export const LINKEDIN_ANALYSIS_SCRIPT = `You are a LinkedIn marketing analyst. Your task is to analyze the provided public LinkedIn profile URL using Google Search to find the user's top-performing posts from the last few weeks (e.g., 4-8 weeks).
 
-## Step 4: Output
-I will provide my response in a structured JSON format containing two main sections:
-1.  **rankedTable:** A table of all generated posts, ranked from highest to lowest score.
-2.  **top7Assessments:** A detailed breakdown of the top 7 posts, including the full post content and an assessment explaining why it's effective.
+Your goal is to identify posts that have high engagement (likes, comments, shares) and analyze why they were successful.
 
-I will now begin the process.`;
+For each of the top 3-5 posts you find, create a JSON object with the following keys:
+- "postContent": The full text of the post.
+- "engagementMetrics": A summary of the engagement (e.g., "150 likes, 45 comments").
+- "postUrl": The direct URL to the specific post.
+- "analysis": A brief, insightful analysis of why this post likely performed well.
 
-export const RESEARCH_POPULAR_POSTS_SCRIPT = `
-You are an expert social media researcher. Your task is to use Google Search to find high-performing posts based on the user's script and return them in a structured JSON format.
+User's LinkedIn Profile URL:
+{linkedin_profile_url}
 
-User Script:
-"""
-{script}
-"""
-
-Analyze the user's request carefully and use your search capabilities to find 10 relevant posts. For each post, provide the requested information. The 'analysis' should be a concise explanation of why the post was likely successful (e.g., strong hook, relatable story, controversial take).
+Analyze the profile and return a single JSON object with a key "topPosts" which is an array of the post objects you created. IMPORTANT: Respond with ONLY the raw JSON object, without any markdown formatting, introductory text, or explanations.
 `;
 
 export const SCAN_CONTENT_FOR_TEMPLATES_SCRIPT = `
@@ -145,17 +156,23 @@ Source Article Content:
 Based on the source article, generate 10 distinct and compelling article ideas. Each idea should be a single, concise sentence that could serve as a working title or a central theme. The ideas should resonate with the target audience and be consistent with the professional role.
 `;
 
-export const GENERATE_HEADLINES_SCRIPT = `
-You are an expert copywriter AI. Your task is to generate 20 compelling headlines for an article based on the chosen core idea and the original source material.
+export const GENERATE_HEADLINES_SCRIPT = `You are a world-class copywriter specializing in creating irresistible, scroll-stopping headlines. Your task is to generate 20 headlines based on the user's "Chosen Article Idea".
 
-Chosen Article Idea: "{chosen_article_idea}"
+- The headlines should be diverse: some direct, some mysterious, some list-based, some question-based.
+- They must be tailored to the user's persona and target audience.
+- If a "Source Article" is provided, use its context to make the headlines more specific and compelling.
 
-Original Source Article (for context):
+### Chosen Article Idea
+"""
+{chosen_article_idea}
+"""
+
+### Source Article (for context)
 """
 {source_article}
 """
 
-Generate 20 diverse and high-impact headlines. They should be clear, intriguing, and tailored to grab the attention of the target audience.
+Generate exactly 20 headlines.
 `;
 
 export const EVALUATE_HEADLINES_SCRIPT = `
@@ -188,74 +205,170 @@ Return a single JSON object with the score and reasoning.
 `;
 
 
-export const DEFAULT_HEADLINE_EVAL_CRITERIA = `🧠 AI Headline Evaluation Instruction Script
+export const DEFAULT_HEADLINE_EVAL_CRITERIA = `As an expert headline evaluator, your task is to score headlines on a scale of 0-100 based on the following criteria. Internally, you will assess each category and sum the points to arrive at a final score. For each headline, you must also provide a brief, one-sentence "reasoning" for the score.
 
-Version: 2.0 (Scroll-Stopping Edition)
-Purpose: To evaluate the quality and effectiveness of a headline, assigning a score out of 100.
+### Evaluation Criteria & Scoring
 
-⚙️ Evaluation Method
-Assess the headline against the 8 categories below. Award points for each, sum them up for a total score, and provide a one-sentence overall verdict as the 'reasoning'.
+1.  **Clarity & Benefit (Max 18 points):**
+    - High (15-18): The value is immediately clear; zero ambiguity.
+    - Medium (9-14): Understandable but slightly abstract.
+    - Low (0-8): Vague or confusing.
+    *Question: Does the reader instantly know what’s in it for them?*
 
-🧩 Categories and Scoring Guidance
+2.  **Simplicity & Readability (Max 12 points):**
+    - High (10-12): Short, conversational, plain words (under ~14 words).
+    - Medium (6-9): Slightly long or technical but digestible.
+    - Low (0-5): Dense, formal, or jargon-heavy.
+    *Question: Is it instantly understandable?*
 
-1. Clarity & Benefit (18 points): How clearly does it communicate value? High score for zero ambiguity.
-2. Simplicity / Readability (12 points): How easily can it be processed? High score for short, conversational words.
-3. Emotional / Trigger Words (12 points): Does it use language that creates emotion or curiosity?
-4. Specificity / Detail (8 points): Does it use concrete data or examples (numbers, timeframes)?
-5. Relevance to Audience (13 points): How well does it fit the target audience's world or pain points?
-6. Format / Structure (10 points): Does it have a strong rhythm and flow? Does it sound good?
-7. Alignment / Truthfulness (12 points): Does it feel authentic and capable of delivering on its promise? Low score for clickbait.
-8. Scroll-Stopping Power (15 points): Can it interrupt passive scrolling with surprise, tension, or a bold claim?
+3.  **Emotional / Trigger Words (Max 12 points):**
+    - High (10-12): Uses words that create emotion, tension, or curiosity (e.g., "uncomfortable," "broken," "secret").
+    - Medium (6-9): Some feeling, but muted.
+    - Low (0-5): Purely factual or flat.
+    *Question: Does it make the reader feel something or want to know more?*
+
+4.  **Specificity & Detail (Max 8 points):**
+    - High (7-8): Includes numbers, timeframes, or concrete details (e.g., "40% less," "in one week").
+    - Medium (4-6): Some detail, but still general.
+    - Low (0-3): Vague and interchangeable.
+    *Question: Is it concrete and specific?*
+
+5.  **Relevance to Audience (Max 13 points):**
+    - High (11-13): Speaks directly to their context, struggles, or goals.
+    - Medium (7-10): Generally relevant but lacks personal resonance.
+    - Low (0-6): Off-topic or unclear who it’s for.
+    *Question: Would my intended reader stop and say, “That’s me”?*
+
+6.  **Format & Structure (Max 10 points):**
+    - High (9-10): Strong rhythm, punchy phrasing, balanced clauses.
+    - Medium (6-8): Slightly clunky but works.
+    - Low (0-5): Hard to read aloud or oddly structured.
+    *Question: Does it sound good when spoken aloud?*
+
+7.  **Alignment & Truthfulness (Max 12 points):**
+    - High (10-12): Delivers exactly what it promises; authentic tone.
+    - Medium (6-9): Slight exaggeration.
+    - Low (0-5): Misleading or clickbait.
+    *Question: Will the reader feel the content kept its promise?*
+
+8.  **Scroll-Stopping Power (Max 15 points):**
+    - High (13-15): Bold contrast, emotional polarity, or phrasing that halts motion.
+    - Medium (8-12): Some intrigue but not arresting.
+    - Low (0-7): Predictable or ignorable.
+    *Question: Would this make someone pause mid-scroll?*
 `;
 
 
-export const GENERATE_ARTICLE_SCRIPT = `
-# Primary Task
-Your goal is to produce an informative title and a blog article of approximately {word_count} words. The article should be based on the provided source content but re-interpreted and expanded upon in a unique style. After writing the article, you will evaluate your own work based on the provided criteria.
+export const GENERATE_ARTICLE_SCRIPT = `# Article Generation & Evaluation Script
 
-## Persona & Style
-- **Writing Style**: Emulate Marty Cagan's direct, no-nonsense, experience-based approach, but apply it to broader leadership/transformation topics. The tone should be high-energy, confident, and engaging, using stories and analogies. It should feel practical and actionable.
-- **My Professional Role**: {user_role}
-- **My Target Audience**: {target_audience}
+## Role & Goal
+You are an expert content writer and a sharp-eyed editor, working in tandem. Your primary task is to write a high-quality article in the style of Marty Cagan, tailored for the **Target Audience** provided below. After writing, you will immediately evaluate it and provide constructive feedback for improvement.
+
+## Core Persona & Audience Context
+To ensure the article is perfectly aligned, keep the following persona and audience in mind at all times.
+
+### My Professional Role
+"""
+{user_role}
+"""
+
+### My Target Audience
+"""
+{target_audience}
+"""
+
+## Article Generation Parameters
+
+### Primary Task & Style
+- **Primary Task**: Produce an informative title and a blog article.
+- **Style**: Emulate Marty Cagan's direct, no-nonsense, experience-based approach, but apply it to broader leadership and transformation topics, not just Product Management.
+- **Tone**: High-energy, high-personality, engaging, and story-based. Use analogies.
 - **Language**: Use UK English terms and spelling throughout.
-- **Paragraphs**: Structure paragraphs with varied length for readability, applying the Nicolas Cole 1-3-1 style (one sentence, then a paragraph of 3-5 sentences, then another single sentence) where it enhances flow and impact.
+- **Word Count:** Approximately {word_count} words.
+- **Working Title:** Use "{preferred_title}" as a strong guide if provided.
 
-## Input Materials
-- **Preferred Title**: "{preferred_title}" (If provided, use this to guide the article's focus. If not, create a compelling, informative title.)
-- **Primary Source Content**: """{source_content}"""
-- **My Writing Style References**: """{style_references}"""
-- **Reference World (Core Knowledge Base)**: If content is provided here, treat it as a primary source of truth to ground the article. """{reference_world}"""
-- **End of Article Summary**: This text must be appended at the very end of the article. """{end_of_article_summary}"""
+### Structure & Quality
+- **Article Structure**: 
+    1. An informative title.
+    2. The main article body, drawing insights from the provided source content.
+    3. A concluding section with five key takeaways as pithy summary points.
+    4. For each of the five takeaways, provide a ~50-word expansion explaining its meaning and importance for the target audience.
+- **Readability**: Vary sentence length and structure to maintain flow and engagement.
+- **Formatting**: Use Markdown for high readability on platforms like Substack (headers, lists, bolding, etc.).
+- **Audience Focus**: Content must be practical, credible, and immediately actionable for the **Target Audience** defined above.
 
-## Article Structure
-1.  **Informative Title**: Create one if not provided.
-2.  **Main Article**: Write the body of the article, drawing insights from the source content while adhering to the specified style and persona.
-3.  **Five Key Takeaways**: After the main body, create a section with five pithy summary points.
-4.  **Takeaway Expansion**: For each of the five takeaways, provide a 50-word expansion explaining its meaning and importance for the target audience.
-5.  **Append Summary**: Add the "End of Article Summary" text at the very end.
+## Process
+1.  **Analyze Context:** Deeply analyze the style references, persona, source content, and all parameters.
+2.  **Grounding Strategy:**
+    - If "Reference World" is provided, prioritize it for factual grounding and context.
+    - If empty, rely on the "Core Persona & Audience Context" to shape the article's perspective and arguments.
+3.  **Draft Article:** Write the compelling, well-structured article according to all the Style and Structure parameters above.
+4.  **Append Summary:** After the main article content and the takeaways, append the "End of Article Summary" provided below, separated by a horizontal rule (\`---\`).
+5.  **Evaluate Article:** After drafting, switch to your editor role. Critically evaluate the article you just wrote using the "Article Evaluation Criteria" provided below. This includes providing a numeric score.
+6.  **Provide Feedback:** Based on your evaluation, provide:
+    a. A detailed **evaluation** of the article's strengths and weaknesses against the criteria.
+    b. A structured list of actionable **suggestions** for improvement. For each suggestion, you must specify the 'area' it improves (e.g., "Clarity", "Style", "Structure").
 
-## Evaluation Task
-After generating the article, you must perform a quality analysis based on the criteria below and provide a score, evaluation, and suggestions for improvement.
+## Inputs
 
-### Evaluation Criteria
+### Writing Style References (Emulate this style)
+"""
+{style_references}
+"""
+
+### Primary Source Content (Base the article on this)
+"""
+{source_content}
+"""
+
+### Reference World (Use for grounding and facts)
+"""
+{reference_world}
+"""
+
+### End of Article Summary (Append this at the very end)
+"""
+{end_of_article_summary}
+"""
+
+### Article Evaluation Criteria (Use these to evaluate your own work)
 """
 {evaluation_criteria}
 """
 
-## Final Output
-You must provide your response as a single JSON object containing the generated title, the full article content (including takeaways and the appended summary), your evaluation text, the overall score, and a list of structured suggestions for improvement.
+Now, begin the process. Generate a compelling title, the full article content (including takeaways and the final summary), the evaluation, the score, and the structured suggestions. Provide the output in the specified JSON format.
 `;
 
 
-export const DEFAULT_ARTICLE_EVAL_CRITERIA = `
-1.  **Audience Alignment (0-20)**: How well is the article written for the target audience? Is the language, tone, and content appropriate and valuable for them?
-2.  **Structure & Clarity (0-20)**: Is the article well-structured, with a clear introduction, body, and conclusion? Are transitions smooth? Is the 1-3-1 paragraphing style used effectively?
-3.  **Persuasiveness & Insight (0-20)**: Is the content persuasive and insightful? Does it offer a unique perspective or practical, actionable advice?
-4.  **Engagement & Style (0-20)**: Is the article engaging, story-based, and high-energy? Does it match the specified "Marty Cagan" style with good analogies? Is it interesting to read?
-5.  **Conciseness & Redundancy (0-10)**: Does the article avoid redundancy and unnecessary jargon? Is every sentence purposeful?
-6.  **Clarity Gaps (0-10)**: Does the article highlight or address areas that might be unclear to the reader, or does it leave questions unanswered?
+export const DEFAULT_ARTICLE_EVAL_CRITERIA = `# Article Evaluation Criteria
 
-Finally, summarise the article with a score out of 100.
+You will evaluate the generated article based on the following criteria. Provide a detailed, actionable analysis for each point. **Crucially, you must summarise the article with a score out of 100.**
+
+### Evaluation Criteria
+
+1.  **Target Audience Alignment:**
+    *   How well is the article written for the specified **Target Audience**?
+    *   Is the content immediately actionable and practical for this audience?
+
+2.  **Structure & Clarity:**
+    *   Is the article clear, well-structured, and easy to follow?
+    *   Are the transitions between sections smooth and logical?
+
+3.  **Persuasiveness & Credibility:**
+    *   Is the content persuasive and credible?
+    *   Does it maintain a professional tone while being engaging?
+
+4.  **Style & Engagement (Marty Cagan-inspired):**
+    *   Is the article story-based, fun, interesting, and high-energy?
+    *   Does it use engaging analogies? Does it have a high personality?
+    *   Does it successfully emulate the direct, no-nonsense, experience-based style requested?
+
+5.  **Conciseness & Redundancy:**
+    *   Is the article free of redundant points or language?
+    *   Is it concise while still providing necessary depth?
+
+6.  **Completeness:**
+    *   Are there any unclear areas in the article that need further expansion or clarification?
 `;
 
 

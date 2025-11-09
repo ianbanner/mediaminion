@@ -79,7 +79,7 @@ const GenerationPanel: React.FC<GenerationPanelProps> = ({
 
         <div className="text-center pt-4">
           <Button onClick={onGenerate} isLoading={isLoading}>
-            {isLoading ? 'Minion at Work...' : 'Generate & Evaluate Posts'}
+            {isLoading ? 'Your Minion Is Working' : 'Generate & Evaluate Posts'}
           </Button>
         </div>
       </div>
