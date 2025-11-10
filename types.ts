@@ -50,6 +50,16 @@ export interface SentPost extends TopPostAssessment {
   platforms: string[];
 }
 
+export interface PostAnalytics {
+  postId: string;
+  reach: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  clicks: number;
+  engagementRate: number;
+}
+
 export interface AppSettings {
   ayrshareApiKey: string;
 }

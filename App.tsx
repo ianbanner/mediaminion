@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -23,6 +24,7 @@ import PostingGuides from './components/PostingGuides.tsx';
 import NewUserGuide from './components/NewUserGuide.tsx';
 import HeadlineEditModal from './components/HeadlineEditModal.tsx';
 import LandingPage from './components/LandingPage.tsx';
+import AnalyticsPanel from './components/AnalyticsPanel.tsx';
 
 
 import {
@@ -495,7 +497,7 @@ export const App: React.FC = () => {
         throw new Error("Ayrshare API Key is not set in Settings.");
       }
       await postToAyrshare(post.content, settings.ayrshareApiKey, post.platforms);
-      setAyrshareLog(prev => [{ ...post, sentAt: new Date().toISOString() }, ...prev]);
+      setAyrshareLog(prev => [{ ...post, sentAt: new Date().toISOString(), platforms: post.platforms || ['linkedin'] }, ...prev]);
       setAyrshareQueue(prev => prev.filter(p => p.id !== id));
       playSound('success');
     } catch (err: any) {
@@ -518,7 +520,7 @@ export const App: React.FC = () => {
             throw new Error("Ayrshare API Key is not set in Settings.");
         }
         await postToAyrshare(topPost.content, settings.ayrshareApiKey, topPost.platforms);
-        setAyrshareLog(prev => [{ ...topPost, sentAt: new Date().toISOString() }, ...prev]);
+        setAyrshareLog(prev => [{ ...topPost, sentAt: new Date().toISOString(), platforms: topPost.platforms || ['linkedin'] }, ...prev]);
         setAyrshareQueue(prev => prev.slice(1));
         setQuickPostSuccessMessage(topPost.content);
         playSound('success');
@@ -897,6 +899,8 @@ export const App: React.FC = () => {
         return <PostingGuides />;
       case 'new-user-guide':
         return <NewUserGuide />;
+      case 'analytics':
+        return <AnalyticsPanel sentPosts={ayrshareLog} />;
       default:
         return <div>Select a view</div>;
     }
