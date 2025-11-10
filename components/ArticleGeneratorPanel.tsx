@@ -18,6 +18,8 @@ interface ArticleGeneratorPanelProps {
   onGenerationScriptChange: (script: string) => void;
   onGenerate: () => void;
   isLoading: boolean;
+  isEnhancingArticle: boolean;
+  isGeneratingHeadlines: boolean;
   generatedArticleHistory: GeneratedArticle[];
   currentArticleIterationIndex: number;
   onRevertToIteration: (index: number) => void;
@@ -53,6 +55,8 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
   onGenerationScriptChange,
   onGenerate,
   isLoading,
+  isEnhancingArticle,
+  isGeneratingHeadlines,
   generatedArticleHistory,
   currentArticleIterationIndex,
   onRevertToIteration,
@@ -77,6 +81,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
     
     const [copied, setCopied] = useState(false);
     const [selectedSuggestions, setSelectedSuggestions] = useState<Suggestion[]>([]);
+    const [editorNote, setEditorNote] = useState('');
     const articleContentRef = useRef<HTMLDivElement>(null);
     const destinations: ArticleDestination[] = ['LinkedIn', 'Medium', 'Substack', 'Facebook', 'Non Fiction Book', 'Fiction Book'];
 
@@ -87,8 +92,17 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
     useEffect(() => {
         if (currentArticle) {
             setSelectedSuggestions(currentArticle.suggestions || []);
+            setEditorNote(''); // Reset editor note when iteration changes
         }
     }, [currentArticle]);
+    
+    const handleEnhanceClick = () => {
+        const suggestionsToPass = [...selectedSuggestions];
+        if (editorNote.trim() !== '') {
+            suggestionsToPass.push({ text: editorNote, area: "Editor's Note" });
+        }
+        onEnhanceArticle(suggestionsToPass);
+    };
 
     const handleSuggestionToggle = (suggestion: Suggestion) => {
         setSelectedSuggestions(prev => {
@@ -104,7 +118,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
     const fullArticleMarkdown = useMemo(() => {
         if (!currentArticle) return '';
         if (currentArticle.headlineApplied) {
-            return `# ${currentArticle.title}\n\n${currentArticle.content}`;
+             return `# ${currentArticle.title}\n\n${currentArticle.content}`;
         }
         const contentStartsWithTitle = currentArticle.content.trim().startsWith(`# ${currentArticle.title}`) || currentArticle.content.trim().startsWith(`# `);
         if (contentStartsWithTitle) {
@@ -308,37 +322,31 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
 
         {currentArticle && (
             <div className="mt-8 p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
-                <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
-                    <div>
-                        <h2 className="text-2xl font-bold text-gray-200">Generated Article</h2>
-                         <div className="flex items-center gap-4 mt-1">
-                            <span className="text-sm font-semibold text-gray-400">Viewing Iteration: {currentArticleIterationIndex + 1}</span>
-                            <span className="px-3 py-1 text-sm font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{currentArticle.score}/100</span>
-                        </div>
-                    </div>
-                    <div className="flex gap-2">
-                        {currentArticle.headlineApplied ? (
-                             <>
+                
+                {/* STATE 3: FINAL ARTICLE VIEW */}
+                {currentArticle.headlineApplied ? (
+                    <>
+                        <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
+                             <div>
+                                <h2 className="text-2xl font-bold text-teal-300">Final Article Ready for Publishing</h2>
+                                <p className="text-sm text-gray-400">Your article has been finalized with the new headline.</p>
+                             </div>
+                             <div className="flex gap-2">
                                 <button onClick={handleCopy} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white">
                                     {copied ? 'Copied!' : 'Copy Article'}
                                 </button>
                                 <button onClick={handleDownload} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-500">
                                     Download .md
                                 </button>
-                            </>
-                        ) : (
-                            <Button 
-                                onClick={onGenerateHeadlinesForArticle} 
-                                isLoading={isLoading} 
-                                disabled={isLoading}
-                            >
-                                {isLoading ? 'Working...' : 'Generate Headlines'}
-                            </Button>
-                        )}
-                    </div>
-                </div>
+                            </div>
+                        </div>
+                        <div ref={articleContentRef} className="prose prose-invert max-w-none">
+                            <MarkdownRenderer content={fullArticleMarkdown} />
+                        </div>
+                    </>
 
-                {generatedHeadlinesForArticle ? (
+                /* STATE 2: HEADLINE SELECTION VIEW */
+                ) : generatedHeadlinesForArticle ? (
                     <div className="space-y-4">
                         <h3 className="text-xl font-semibold text-gray-300">Choose a Headline</h3>
                         {generatedHeadlinesForArticle.map((headline) => (
@@ -362,8 +370,20 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                             </div>
                         ))}
                     </div>
+
+                /* STATE 1: DRAFT & ENHANCE VIEW */
                 ) : (
                     <>
+                        <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-200">Generated Article</h2>
+                                <div className="flex items-center gap-4 mt-1">
+                                    <span className="text-sm font-semibold text-gray-400">Viewing Iteration: {currentArticleIterationIndex + 1}</span>
+                                    <span className="px-3 py-1 text-sm font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{currentArticle.score}/100</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div ref={articleContentRef} className="prose prose-invert max-w-none">
                             <MarkdownRenderer content={fullArticleMarkdown} />
                         </div>
@@ -392,9 +412,24 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                                     )
                                 })}
                             </div>
-                            <div className="mt-4 text-center">
-                                <Button onClick={() => onEnhanceArticle(selectedSuggestions)} isLoading={isLoading}>
-                                    {isLoading ? 'Your Minion Is Working' : 'Enhance Article with Selected Suggestions'}
+
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Add a Personal Editor's Note</label>
+                                <textarea
+                                    value={editorNote}
+                                    onChange={(e) => setEditorNote(e.target.value)}
+                                    placeholder="e.g., Make it less about me being the hero..."
+                                    className="w-full p-3 bg-gray-900 rounded-md text-sm text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"
+                                    rows={2}
+                                />
+                             </div>
+
+                            <div className="mt-6 text-center flex flex-col sm:flex-row justify-center gap-4">
+                                <Button onClick={handleEnhanceClick} isLoading={isEnhancingArticle}>
+                                    {isEnhancingArticle ? 'Your Minion Is Working' : 'Enhance Article'}
+                                </Button>
+                                <Button onClick={onGenerateHeadlinesForArticle} isLoading={isGeneratingHeadlines} className="bg-indigo-600 hover:bg-indigo-500">
+                                    {isGeneratingHeadlines ? 'Working...' : 'Move on to Generate Headlines'}
                                 </Button>
                             </div>
                         </div>

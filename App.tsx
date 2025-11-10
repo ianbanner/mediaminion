@@ -184,6 +184,8 @@ export const App: React.FC = () => {
 
   const [view, setView] = useState('generate-posts');
   const [isLoading, setIsLoading] = useState(false);
+  const [isEnhancingArticle, setIsEnhancingArticle] = useState(false);
+  const [isGeneratingHeadlines, setIsGeneratingHeadlines] = useState(false);
   const [error, setError] = useState<React.ReactNode | null>(null);
   const [queueError, setQueueError] = useState<React.ReactNode | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -611,7 +613,7 @@ export const App: React.FC = () => {
       const currentArticle = generatedArticleHistory[currentArticleIterationIndex];
       if (!currentArticle) return;
       
-      setIsLoading(true);
+      setIsEnhancingArticle(true);
       setError(null);
       try {
           const enhancedArticle = await enhanceArticle({
@@ -627,7 +629,7 @@ export const App: React.FC = () => {
           setError(<span>Article enhancement failed. Error: {err.message}</span>);
           playSound('error');
       } finally {
-          setIsLoading(false);
+          setIsEnhancingArticle(false);
       }
   }, [generatedArticleHistory, currentArticleIterationIndex, articleEvalCriteria]);
   
@@ -655,7 +657,7 @@ export const App: React.FC = () => {
   const handleGenerateHeadlinesForArticle = useCallback(async () => {
     if (!generatedArticleHistory[currentArticleIterationIndex]) return;
 
-    setIsLoading(true);
+    setIsGeneratingHeadlines(true);
     setError(null);
     setGeneratedHeadlinesForArticle(null);
     try {
@@ -670,7 +672,7 @@ export const App: React.FC = () => {
         setError(<span>Headline generation failed. Error: {err.message}</span>);
         playSound('error');
     } finally {
-        setIsLoading(false);
+        setIsGeneratingHeadlines(false);
     }
   }, [generatedArticleHistory, currentArticleIterationIndex, headlineEvalCriteriaForArticle]);
 
@@ -810,6 +812,8 @@ export const App: React.FC = () => {
             generationScript={generateArticleScript} onGenerationScriptChange={setGenerateArticleScript}
             onGenerate={() => setShowSelectArticleTemplateModal(true)}
             isLoading={isLoading}
+            isEnhancingArticle={isEnhancingArticle}
+            isGeneratingHeadlines={isGeneratingHeadlines}
             generatedArticleHistory={generatedArticleHistory}
             currentArticleIterationIndex={currentArticleIterationIndex}
             onRevertToIteration={setCurrentArticleIterationIndex}

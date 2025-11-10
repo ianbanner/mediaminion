@@ -2,65 +2,73 @@
 
 import { ArticleDestination } from '../types.ts';
 
+const UNIVERSAL_GUIDELINES = `
+### Universal Best Practices
+- **Scannability:** Content should work for skimmers and deep readers. Use subheadings every 200-300 words.
+- **Mobile Optimization:** Use shorter sentences and frequent paragraph breaks (1-3 sentences per paragraph). Use visual breaks like bullet points. Describe where optimized images should be placed.
+- **Engagement:** Start with a compelling hook. Ensure every sentence provides value. Use specific numbers and examples. Ensure smooth transitions between paragraphs. End with a clear call to action.
+- **Authority:** Include client examples, data points, unique insights, and personal experience.
+`;
+
 export const LINKEDIN_DESTINATION_GUIDELINES = `
-- **Optimal Length**: 1,500-2,000 words (7-10 minute read). The sweet spot for highest engagement is 1,900-2,000 words.
-- **Algorithm Focus**: The platform favors longer, well-researched content.
-- **Structure**:
-    - **Headlines**: Aim for under 50 characters for maximum impact.
-    - **Subheadings**: Use every 200-300 words for scannability.
-    - **Images**: Describe where illustrative images should be placed.
-- **Content Style**:
-    - Maintain a professional, corporate-friendly but conversational tone.
-    - Focus on industry expertise, data-driven insights, and actionable business value.
-    - Reference industry trends and position the content as thought leadership.
+${UNIVERSAL_GUIDELINES}
+---
+### Platform-Specific Guidelines for LinkedIn
+- **Optimal Length**: 1,500-2,000 words (sweet spot: 1,900-2,000).
+- **Algorithm Focus**: The platform favors longer, well-researched content. The first few hours are critical for engagement.
+- **Structure**: Headlines should be under 50 characters for maximum impact. Aim to describe where exactly 8 images (1200x644px) should be placed.
+- **Content Style**: Maintain a professional, corporate-friendly, but conversational tone. Focus on industry expertise, data-driven insights, and actionable business value. Reference industry trends and position the content as thought leadership.
+- **Publishing Strategy**: The best time to post is Tuesday-Thursday mornings (8-10 AM).
 `;
 
 export const MEDIUM_DESTINATION_GUIDELINES = `
+${UNIVERSAL_GUIDELINES}
+---
+### Platform-Specific Guidelines for Medium
 - **Optimal Length**: 1,600 words (a 7-minute read).
-- **Algorithm Focus**: The platform prioritizes reader "attention time."
-- **Structure**:
-    - **Subheadings**: Break content into digestible sections to keep readers engaged.
-    - **Images**: Describe where high-quality images (1200x800 px) should be placed.
-- **Content Style**:
-    - Emphasize storytelling, narrative depth, and personal anecdotes.
-    - Maintain a conversational but authoritative tone.
-    - Focus on value density; every paragraph must serve the reader.
+- **Algorithm Focus**: The platform prioritizes reader "attention time." Quality signals include comments, highlights, and saves.
+- **Structure**: Break content into digestible sections to keep readers engaged. Describe where high-quality images (1200x800 px) with alt text and keyworded filenames should be placed.
+- **Content Style**: Emphasize storytelling, narrative depth, and personal anecdotes. Maintain a conversational but authoritative tone. Every paragraph must be value-dense to hold reader attention.
+- **SEO**: Integrate keywords in the title and naturally throughout the text.
 `;
 
 export const SUBSTACK_DESTINATION_GUIDELINES = `
-- **Optimal Length**: 800-1,200 words. Top newsletters average around 871 words.
-- **Audience Focus**: This is for a newsletter community, not a public blog post.
-- **Structure**:
-    - **Subject Lines**: The main title should be under 50 characters for mobile visibility.
-    - **Preview Text**: The sub-headline/first few sentences are critical as they appear in email clients.
-    - **Sections**: Use multiple short sections with clear headlines.
-- **Content Style**:
-    - Adopt a personal, intimate, and direct tone.
-    - Reference past newsletters to build a narrative.
-    - Include community-building elements like direct questions to encourage replies.
+${UNIVERSAL_GUIDELINES}
+---
+### Platform-Specific Guidelines for Substack
+- **Optimal Length**: 800-1,200 words (top newsletters average 871).
+- **Audience Focus**: This is for a newsletter community, not a public blog post. Adopt a personal, intimate, and direct tone.
+- **Structure**: The main title (subject line) must be under 50 characters for mobile visibility. The sub-headline/first few sentences are critical as they appear as preview text in email clients. Use multiple short sections.
+- **Content Style**: Reference past newsletters to build a narrative. Include community-building elements like direct questions to encourage replies.
+- **Technical Notes**: 70% of readers are on mobile, so use very short paragraphs and lots of white space.
 `;
 
 export const FACEBOOK_DESTINATION_GUIDELINES = `
-- **Context**: While Facebook favors very short posts, this is for a long-form article (like a Facebook Note or an extended post). The primary challenge is retaining attention in a fast-scrolling feed.
-- **Structure**:
-    - **Hook**: The first 1-2 sentences are absolutely critical. They must be extremely compelling to stop the scroll.
-    - **Paragraphs**: Keep paragraphs exceptionally short, often just 1-2 sentences. Use lots of white space.
-    - **Visuals**: Describe where compelling images or videos should be placed frequently to break up text.
-- **Content Style**:
-    - Use a highly conversational, informal, and direct tone.
-    - Use emojis where appropriate to add personality.
-    - The goal is to drive engagement (comments, shares) and traffic to other resources.
+${UNIVERSAL_GUIDELINES}
+---
+### Platform-Specific Guidelines for Facebook (Long-Form Post)
+- **Context**: This is for a long-form article (like a Facebook Note or an extended post). The primary challenge is retaining attention in a fast-scrolling feed.
+- **Structure**: The first 1-2 sentences are the absolutely critical hook to stop the scroll. Keep paragraphs exceptionally short, often just 1-2 sentences. Use lots of white space. Describe where compelling images or videos should be placed frequently to break up text.
+- **Content Style**: Use a highly conversational, informal, and direct tone. Use emojis where appropriate to add personality.
+- **Goal**: The primary purpose is to drive engagement (comments, shares) and traffic to other resources, not just to be read in-platform.
 `;
 
 export const NON_FICTION_BOOK_GUIDELINES = `
-// Guidelines for a non-fiction book chapter to be defined.
-// For now, focus on deep, well-structured content that could form part of a larger, coherent work.
-// Ensure logical flow, clear arguments, and evidence-based claims.
+${UNIVERSAL_GUIDELINES}
+---
+### Platform-Specific Guidelines for a Non-Fiction Book Chapter
+- **Context**: This should be written as a chapter of a larger, coherent work.
+- **Content Style**: Focus on deep, well-structured content with a logical flow, clear arguments, and evidence-based claims. Maintain a consistent tone that would be appropriate for a full-length book.
+- **Structure**: Ensure the chapter can stand on its own while also connecting to a larger narrative or argument.
 `;
 
 export const FICTION_BOOK_GUIDELINES = `
-// Guidelines for a fiction book chapter to be defined.
-// For now, focus on narrative, character development, setting, and plot progression.
+${UNIVERSAL_GUIDELINES}
+---
+### Platform-Specific Guidelines for a Fiction Book Chapter
+- **Context**: This should be written as a chapter of a larger, coherent work of fiction.
+- **Content Style**: Focus on narrative, character development, setting, dialogue, and plot progression.
+- **Structure**: The chapter should advance the story, develop characters, and end in a way that makes the reader want to continue to the next chapter.
 `;
 
 export const DESTINATION_GUIDELINES_MAP: Record<ArticleDestination, string> = {
