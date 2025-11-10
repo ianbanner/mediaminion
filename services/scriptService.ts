@@ -304,7 +304,7 @@ To ensure the article is perfectly aligned, keep the following persona and audie
     - If "Reference World" is provided, prioritize it for factual grounding and context.
     - If empty, rely on the "Core Persona & Audience Context" to shape the article's perspective and arguments.
 3.  **Draft Article:** Write the compelling, well-structured article according to all the Style and Structure parameters above.
-4.  **Append Summary:** After the main article content and the takeaways, append the "End of Article Summary" provided below, separated by a horizontal rule (\`---\`).
+4.  **Append and Enhance Summary:** After the main article content and the takeaways, take the "End of Article Summary" provided below. You MUST find the placeholder question (which will be a generic question like "**What's your biggest temporal leadership challenge?**") and replace it with a single, highly-relevant, thought-provoking question directly related to the main topic of the article you just wrote. Then, append the full, modified summary separated by a horizontal rule (\`---\`).
 5.  **Evaluate Article:** After drafting, switch to your editor role. Critically evaluate the article you just wrote using the "Article Evaluation Criteria" provided below. This includes providing a numeric score.
 6.  **Provide Feedback:** Based on your evaluation, provide:
     a. A detailed **evaluation** of the article's strengths and weaknesses against the criteria.
