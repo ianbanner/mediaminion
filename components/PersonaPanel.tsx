@@ -2,7 +2,6 @@ import React, { useCallback } from 'react';
 
 interface PersonaPanelProps {
   userRole: string;
-  // Fix: Update prop types to match React state setters, allowing functional updates.
   onUserRoleChange: React.Dispatch<React.SetStateAction<string>>;
   targetAudience: string;
   onTargetAudienceChange: React.Dispatch<React.SetStateAction<string>>;
@@ -23,7 +22,6 @@ const PersonaPanel: React.FC<PersonaPanelProps> = ({
   onThisIsHowIWriteArticlesChange,
 }) => {
 
-  // Fix: Update setter type to match the props.
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
     const file = event.target.files?.[0];
     if (file) {

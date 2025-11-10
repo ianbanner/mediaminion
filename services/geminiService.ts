@@ -13,7 +13,6 @@ import {
   REEVALUATE_HEADLINE_SCRIPT,
   GENERATE_ARTICLE_IDEAS_SCRIPT,
   ENHANCE_ARTICLE_SCRIPT,
-  POLISH_ARTICLE_SCRIPT,
   CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT,
   GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT
 } from './scriptService.ts';
@@ -609,11 +608,11 @@ export async function enhanceArticle({ originalTitle, originalContent, evalCrite
     }
 }
 
-export async function polishArticle({ originalTitle, originalContent, evalCriteria, styleReferences }: { originalTitle: string; originalContent: string; evalCriteria: string; styleReferences: string; }): Promise<GeneratedArticle> {
+export async function polishArticle({ originalTitle, originalContent, evalCriteria, styleReferences, polishScript }: { originalTitle: string; originalContent: string; evalCriteria: string; styleReferences: string; polishScript: string; }): Promise<GeneratedArticle> {
     try {
         const ai = getAI();
         
-        const prompt = POLISH_ARTICLE_SCRIPT
+        const prompt = polishScript
             .replace('{original_title}', originalTitle)
             .replace('{original_content}', originalContent)
             .replace('{style_references}', styleReferences)

@@ -12,6 +12,7 @@ export interface TopPostAssessment {
     title: string;
     content: string;
     assessment: string;
+
     score: number;
 }
 
@@ -87,6 +88,7 @@ export interface GeneratedArticle {
   suggestions: Suggestion[];
   score: number;
   headlineApplied?: boolean;
+  type?: 'initial' | 'enhanced' | 'polished';
 }
 
 export interface GeneratedHeadline {

@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -18,8 +19,6 @@ import ArticleGeneratorPanel from './components/ArticleGeneratorPanel.tsx';
 import ArticleTemplateLibrary from './components/ArticleTemplateLibrary.tsx';
 import CreateArticleTemplateModal from './components/CreateArticleTemplateModal.tsx';
 import SelectArticleTemplateModal from './components/SelectArticleTemplateModal.tsx';
-import QuickPostPanel from './components/QuickPostPanel.tsx';
-import QuickArticlePanel from './components/QuickArticlePanel.tsx';
 import PostingGuides from './components/PostingGuides.tsx';
 import NewUserGuide from './components/NewUserGuide.tsx';
 import HeadlineEditModal from './components/HeadlineEditModal.tsx';
@@ -220,9 +219,6 @@ export const App: React.FC = () => {
   const [parsedSchedule, setParsedSchedule] = useState<string[]>([]);
   const [isParsingSchedule, setIsParsingSchedule] = useState(false);
   const [postingNowId, setPostingNowId] = useState<string | null>(null);
-  const [isQuickPosting, setIsQuickPosting] = useState(false);
-  const [quickPostError, setQuickPostError] = useState<React.ReactNode | null>(null);
-  const [quickPostSuccessMessage, setQuickPostSuccessMessage] = useState<string | null>(null);
 
 
   const [settings, setSettings] = useState<AppSettings>({ ayrshareApiKey: '' });
@@ -510,30 +506,6 @@ export const App: React.FC = () => {
     }
   }, [ayrshareQueue, settings.ayrshareApiKey]);
   
-  const handleQuickPost = useCallback(async () => {
-    const topPost = ayrshareQueue[0];
-    if (!topPost) return;
-
-    setIsQuickPosting(true);
-    setQuickPostError(null);
-    setQuickPostSuccessMessage(null);
-    try {
-        if (!settings.ayrshareApiKey) {
-            throw new Error("Ayrshare API Key is not set in Settings.");
-        }
-        await postToAyrshare(topPost.content, settings.ayrshareApiKey, topPost.platforms);
-        setAyrshareLog(prev => [{ ...topPost, sentAt: new Date().toISOString(), platforms: topPost.platforms || ['linkedin'] }, ...prev]);
-        setAyrshareQueue(prev => prev.slice(1));
-        setQuickPostSuccessMessage(topPost.content);
-        playSound('success');
-    } catch (err: any) {
-        setQuickPostError(<span>Failed to post: {err.message}</span>);
-        playSound('error');
-    } finally {
-        setIsQuickPosting(false);
-    }
-}, [ayrshareQueue, settings.ayrshareApiKey]);
-
   useEffect(() => {
     const now = new Date();
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -639,8 +611,11 @@ export const App: React.FC = () => {
             finalDestination: generateArticleDestination,
             finalDestinationGuidelines: finalDestinationGuidelines,
         });
-        setGeneratedArticleHistory(prev => [...prev, article]);
-        setCurrentArticleIterationIndex(generatedArticleHistory.length);
+        setGeneratedArticleHistory(prev => {
+            const newHistory = [...prev, { ...article, type: 'initial' }];
+            setCurrentArticleIterationIndex(newHistory.length - 1);
+            return newHistory;
+        });
         logUserActivity('article');
         playSound('success');
     } catch (err: any) {
@@ -654,7 +629,7 @@ export const App: React.FC = () => {
       generateArticleSourceType, generateArticleSourceText, generateArticleSourceUrl,
       referenceWorldContent, userRole, targetAudience, generateArticleTitle,
       endOfArticleSummary, articleEvalCriteria, savedArticleTemplates,
-      generateArticleDestination, finalDestinationGuidelines, logUserActivity, generatedArticleHistory.length
+      generateArticleDestination, finalDestinationGuidelines, logUserActivity
   ]);
 
   const handleEnhanceArticle = useCallback(async (suggestions: Suggestion[]) => {
@@ -670,8 +645,11 @@ export const App: React.FC = () => {
               evalCriteria: articleEvalCriteria,
               suggestions
           });
-          setGeneratedArticleHistory(prev => [...prev, enhancedArticle]);
-          setCurrentArticleIterationIndex(generatedArticleHistory.length);
+          setGeneratedArticleHistory(prev => {
+              const newHistory = [...prev, { ...enhancedArticle, type: 'enhanced' }];
+              setCurrentArticleIterationIndex(newHistory.length - 1);
+              return newHistory;
+          });
           playSound('success');
       } catch (err: any) {
           setError(<span>Article enhancement failed. Error: {err.message}</span>);
@@ -681,7 +659,7 @@ export const App: React.FC = () => {
       }
   }, [generatedArticleHistory, currentArticleIterationIndex, articleEvalCriteria]);
   
-  const handlePolishArticle = useCallback(async () => {
+  const handlePolishArticle = useCallback(async (polishScript: string) => {
       const currentArticle = generatedArticleHistory[currentArticleIterationIndex];
       if (!currentArticle) return;
       
@@ -693,9 +671,13 @@ export const App: React.FC = () => {
               originalContent: currentArticle.content,
               evalCriteria: articleEvalCriteria,
               styleReferences: thisIsHowIWriteArticles,
+              polishScript,
           });
-          setGeneratedArticleHistory(prev => [...prev, polishedArticle]);
-          setCurrentArticleIterationIndex(generatedArticleHistory.length);
+          setGeneratedArticleHistory(prev => {
+              const newHistory = [...prev, { ...polishedArticle, type: 'polished' }];
+              setCurrentArticleIterationIndex(newHistory.length - 1);
+              return newHistory;
+          });
           playSound('success');
       } catch (err: any) {
           setError(<span>Article polishing failed. Error: {err.message}</span>);
@@ -890,47 +872,51 @@ export const App: React.FC = () => {
             generatedArticleHistory={generatedArticleHistory}
             currentArticleIterationIndex={currentArticleIterationIndex}
             onRevertToIteration={setCurrentArticleIterationIndex}
-            articleTitle={generateArticleTitle} onArticleTitleChange={setGenerateArticleTitle}
-            endOfArticleSummary={endOfArticleSummary} onEndOfArticleSummaryChange={setEndOfArticleSummary}
-            articleEvalCriteria={articleEvalCriteria} onArticleEvalCriteriaChange={setArticleEvalCriteria}
+            articleTitle={generateArticleTitle}
+            onArticleTitleChange={setGenerateArticleTitle}
+            endOfArticleSummary={endOfArticleSummary}
+            onEndOfArticleSummaryChange={setEndOfArticleSummary}
+            articleEvalCriteria={articleEvalCriteria}
+            onArticleEvalCriteriaChange={setArticleEvalCriteria}
             onEnhanceArticle={handleEnhanceArticle}
             onPolishArticle={handlePolishArticle}
             headlineEvalCriteriaForArticle={headlineEvalCriteriaForArticle}
             onHeadlineEvalCriteriaForArticleChange={setHeadlineEvalCriteriaForArticle}
             onGenerateHeadlinesForArticle={handleGenerateHeadlinesForArticle}
             generatedHeadlinesForArticle={generatedHeadlinesForArticle}
-            onSelectHeadlineForEdit={(headline) => setSelectedHeadlineForEdit(headline)}
+            onSelectHeadlineForEdit={setSelectedHeadlineForEdit}
             generateArticleDestination={generateArticleDestination}
             onGenerateArticleDestinationChange={setGenerateArticleDestination}
             finalDestinationGuidelines={finalDestinationGuidelines}
             onFinalDestinationGuidelinesChange={setFinalDestinationGuidelines}
             onResetFinalDestinationGuidelines={handleResetDestinationGuidelines}
         />;
-       case 'article-template-library':
-        return <ArticleTemplateLibrary 
+      case 'analytics':
+        return <AnalyticsPanel sentPosts={ayrshareLog} />;
+      case 'article-template-library':
+        return <ArticleTemplateLibrary
           templates={savedArticleTemplates}
-          onSave={(id, updates) => setSavedArticleTemplates(prev => prev.map(t => t.id === id ? {...t, ...updates, isNew: false} : t))}
+          onSave={(id, updates) => setSavedArticleTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates, isNew: false } : t))}
           onDelete={(id) => setSavedArticleTemplates(prev => prev.filter(t => t.id !== id))}
           onAddNew={() => setShowCreateArticleTemplateModal(true)}
         />;
-      case 'quick-post':
-        return <QuickPostPanel 
-            topPost={ayrshareQueue[0]} 
-            onQuickPost={handleQuickPost}
-            isLoading={isQuickPosting}
-            error={quickPostError}
-            successMessage={quickPostSuccessMessage}
-        />;
-      case 'quick-article':
-        return <QuickArticlePanel />;
       case 'posting-guides':
         return <PostingGuides />;
       case 'new-user-guide':
         return <NewUserGuide />;
-      case 'analytics':
-        return <AnalyticsPanel sentPosts={ayrshareLog} />;
       default:
-        return <div>Select a view</div>;
+        return <GenerationPanel 
+          articleUrl={articleUrl} onArticleUrlChange={setArticleUrl}
+          articleText={articleText} onArticleTextChange={setArticleText}
+          sourceType={postSourceType} onSourceTypeChange={setPostSourceType}
+          standardStarterText={standardStarterText} onStandardStarterTextChange={setStandardStarterText}
+          standardSummaryText={standardSummaryText} onStandardSummaryTextChange={setStandardSummaryText}
+          generationScript={generationScript} onGenerationScriptChange={setGenerationScript}
+          onGenerate={handleGeneratePosts}
+          isLoading={isLoading}
+          results={generationResults}
+          onSendToAyrshareQueue={handleSendToAyrshareQueue}
+        />;
     }
   };
 
@@ -938,74 +924,94 @@ export const App: React.FC = () => {
     return (
       <>
         <LandingPage onLoginClick={() => setShowLoginModal(true)} />
-        {showLoginModal && (
-          <LoginScreen 
-            onSignIn={handleSignIn} 
-            error={authError} 
-            adminEmail={ADMIN_EMAIL}
-            onClose={() => {
-              setShowLoginModal(false);
-              setAuthError(null);
-            }}
-          />
-        )}
+        {showLoginModal && <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} onClose={() => setShowLoginModal(false)} />}
       </>
     );
   }
 
   return (
-    <>
-    {showCreateArticleTemplateModal && (
-        <CreateArticleTemplateModal 
-            onClose={() => {
-                setShowCreateArticleTemplateModal(false);
-                setError(null);
-            }}
-            onCreateTemplate={handleCreateArticleTemplateFromText}
-            isLoading={isLoading}
-            error={error}
-        />
-    )}
-    {showSelectArticleTemplateModal && (
-        <SelectArticleTemplateModal
-            templates={savedArticleTemplates}
-            onClose={() => setShowSelectArticleTemplateModal(false)}
-            onSelect={(template) => handleGenerateArticle(template)}
-        />
-    )}
-    {selectedHeadlineForEdit && (
-        <HeadlineEditModal
-            isOpen={!!selectedHeadlineForEdit}
-            headline={selectedHeadlineForEdit}
-            onClose={() => setSelectedHeadlineForEdit(null)}
-            onSave={handleApplyHeadlineToArticle}
-        />
-    )}
-
-    <div className="flex h-screen bg-gray-900 text-white">
+    <div className="flex h-screen bg-gray-900 text-white font-sans">
       <div className="hidden md:flex">
-         <Sidebar 
-            view={view} setView={setView} 
-            onSignOut={handleSignOut}
-            userEmail={userEmail || ''}
-            isAdmin={isAdmin}
-            templateCount={savedTemplates.length}
-            articleTemplateCount={savedArticleTemplates.length}
-            showMobileMenu={showMobileMenu}
-            onToggleMobileMenu={() => setShowMobileMenu(prev => !prev)}
-            setShowMobileMenu={setShowMobileMenu}
+        <Sidebar
+          view={view}
+          setView={setView}
+          onSignOut={handleSignOut}
+          userEmail={userEmail || ''}
+          isAdmin={isAdmin}
+          templateCount={savedTemplates.length}
+          articleTemplateCount={savedArticleTemplates.length}
+          showMobileMenu={showMobileMenu}
+          onToggleMobileMenu={() => setShowMobileMenu(!showMobileMenu)}
+          setShowMobileMenu={setShowMobileMenu}
         />
       </div>
-      <main className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-900/50 relative">
-        {error && (
-            <div className="bg-red-900/50 p-4 rounded-lg border border-red-700 text-sm text-red-300 mb-6 flex justify-between items-center animate-fade-in-fast">
-                <span>{error}</span>
-                <button onClick={() => setError(null)} className="font-bold text-lg">&times;</button>
-            </div>
+
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        {/* Mobile Header */}
+        <div className="md:hidden sticky top-0 bg-gray-900/80 backdrop-blur-sm z-10 p-2 border-b border-slate-800 flex justify-between items-center">
+            <h1 className="text-lg font-bold">Social Media Minion</h1>
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </button>
+        </div>
+
+        {/* Mobile Sidebar */}
+        {showMobileMenu && (
+             <div className="fixed inset-0 z-40 md:hidden animate-fade-in-fast">
+                 <div className="absolute inset-0 bg-black/50" onClick={() => setShowMobileMenu(false)}></div>
+                 <div className="relative w-72 bg-slate-900 h-full">
+                    <Sidebar
+                      view={view}
+                      setView={(v) => { setView(v); setShowMobileMenu(false); }}
+                      onSignOut={handleSignOut}
+                      userEmail={userEmail || ''}
+                      isAdmin={isAdmin}
+                      templateCount={savedTemplates.length}
+                      articleTemplateCount={savedArticleTemplates.length}
+                      showMobileMenu={showMobileMenu}
+                      onToggleMobileMenu={() => setShowMobileMenu(!showMobileMenu)}
+                      setShowMobileMenu={setShowMobileMenu}
+                    />
+                 </div>
+             </div>
         )}
-        {renderView()}
+
+        <div className="p-4 md:p-8 flex-1">
+          {error && (
+            <div className="bg-red-900/50 p-4 rounded-lg border border-red-700 text-sm text-red-300 mb-4 flex justify-between items-center">
+              <span>{error}</span>
+              <button onClick={() => setError(null)} className="font-bold text-lg">&times;</button>
+            </div>
+          )}
+          {renderView()}
+        </div>
       </main>
+
+      {showCreateArticleTemplateModal && (
+        <CreateArticleTemplateModal
+          onCreateTemplate={handleCreateArticleTemplateFromText}
+          onClose={() => setShowCreateArticleTemplateModal(false)}
+          isLoading={isLoading}
+          error={error}
+        />
+      )}
+
+      {showSelectArticleTemplateModal && (
+        <SelectArticleTemplateModal
+          templates={savedArticleTemplates}
+          onSelect={(template) => handleGenerateArticle(template)}
+          onClose={() => setShowSelectArticleTemplateModal(false)}
+        />
+      )}
+
+      {selectedHeadlineForEdit && (
+        <HeadlineEditModal
+          isOpen={!!selectedHeadlineForEdit}
+          headline={selectedHeadlineForEdit}
+          onClose={() => setSelectedHeadlineForEdit(null)}
+          onSave={handleApplyHeadlineToArticle}
+        />
+      )}
     </div>
-    </>
   );
 };

@@ -1,8 +1,8 @@
 
+
 import React from 'react';
 import Button from './Button.tsx';
 import GenerationResultDisplay from './GenerationResultDisplay.tsx';
-// Fix: TopPostAssessment is not exported from geminiService.ts, it should be imported from types.ts
 import { GenerationResults } from '../services/geminiService.ts';
 import { TopPostAssessment } from '../types.ts';
 

@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GeneratedArticle, Suggestion, GeneratedHeadline, ArticleDestination } from '../types.ts';
 import Button from './Button.tsx';
 import MarkdownRenderer from './MarkdownRenderer.tsx';
+import { POLISH_ARTICLE_SCRIPT } from '../services/scriptService.ts';
 
 interface ArticleGeneratorPanelProps {
   wordCount: number;
@@ -29,7 +31,7 @@ interface ArticleGeneratorPanelProps {
   articleEvalCriteria: string;
   onArticleEvalCriteriaChange: (value: string) => void;
   onEnhanceArticle: (selectedSuggestions: Suggestion[]) => void;
-  onPolishArticle: () => void;
+  onPolishArticle: (polishScript: string) => void;
   headlineEvalCriteriaForArticle: string;
   onHeadlineEvalCriteriaForArticleChange: (value: string) => void;
   onGenerateHeadlinesForArticle: () => void;
@@ -84,6 +86,8 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
     const [copied, setCopied] = useState(false);
     const [selectedSuggestions, setSelectedSuggestions] = useState<Suggestion[]>([]);
     const [editorNote, setEditorNote] = useState('');
+    const [polishScript, setPolishScript] = useState(POLISH_ARTICLE_SCRIPT);
+
     const articleContentRef = useRef<HTMLDivElement>(null);
     const destinations: ArticleDestination[] = ['LinkedIn', 'Medium', 'Substack', 'Facebook', 'Non Fiction Book', 'Fiction Book'];
 
@@ -150,6 +154,15 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    };
+    
+    const getArticleTypeDisplayName = (type: GeneratedArticle['type']) => {
+        switch (type) {
+            case 'initial': return 'Initial Draft';
+            case 'enhanced': return 'Enhanced';
+            case 'polished': return 'Polished';
+            default: return 'Draft';
+        }
     };
 
     return (
@@ -228,65 +241,9 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                 )}
             </div>
 
-            <div className="pt-4 border-t border-slate-700/50">
-                <label className="block text-sm font-medium text-gray-300 mb-1">End of Article Summary</label>
-                <p className="text-xs text-gray-500 mb-2">This text will be appended to the end of the generated article.</p>
-                <textarea 
-                    value={endOfArticleSummary} 
-                    onChange={(e) => onEndOfArticleSummaryChange(e.target.value)} 
-                    rows={4}
-                    placeholder="Enter a standard summary or call to action..."
-                    className="w-full p-3 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400" 
-                />
-            </div>
-
-            <div className="pt-4 border-t border-slate-700/50">
-                <label className="block text-sm font-medium text-gray-300 mb-1">Article Evaluation Criteria</label>
-                <p className="text-xs text-gray-500 mb-2">The AI will use these instructions to evaluate the generated article and suggest improvements.</p>
-                <textarea 
-                    value={articleEvalCriteria} 
-                    onChange={(e) => onArticleEvalCriteriaChange(e.target.value)} 
-                    rows={10}
-                    className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" 
-                />
-            </div>
-            
-            <div className="pt-4 border-t border-slate-700/50">
-                <label className="block text-sm font-medium text-gray-300 mb-1">Headline Evaluation Criteria</label>
-                <p className="text-xs text-gray-500 mb-2">The AI uses these criteria to generate and score the 10 headline options for your article.</p>
-                <textarea 
-                    value={headlineEvalCriteriaForArticle} 
-                    onChange={(e) => onHeadlineEvalCriteriaForArticleChange(e.target.value)} 
-                    rows={10}
-                    className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" 
-                />
-            </div>
-
-            <div className="pt-4 border-t border-slate-700/50">
-                <div className="flex justify-between items-center mb-1">
-                    <label className="block text-sm font-medium text-gray-300">Final Destination Guidelines</label>
-                    <button onClick={onResetFinalDestinationGuidelines} className="text-xs text-gray-400 hover:text-white hover:underline">Reset to default</button>
-                </div>
-                <p className="text-xs text-gray-500 mb-2">These guidelines are automatically selected based on your chosen destination and will be used by the AI. You can edit them for this specific article.</p>
-                <textarea 
-                    value={finalDestinationGuidelines} 
-                    onChange={(e) => onFinalDestinationGuidelinesChange(e.target.value)} 
-                    rows={10}
-                    className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" 
-                />
-            </div>
-
-            <div className="pt-4 border-t border-slate-700/50">
-                <h3 className="text-lg font-semibold text-gray-300 mb-2">Advanced: AI Generation Script</h3>
-                <div className="bg-yellow-900/50 p-3 rounded-lg border border-yellow-700 text-sm text-yellow-300 mb-3">
-                    <strong>Warning:</strong> Modifying this script can break the article generation process. Only edit if you understand the AI's instructions.
-                </div>
-                <textarea value={generationScript} onChange={(e) => onGenerationScriptChange(e.target.value)} rows={15} className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" />
-            </div>
-
             <div className="text-center pt-4 border-t border-slate-700/50">
                 <Button onClick={onGenerate} isLoading={isLoading}>
-                    {isLoading ? 'Your Minion Is Working' : 'Generate Article'}
+                    {isLoading ? 'Minion is working on Generating Article...' : 'Generate Article'}
                 </Button>
             </div>
         </div>
@@ -295,29 +252,32 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
             <div className="mt-8 p-6 bg-slate-900/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <h2 className="text-2xl font-bold text-gray-200">Generated Article</h2>
-                    {generatedArticleHistory.length > 1 && (
-                        <div className="flex items-center gap-4">
-                            <label htmlFor="iteration-slider" className="text-sm font-medium text-gray-400 whitespace-nowrap">Version History:</label>
-                            <input
-                                id="iteration-slider"
-                                type="range"
-                                min="0"
-                                max={generatedArticleHistory.length - 1}
-                                value={currentArticleIterationIndex}
-                                onChange={(e) => onRevertToIteration(parseInt(e.target.value))}
-                                className="w-full"
-                            />
-                            <span className="text-sm font-semibold text-gray-300">{currentArticleIterationIndex + 1} / {generatedArticleHistory.length}</span>
-                        </div>
-                    )}
                 </div>
+
+                {generatedArticleHistory.length > 1 && (
+                    <div className="p-4 bg-slate-800/50 rounded-lg">
+                        <h3 className="text-sm font-semibold text-gray-300 mb-2">Version History</h3>
+                        <ul className="space-y-1">
+                            {generatedArticleHistory.map((article, index) => (
+                                <li key={index}>
+                                    <button 
+                                        onClick={() => onRevertToIteration(index)}
+                                        className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${index === currentArticleIterationIndex ? 'bg-teal-600/20 text-teal-300 font-bold' : 'text-gray-400 hover:bg-slate-700/50'}`}
+                                    >
+                                        Version {index + 1}: {getArticleTypeDisplayName(article.type)} (Score: {article.score})
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                 )}
                 
                 <div className="prose prose-invert max-w-none bg-gray-900 p-6 rounded-lg border border-slate-700" ref={articleContentRef}>
                     <MarkdownRenderer content={fullArticleMarkdown} />
                 </div>
                 <div className="flex justify-end gap-3">
-                    <Button onClick={handleCopy} className="bg-gray-700 hover:bg-gray-600">{copied ? 'Copied!' : 'Copy Markdown'}</Button>
-                    <Button onClick={handleDownload} className="bg-gray-700 hover:bg-gray-600">Download .md</Button>
+                    <Button onClick={handleCopy} className="bg-gray-700 hover:bg-gray-600 px-6 py-2 text-sm">{copied ? 'Copied!' : 'Copy Markdown'}</Button>
+                    <Button onClick={handleDownload} className="bg-gray-700 hover:bg-gray-600 px-6 py-2 text-sm">Download .md</Button>
                 </div>
 
                 <div className="pt-6 border-t border-slate-700/50">
@@ -356,16 +316,40 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                         />
                     </div>
                     
-                    <div className="flex justify-end items-center gap-3 mt-4 flex-wrap" title={currentArticle?.headlineApplied ? "Enhancement is disabled after a headline has been applied to maintain content consistency." : ""}>
+                    <div className="flex justify-center mt-4" title={currentArticle?.headlineApplied ? "Enhancement is disabled after a headline has been applied to maintain content consistency." : ""}>
                         <Button 
                             onClick={handleEnhanceClick}
                             isLoading={isEnhancingArticle}
                             disabled={!currentArticle || isLoading || isGeneratingHeadlines || isPolishingArticle || !!currentArticle?.headlineApplied}
                             className="bg-blue-600 hover:bg-blue-500"
                         >
-                            {isEnhancingArticle ? 'Enhancing...' : 'Enhance Article'}
+                            {isEnhancingArticle ? 'Minion is working on Enhancing...' : 'Enhance Article'}
                         </Button>
                     </div>
+                </div>
+                
+                 <div className="pt-6 border-t border-slate-700/50">
+                    <h3 className="text-xl font-bold text-gray-200 mb-4">Final Polish</h3>
+                     <p className="text-sm text-gray-400 mb-4">This step performs an aggressive, stylistic rewrite of the current version to inject personality and a direct, no-nonsense tone without changing the core arguments.</p>
+                     
+                     <label className="block text-sm font-medium text-gray-300 mb-1">Final Polish AI Script</label>
+                     <p className="text-xs text-gray-500 mb-2">You can edit the script below to customize the polishing process.</p>
+                     <textarea 
+                        value={polishScript}
+                        onChange={(e) => setPolishScript(e.target.value)} 
+                        rows={10}
+                        className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" 
+                    />
+                     <div className="flex justify-center mt-4">
+                        <Button
+                            onClick={() => onPolishArticle(polishScript)}
+                            isLoading={isPolishingArticle}
+                            disabled={!currentArticle || isLoading || isEnhancingArticle || isGeneratingHeadlines || !!currentArticle.headlineApplied}
+                            className="bg-purple-600 hover:bg-purple-500"
+                        >
+                           {isPolishingArticle ? 'Minion is working on Polishing...' : 'Apply Final Polish'}
+                        </Button>
+                     </div>
                 </div>
 
                 {generatedHeadlinesForArticle ? (
@@ -398,24 +382,17 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                             isLoading={isGeneratingHeadlines}
                             disabled={isEnhancingArticle || isLoading || isPolishingArticle}
                         >
-                            {isGeneratingHeadlines ? 'Generating Headlines...' : 'Generate Headlines for this Article'}
+                            {isGeneratingHeadlines ? 'Minion is working on Generating Headlines...' : 'Generate Headlines for this Article'}
                         </Button>
                     </div>
                 ) : (
-                    <div className="pt-6 border-t border-slate-700/50 text-center">
-                        <h3 className="text-xl font-bold text-gray-200">Final Polish</h3>
-                        <p className="text-sm text-gray-400 my-4">Your article's content and headline are set. The final step is to apply a stylistic polish to match your brand voice.</p>
-                        <Button
-                            onClick={onPolishArticle}
-                            isLoading={isPolishingArticle}
-                            disabled={!currentArticle || isLoading || isEnhancingArticle || isGeneratingHeadlines}
-                            className="bg-purple-600 hover:bg-purple-500"
-                        >
-                            {isPolishingArticle ? 'Polishing...' : 'Apply Final Polish'}
-                        </Button>
+                     <div className="pt-6 border-t border-slate-700/50 text-center">
+                        <div className="p-4 bg-green-900/30 border border-green-700 rounded-lg">
+                            <h3 className="text-xl font-bold text-green-300">Article Ready</h3>
+                            <p className="text-sm text-green-400 mt-2">Your headline has been applied. You can now copy or download the final article.</p>
+                        </div>
                     </div>
                 )}
-
             </div>
         )}
     </div>
