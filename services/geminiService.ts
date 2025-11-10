@@ -588,8 +588,9 @@ export async function createArticleTemplateFromText({ articleText, existingTempl
                         title: { type: Type.STRING },
                         description: { type: Type.STRING },
                         structure: { type: Type.STRING },
+                        specialInstructions: { type: Type.STRING },
                     },
-                    required: ['title', 'description', 'structure'],
+                    required: ['title', 'description', 'structure', 'specialInstructions'],
                 },
             },
         });

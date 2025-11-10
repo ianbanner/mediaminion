@@ -421,4 +421,5 @@ Your output must be a JSON object with the following structure:
 - **title**: A concise, descriptive title for this new template (e.g., "The 'Problem-Agitation-Solution' Framework").
 - **description**: A short description of what the template is best for and its target platforms.
 - **structure**: A detailed breakdown of the article's sections, estimated word counts for each, key elements, and transition phrases, similar to the examples provided. Include any "Universal Template Guidelines" you deem appropriate from the examples.
+- **specialInstructions**: A single, concise, actionable tip for the user explaining the most important thing to focus on when using this template to create compelling content.
 `;

@@ -61,7 +61,8 @@ Key Elements:
 - Use data points to support your agitation
 - End each section with a bridge to the next
 - Include "What does this mean for you?" moments
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Focus on vividly describing the reader's pain points in the 'Agitation' section. Use emotional language to make the problem feel urgent before presenting your solution."
   },
   {
     id: uuidv4(),
@@ -92,7 +93,8 @@ Key Elements:
 - Use authoritative sources to back contrarian claims
 - Include personal anecdotes of discovering this truth
 - Address potential objections in each section
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Be bold and unapologetic in your opening statement. The goal is to immediately challenge a deeply held belief. Back up your contrarian view with strong, surprising data or a compelling personal story."
   },
   {
     id: uuidv4(),
@@ -125,7 +127,8 @@ Key Elements:
 - Include relevant statistics for each section
 - Reference industry experts and studies
 - End with a forward-looking statement
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "This template is for establishing authority. Use data, charts (described in text), and quotes from other experts. Ensure each 'component' section is a mini-article in itself with a clear point."
   },
   {
     id: uuidv4(),
@@ -157,7 +160,8 @@ Key Elements:
 - Show your methodology in action
 - Address setbacks and how you handled them
 - Include direct quotes from the client
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Authenticity is key. Use direct quotes from the client (real or composite). Don't shy away from the struggles in the 'Implementation Challenges' section; it makes the final success more credible."
   },
   {
     id: uuidv4(),
@@ -192,7 +196,8 @@ Key Elements:
 - Provide templates or checklists
 - Use bullet points for action items
 - Include "Pro Tips" throughout
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Make this incredibly practical. Use numbered lists, bolded action words, and consider adding 'Pro-Tip' callouts in each step to provide extra value."
   },
   {
     id: uuidv4(),
@@ -225,7 +230,8 @@ Key Elements:
 - Use authoritative research to debunk
 - Include personal stories of believing the myth
 - Provide immediate actionable alternatives
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Clearly state the myth upfront. Use strong, verifiable evidence (studies, statistics) to debunk it. The power of this template comes from irrefutable proof, not just opinion."
   },
   {
     id: uuidv4(),
@@ -261,7 +267,8 @@ Key Elements:
 - Include your internal thought process
 - Share moments of uncertainty or failure
 - Reveal tools and frameworks you use
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "This is about building trust through transparency. Share your internal thought process, including moments of doubt or mistakes you made. Make the reader feel like an insider."
   },
   {
     id: uuidv4(),
@@ -292,7 +299,8 @@ Key Elements:
 - Include real companies using each approach
 - Address budget and resource considerations
 - Provide a decision tree or flowchart
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Remain as objective as possible when describing each option. The 'Verdict' section is where your expert opinion comes in, guiding the reader based on their specific situation (e.g., 'If you're a startup, choose Option A...')."
   },
   {
     id: uuidv4(),
@@ -326,7 +334,8 @@ Key Elements:
 - Include your track record of past predictions
 - Assign confidence levels to each prediction
 - Connect trends to immediate business impact
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Ground your predictions in current data ('Driving Forces'). Assign a confidence level to each prediction to manage reader expectations. The goal is to be a credible futurist, not a psychic."
   },
   {
     id: uuidv4(),
@@ -367,6 +376,7 @@ Key Elements:
 - Provide specific metrics for each component
 - Share client transformation stories
 - End with a clear pathway to work with you
-${universalGuidelines}`
+${universalGuidelines}`,
+    specialInstructions: "Structure this as a mini-course. Each 'Component' should teach a specific part of your system. Use strong, benefit-driven subheadings for each part."
   },
 ];

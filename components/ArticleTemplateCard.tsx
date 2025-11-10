@@ -15,6 +15,7 @@ const ArticleTemplateCard: React.FC<ArticleTemplateCardProps> = ({ template, onS
     title: template.title,
     description: template.description,
     structure: template.structure,
+    specialInstructions: template.specialInstructions || '',
   });
 
   useEffect(() => {
@@ -22,8 +23,9 @@ const ArticleTemplateCard: React.FC<ArticleTemplateCardProps> = ({ template, onS
       title: template.title,
       description: template.description,
       structure: template.structure,
+      specialInstructions: template.specialInstructions || '',
     });
-  }, [template.title, template.description, template.structure]);
+  }, [template.title, template.description, template.structure, template.specialInstructions]);
 
   const handleInputChange = (field: keyof typeof editableTemplate, value: string) => {
     setEditableTemplate(prev => ({ ...prev, [field]: value }));
@@ -42,6 +44,7 @@ const ArticleTemplateCard: React.FC<ArticleTemplateCardProps> = ({ template, onS
         title: template.title,
         description: template.description,
         structure: template.structure,
+        specialInstructions: template.specialInstructions || '',
       });
       setIsEditing(false);
     }
@@ -62,9 +65,13 @@ const ArticleTemplateCard: React.FC<ArticleTemplateCardProps> = ({ template, onS
           <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Structure</label>
           <textarea value={editableTemplate.structure} onChange={(e) => handleInputChange('structure', e.target.value)} rows={10} className="w-full p-2 bg-gray-800 rounded-md font-mono text-xs" />
         </div>
+         <div>
+          <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Special Instructions for AI</label>
+          <textarea value={editableTemplate.specialInstructions} onChange={(e) => handleInputChange('specialInstructions', e.target.value)} rows={3} className="w-full p-2 bg-gray-800 rounded-md text-xs" placeholder="e.g., Focus on a strong, contrarian opening..."/>
+        </div>
         <div className="flex justify-end items-center gap-2 pt-2">
           <button onClick={handleCancelClick} className="px-3 py-1 text-sm text-gray-400 hover:text-white rounded-md">Cancel</button>
-          <button onClick={handleSaveClick} className="px-4 py-1.5 text-sm font-semibold rounded-md transition-colors bg-teal-600 text-white hover:bg-teal-500">Save Template</button>
+          <button onClick={handleSaveClick} className="px-4 py-1.5 text-sm font-semibold rounded-md transition-colors bg-teal-600 text-white hover:bg-teal-500">Save</button>
         </div>
       </div>
     );
@@ -85,8 +92,14 @@ const ArticleTemplateCard: React.FC<ArticleTemplateCardProps> = ({ template, onS
       </div>
       <div>
         <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Description</p>
-        <p className="text-xs text-gray-300 whitespace-pre-wrap p-2 bg-gray-800/50 rounded-md">{template.description}</p>
+        <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans p-2 bg-gray-800/50 rounded-md max-h-24 overflow-y-auto">{template.description}</pre>
       </div>
+       {template.specialInstructions && (
+        <div>
+          <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Special Instructions for AI</p>
+          <p className="text-xs text-gray-300 whitespace-pre-wrap p-2 bg-gray-800/50 rounded-md">{template.specialInstructions}</p>
+        </div>
+      )}
       <div>
         <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Structure</p>
         <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono p-2 bg-gray-800/50 rounded-md max-h-48 overflow-y-auto">{template.structure}</pre>

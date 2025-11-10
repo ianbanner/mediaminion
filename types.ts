@@ -24,6 +24,7 @@ export interface SavedArticleTemplate {
   title: string;
   description: string;
   structure: string;
+  specialInstructions?: string;
   isNew?: boolean;
 }
 

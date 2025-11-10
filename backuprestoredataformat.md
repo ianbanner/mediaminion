@@ -77,7 +77,8 @@ Each object in the `savedArticleTemplates` array.
   "id": "uuid-string-here",
   "title": "The 'Problem-Agitation-Solution' Framework",
   "description": "Target Platforms: LinkedIn Articles, Medium, Substack...",
-  "structure": "Structure (2000 words):\\n\\nHook Opening (200 words)..."
+  "structure": "Structure (2000 words):\\n\\nHook Opening (200 words)...",
+  "specialInstructions": "Focus on vividly describing the reader's pain points in the 'Agitation' section."
 }
 ```
 
