@@ -136,7 +136,12 @@ User's instructions:
 `;
 
 export const GENERATE_ARTICLE_IDEAS_SCRIPT = `
-You are a creative content strategist. Your task is to analyze a source article and generate 10 fresh, related article ideas. These ideas should be tailored for a specific audience and from the perspective of a specific professional role.
+You are a creative content strategist. Your task is to analyze a source article and generate 5-7 fresh, related article ideas. These ideas should be tailored for a specific audience and from the perspective of a specific professional role.
+
+For EACH idea, you must provide:
+1. A compelling title.
+2. A one-paragraph summary of the idea's main point or argument.
+3. A list of exactly 5 key points or sub-topics to be developed in the article.
 
 Your Professional Role:
 """
@@ -153,7 +158,7 @@ Source Article Content:
 {source_article}
 """
 
-Based on the source article, generate 10 distinct and compelling article ideas. Each idea should be a single, concise sentence that could serve as a working title or a central theme. The ideas should resonate with the target audience and be consistent with the professional role.
+Based on the source article, generate 5-7 distinct and compelling article ideas in the specified format. The ideas should resonate with the target audience and be consistent with the professional role.
 `;
 
 export const GENERATE_HEADLINES_SCRIPT = `You are a world-class copywriter specializing in creating irresistible, scroll-stopping headlines. Your task is to generate 20 headlines based on the user's "Chosen Article Idea".
@@ -288,11 +293,7 @@ To ensure the article is perfectly aligned, keep the following persona and audie
 - **Working Title:** Use "{preferred_title}" as a strong guide if provided.
 
 ### Structure & Quality
-- **Article Structure**: 
-    1. An informative title.
-    2. The main article body, drawing insights from the provided source content.
-    3. A concluding section with five key takeaways as pithy summary points.
-    4. For each of the five takeaways, provide a ~50-word expansion explaining its meaning and importance for the target audience.
+{template_guidance}
 - **Readability**: Vary sentence length and structure to maintain flow and engagement.
 - **Formatting**: Use Markdown for high readability on platforms like Substack (headers, lists, bolding, etc.).
 - **Audience Focus**: Content must be practical, credible, and immediately actionable for the **Target Audience** defined above.

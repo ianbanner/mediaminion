@@ -1,5 +1,11 @@
 
 
+export interface ArticleIdea {
+  title: string;
+  summary: string;
+  keyPoints: string[];
+}
+
 export interface TopPostAssessment {
     title: string;
     content: string;
@@ -105,8 +111,7 @@ export interface BackupData {
   headlineSourceUrl?: string;
   headlineSourceText?: string;
   
-  generatedArticleIdeas?: string[] | null;
-  selectedArticleIdea?: string | null;
+  generatedArticleIdeas?: ArticleIdea[] | null;
   
   generateArticleWordCount?: number;
   generateArticleSourceType?: 'url' | 'text';

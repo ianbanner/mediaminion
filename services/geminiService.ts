@@ -1,3 +1,5 @@
+
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   LINKEDIN_GENERATION_EVALUATION_SCRIPT,
@@ -13,7 +15,7 @@ import {
   ENHANCE_ARTICLE_SCRIPT,
   CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT
 } from './scriptService.ts';
-import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate } from "../types.ts";
+import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea } from "../types.ts";
 
 export interface SocialPost {
   platform: string;
@@ -60,6 +62,8 @@ export interface ArticleGenerationParams {
     title?: string;
     endOfArticleSummary: string;
     evalCriteria: string;
+    selectedTemplate: SavedArticleTemplate | null;
+    allTemplates: SavedArticleTemplate[];
 }
 
 
@@ -316,7 +320,7 @@ export async function parseSchedule(scheduleText: string): Promise<string[]> {
     }
 }
 
-export async function generateArticleIdeas({ sourceArticle, userRole, targetAudience }: { sourceArticle: string; userRole: string; targetAudience: string; }): Promise<string[]> {
+export async function generateArticleIdeas({ sourceArticle, userRole, targetAudience }: { sourceArticle: string; userRole: string; targetAudience: string; }): Promise<ArticleIdea[]> {
     try {
         const ai = getAI();
         const prompt = GENERATE_ARTICLE_IDEAS_SCRIPT
@@ -334,7 +338,15 @@ export async function generateArticleIdeas({ sourceArticle, userRole, targetAudi
                     properties: {
                         article_ideas: {
                             type: Type.ARRAY,
-                            items: { type: Type.STRING },
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING },
+                                    summary: { type: Type.STRING },
+                                    keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                },
+                                required: ['title', 'summary', 'keyPoints']
+                            },
                         },
                     },
                     required: ['article_ideas'],
@@ -461,6 +473,31 @@ export async function reevaluateHeadline({ headline, evalScript }: { headline: s
 export async function generateArticle(params: ArticleGenerationParams): Promise<GeneratedArticle> {
     try {
         const ai = getAI();
+
+        let templateGuidance = '';
+        if (params.selectedTemplate) {
+            templateGuidance = `
+- **Article Structure**: You MUST follow the structure outlined in the provided template below. Adapt the content to fit this structure precisely.
+---
+### SELECTED TEMPLATE: ${params.selectedTemplate.title}
+${params.selectedTemplate.structure}
+---
+`;
+        } else {
+            const allTemplatesString = params.allTemplates.map(t => 
+                `### Template: ${t.title}\nDescription: ${t.description}\nStructure:\n\`\`\`\n${t.structure}\n\`\`\``
+            ).join('\n\n---\n\n');
+
+            templateGuidance = `
+- **Article Structure**: First, analyze the **Primary Source Content**. Then, select the SINGLE MOST APPROPRIATE template from the **Article Template Library** below that best fits the source content's intent. You MUST then follow the chosen template's structure precisely to write the article. Announce which template you have chosen at the very start of your evaluation.
+---
+### ARTICLE TEMPLATE LIBRARY
+${allTemplatesString}
+---
+`;
+        }
+
+
         const prompt = params.script
             .replace('{user_role}', params.userRole)
             .replace('{target_audience}', params.targetAudience)
@@ -470,6 +507,7 @@ export async function generateArticle(params: ArticleGenerationParams): Promise<
             .replace('{source_content}', params.sourceContent)
             .replace('{reference_world}', params.referenceWorld)
             .replace('{end_of_article_summary}', params.endOfArticleSummary)
+            .replace('{template_guidance}', templateGuidance)
             .replace('{evaluation_criteria}', params.evalCriteria);
 
         const response = await ai.models.generateContent({
@@ -521,8 +559,8 @@ export async function enhanceArticle({ originalTitle, originalContent, evalCrite
         const prompt = ENHANCE_ARTICLE_SCRIPT
             .replace('{original_title}', originalTitle)
             .replace('{original_content}', originalContent)
-            .replace('{evaluation_criteria}', evalCriteria)
-            .replace('{suggestions}', suggestionsString);
+            .replace('{suggestions}', suggestionsString)
+            .replace('{evaluation_criteria}', evalCriteria);
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
@@ -565,44 +603,43 @@ export async function enhanceArticle({ originalTitle, originalContent, evalCrite
     }
 }
 
-export async function createArticleTemplateFromText({ articleText, existingTemplates }: { articleText: string, existingTemplates: SavedArticleTemplate[] }): Promise<Omit<SavedArticleTemplate, 'id'>> {
+export async function createArticleTemplateFromText({ articleText, existingTemplates }: { articleText: string; existingTemplates: SavedArticleTemplate[] }): Promise<Omit<SavedArticleTemplate, 'id'>> {
     try {
         const ai = getAI();
-
-        const existingTemplatesString = existingTemplates.map(t => 
-            `### Template: ${t.title}\nDescription: ${t.description}\nStructure:\n\`\`\`\n${t.structure}\n\`\`\``
-        ).join('\n\n---\n\n');
+        const examples = existingTemplates.map(t => 
+            `### ${t.title}\nDescription: ${t.description}\nStructure:\n\`\`\`\n${t.structure}\n\`\`\``
+        ).slice(0, 5).join('\n\n---\n\n'); // Use a few examples
 
         const prompt = CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT
-            .replace('{article_text}', articleText)
-            .replace('{existing_templates_examples}', existingTemplatesString);
-
+            .replace('{existing_templates_examples}', examples)
+            .replace('{article_text}', articleText);
+            
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-pro', // Use pro for better structure analysis
             contents: [{ parts: [{ text: prompt }] }],
             config: {
-                responseMimeType: 'application/json',
+                responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        title: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        structure: { type: Type.STRING },
-                        specialInstructions: { type: Type.STRING },
+                        title: { type: Type.STRING, description: "A concise, descriptive title for this new template (e.g., \"The 'Problem-Agitation-Solution' Framework\")." },
+                        description: { type: Type.STRING, description: "A short description of what the template is best for and its target platforms." },
+                        structure: { type: Type.STRING, description: "A detailed breakdown of the article's sections, estimated word counts for each, key elements, and transition phrases." },
+                        specialInstructions: { type: Type.STRING, description: "A single, concise, actionable tip for the user explaining the most important thing to focus on when using this template." }
                     },
                     required: ['title', 'description', 'structure', 'specialInstructions'],
                 },
             },
         });
 
-        const result: Omit<SavedArticleTemplate, 'id'> = JSON.parse(response.text);
-        return result;
+        const newTemplate: Omit<SavedArticleTemplate, 'id'> = JSON.parse(response.text);
+        return newTemplate;
 
     } catch (error) {
-        console.error("Error creating article template from text:", error);
+        console.error("Error creating article template:", error);
         if (error instanceof Error) {
-            throw new Error(`Failed to create article template from text. Error: ${error.message}`);
+            throw new Error(`Failed to create article template. Error: ${error.message}`);
         }
-        throw new Error("Failed to create article template from text. An unknown error occurred.");
+        throw new Error("Failed to create article template. An unknown error occurred.");
     }
 }
