@@ -105,7 +105,7 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
 
     return (
     <div className="space-y-8 animate-fade-in">
-        <h1 className="text-3xl font-bold">Article Idea & Headline Generator</h1>
+        <h1 className="text-3xl font-bold">Generate Ideas</h1>
 
         {/* --- Step 1: Idea Generation --- */}
         <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
