@@ -1,4 +1,9 @@
 
+
+
+
+
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GeneratedArticle, Suggestion, GeneratedHeadline, ArticleDestination } from '../types.ts';
 import Button from './Button.tsx';
@@ -34,7 +39,9 @@ interface ArticleGeneratorPanelProps {
   onPolishArticle: (polishScript: string) => void;
   headlineEvalCriteriaForArticle: string;
   onHeadlineEvalCriteriaForArticleChange: (value: string) => void;
-  onGenerateHeadlinesForArticle: () => void;
+  generateHeadlinesForArticleScript: string;
+  onGenerateHeadlinesForArticleScriptChange: (script: string) => void;
+  onGenerateHeadlinesForArticle: (script: string) => void;
   generatedHeadlinesForArticle: GeneratedHeadline[] | null;
   onSelectHeadlineForEdit: (headline: GeneratedHeadline) => void;
   generateArticleDestination: ArticleDestination;
@@ -73,6 +80,8 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
   onPolishArticle,
   headlineEvalCriteriaForArticle,
   onHeadlineEvalCriteriaForArticleChange,
+  generateHeadlinesForArticleScript,
+  onGenerateHeadlinesForArticleScriptChange,
   onGenerateHeadlinesForArticle,
   generatedHeadlinesForArticle,
   onSelectHeadlineForEdit,
@@ -135,10 +144,23 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
 
     const handleCopy = () => {
         if (articleContentRef.current) {
-            navigator.clipboard.writeText(fullArticleMarkdown).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            });
+            const html = articleContentRef.current.innerHTML;
+            const plainText = articleContentRef.current.innerText;
+
+            const listener = (e: ClipboardEvent) => {
+                e.preventDefault();
+                if (e.clipboardData) {
+                    e.clipboardData.setData('text/html', html);
+                    e.clipboardData.setData('text/plain', plainText);
+                }
+            };
+
+            document.addEventListener('copy', listener);
+            document.execCommand('copy');
+            document.removeEventListener('copy', listener);
+
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
         }
     };
     
@@ -242,42 +264,66 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
             </div>
 
             <div className="text-center pt-4 border-t border-slate-700/50">
-                <Button onClick={onGenerate} isLoading={isLoading}>
+                <Button onClick={onGenerate} isLoading={isLoading} className="bg-blue-600 hover:bg-blue-500">
                     {isLoading ? 'Minion is working on Generating Article...' : 'Generate Article'}
                 </Button>
             </div>
         </div>
 
-        {currentArticle && (
-            <div className="mt-8 p-6 bg-slate-900/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                    <h2 className="text-2xl font-bold text-gray-200">Generated Article</h2>
-                </div>
+        <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg">
+            <h3 className="text-xl font-bold text-gray-200 mb-4">Version History</h3>
+            <div className="overflow-x-auto rounded-lg border border-slate-700">
+                <table className="min-w-full divide-y divide-slate-700">
+                    <thead className="bg-slate-800">
+                        <tr>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Version</th>
+                            <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Type</th>
+                            <th scope="col" className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-slate-900/50 divide-y divide-slate-700">
+                        {generatedArticleHistory.length === 0 ? (
+                            <tr className="text-gray-500">
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">Version 1</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm italic">
+                                    {isLoading ? 'Generating...' : 'Pending Generation'}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-center">--</td>
+                            </tr>
+                        ) : (
+                            generatedArticleHistory.map((article, index) => (
+                                <tr
+                                    key={index}
+                                    onClick={() => onRevertToIteration(index)}
+                                    className={`cursor-pointer transition-colors ${
+                                        index === currentArticleIterationIndex
+                                            ? 'bg-teal-600/20 hover:bg-teal-600/30'
+                                            : 'hover:bg-slate-800/60'
+                                    }`}
+                                >
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-200">Version {index + 1}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{getArticleTypeDisplayName(article.type)}</td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-teal-400 text-center">{article.score}/100</td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                {generatedArticleHistory.length > 1 && (
-                    <div className="p-4 bg-slate-800/50 rounded-lg">
-                        <h3 className="text-sm font-semibold text-gray-300 mb-2">Version History</h3>
-                        <ul className="space-y-1">
-                            {generatedArticleHistory.map((article, index) => (
-                                <li key={index}>
-                                    <button 
-                                        onClick={() => onRevertToIteration(index)}
-                                        className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${index === currentArticleIterationIndex ? 'bg-teal-600/20 text-teal-300 font-bold' : 'text-gray-400 hover:bg-slate-700/50'}`}
-                                    >
-                                        Version {index + 1}: {getArticleTypeDisplayName(article.type)} (Score: {article.score})
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                 )}
+        {currentArticle && (
+            <div className="p-6 bg-slate-900/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                    <h2 className="text-2xl font-bold text-gray-200">Generated Article (Version {currentArticleIterationIndex + 1})</h2>
+                </div>
                 
                 <div className="prose prose-invert max-w-none bg-gray-900 p-6 rounded-lg border border-slate-700" ref={articleContentRef}>
                     <MarkdownRenderer content={fullArticleMarkdown} />
                 </div>
                 <div className="flex justify-end gap-3">
-                    <Button onClick={handleCopy} className="bg-gray-700 hover:bg-gray-600 px-6 py-2 text-sm">{copied ? 'Copied!' : 'Copy Markdown'}</Button>
-                    <Button onClick={handleDownload} className="bg-gray-700 hover:bg-gray-600 px-6 py-2 text-sm">Download .md</Button>
+                    <Button onClick={handleCopy} className="bg-gray-700 hover:bg-gray-600 px-6 py-2 text-sm">{copied ? 'Copied!' : 'Copy Article'}</Button>
+                    <Button onClick={handleDownload} className="bg-gray-700 hover:bg-gray-600 px-6 py-2 text-sm">Download Markdown</Button>
                 </div>
 
                 <div className="pt-6 border-t border-slate-700/50">
@@ -345,7 +391,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                             onClick={() => onPolishArticle(polishScript)}
                             isLoading={isPolishingArticle}
                             disabled={!currentArticle || isLoading || isEnhancingArticle || isGeneratingHeadlines || !!currentArticle.headlineApplied}
-                            className="bg-purple-600 hover:bg-purple-500"
+                            className="bg-blue-600 hover:bg-blue-500"
                         >
                            {isPolishingArticle ? 'Minion is working on Polishing...' : 'Apply Final Polish'}
                         </Button>
@@ -376,11 +422,22 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                         </div>
                     </div>
                 ) : !currentArticle.headlineApplied ? (
-                    <div className="pt-6 border-t border-slate-700/50 text-center">
+                    <div className="pt-6 border-t border-slate-700/50 text-center space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-1">AI Script for Headline Generation</label>
+                            <p className="text-xs text-gray-500 mb-2">This script instructs the AI on how to generate and evaluate headlines for the current article.</p>
+                            <textarea
+                                value={generateHeadlinesForArticleScript}
+                                onChange={(e) => onGenerateHeadlinesForArticleScriptChange(e.target.value)}
+                                rows={12}
+                                className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"
+                            />
+                        </div>
                         <Button 
-                            onClick={onGenerateHeadlinesForArticle}
+                            onClick={() => onGenerateHeadlinesForArticle(generateHeadlinesForArticleScript)}
                             isLoading={isGeneratingHeadlines}
                             disabled={isEnhancingArticle || isLoading || isPolishingArticle}
+                            className="bg-blue-600 hover:bg-blue-500"
                         >
                             {isGeneratingHeadlines ? 'Minion is working on Generating Headlines...' : 'Generate Headlines for this Article'}
                         </Button>

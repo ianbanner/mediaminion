@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   LINKEDIN_GENERATION_EVALUATION_SCRIPT,
@@ -323,10 +321,10 @@ export async function parseSchedule(scheduleText: string): Promise<string[]> {
     }
 }
 
-export async function generateArticleIdeas({ sourceArticle, userRole, targetAudience }: { sourceArticle: string; userRole: string; targetAudience: string; }): Promise<ArticleIdea[]> {
+export async function generateArticleIdeas({ sourceArticle, userRole, targetAudience, script }: { sourceArticle: string; userRole: string; targetAudience: string; script: string; }): Promise<ArticleIdea[]> {
     try {
         const ai = getAI();
-        const prompt = GENERATE_ARTICLE_IDEAS_SCRIPT
+        const prompt = script
             .replace('{source_article}', sourceArticle)
             .replace('{user_role}', userRole)
             .replace('{target_audience}', targetAudience);
@@ -335,29 +333,30 @@ export async function generateArticleIdeas({ sourceArticle, userRole, targetAudi
             model: 'gemini-2.5-flash',
             contents: [{ parts: [{ text: prompt }] }],
             config: {
-                responseMimeType: "application/json",
+                responseMimeType: 'application/json',
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        article_ideas: {
+                        articleIdeas: {
                             type: Type.ARRAY,
                             items: {
                                 type: Type.OBJECT,
                                 properties: {
                                     title: { type: Type.STRING },
                                     summary: { type: Type.STRING },
-                                    keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                    keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
                                 },
-                                required: ['title', 'summary', 'keyPoints']
+                                required: ['title', 'summary', 'keyPoints'],
                             },
                         },
                     },
-                    required: ['article_ideas'],
+                    required: ['articleIdeas'],
                 },
             },
         });
-        const { article_ideas } = JSON.parse(response.text);
-        return article_ideas;
+
+        const { articleIdeas } = JSON.parse(response.text);
+        return articleIdeas;
     } catch (error) {
         console.error("Error generating article ideas:", error);
         if (error instanceof Error) {
@@ -367,153 +366,42 @@ export async function generateArticleIdeas({ sourceArticle, userRole, targetAudi
     }
 }
 
-export async function generateAndEvaluateHeadlines({ chosenArticleIdea, sourceArticle, generationScript, evalScript }: { chosenArticleIdea: string, sourceArticle: string, generationScript: string, evalScript: string }): Promise<Omit<GeneratedHeadline, 'id'>[]> {
-    try {
-        const ai = getAI();
-
-        // Step 1: Generate Headlines
-        const genPrompt = generationScript
-            .replace('{chosen_article_idea}', chosenArticleIdea)
-            .replace('{source_article}', sourceArticle);
-            
-        const genResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [{ parts: [{ text: genPrompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        headlines: {
-                            type: Type.ARRAY,
-                            items: { type: Type.STRING }
-                        }
-                    },
-                    required: ['headlines']
-                }
-            }
-        });
-        const { headlines } = JSON.parse(genResponse.text);
-
-        if (!headlines || headlines.length === 0) {
-            throw new Error("AI failed to generate any headlines.");
-        }
-
-        // Step 2: Evaluate Headlines
-        const evalPrompt = EVALUATE_HEADLINES_SCRIPT
-            .replace('{evaluation_criteria}', evalScript)
-            .replace('{headlines_json}', JSON.stringify(headlines));
-
-        const evalResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [{ parts: [{ text: evalPrompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        evaluatedHeadlines: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    headline: { type: Type.STRING },
-                                    score: { type: Type.NUMBER },
-                                    reasoning: { type: Type.STRING }
-                                },
-                                required: ['headline', 'score', 'reasoning']
-                            }
-                        }
-                    },
-                    required: ['evaluatedHeadlines']
-                }
-            }
-        });
-        const { evaluatedHeadlines } = JSON.parse(evalResponse.text);
-
-        return evaluatedHeadlines;
-    } catch (error) {
-        console.error("Error generating and evaluating headlines:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to process headlines. Error: ${error.message}`);
-        }
-        throw new Error("Failed to process headlines. An unknown error occurred.");
-    }
-}
-
-export async function reevaluateHeadline({ headline, evalScript }: { headline: string, evalScript: string }): Promise<Pick<GeneratedHeadline, 'score' | 'reasoning'>> {
-    try {
-        const ai = getAI();
-        const prompt = REEVALUATE_HEADLINE_SCRIPT
-            .replace('{evaluation_criteria}', evalScript)
-            .replace('{headline}', headline);
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: [{ parts: [{ text: prompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        score: { type: Type.NUMBER },
-                        reasoning: { type: Type.STRING }
-                    },
-                    required: ['score', 'reasoning']
-                }
-            }
-        });
-        return JSON.parse(response.text);
-    } catch (error) {
-        console.error("Error re-evaluating headline:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to re-evaluate headline. Error: ${error.message}`);
-        }
-        throw new Error("Failed to re-evaluate headline. An unknown error occurred.");
-    }
-}
 
 export async function generateArticle(params: ArticleGenerationParams): Promise<GeneratedArticle> {
     try {
         const ai = getAI();
 
-        let templateGuidance = '';
+        let templateGuidance = "The user has not selected a specific template. Analyze the source content and choose an appropriate structure yourself from your general knowledge of writing, or by subtly using one of the provided templates as inspiration.";
         if (params.selectedTemplate) {
-            templateGuidance = `
-- **Article Structure**: You MUST follow the structure outlined in the provided template below. Adapt the content to fit this structure precisely.
----
-### SELECTED TEMPLATE: ${params.selectedTemplate.title}
-${params.selectedTemplate.structure}
----
-`;
-        } else {
             const allTemplatesString = params.allTemplates.map(t => 
-                `### Template: ${t.title}\nDescription: ${t.description}\nStructure:\n\`\`\`\n${t.structure}\n\`\`\``
-            ).join('\n\n---\n\n');
-
+                `### ${t.title}\nDescription: ${t.description}\nStructure:\n${t.structure}\n`
+            ).join('---\n');
+            
             templateGuidance = `
-- **Article Structure**: First, analyze the **Primary Source Content**. Then, select the SINGLE MOST APPROPRIATE template from the **Article Template Library** below that best fits the source content's intent. You MUST then follow the chosen template's structure precisely to write the article. Announce which template you have chosen at the very start of your evaluation.
----
-### ARTICLE TEMPLATE LIBRARY
+The user has selected a specific template to guide the generation. You MUST follow this template's structure closely.
+
+### Selected Template: ${params.selectedTemplate.title}
+${params.selectedTemplate.structure}
+${params.selectedTemplate.specialInstructions ? `\nSpecial Instructions for this template: ${params.selectedTemplate.specialInstructions}` : ''}
+
+For context, here are all available templates:
 ${allTemplatesString}
----
 `;
         }
-
 
         const prompt = params.script
             .replace('{user_role}', params.userRole)
             .replace('{target_audience}', params.targetAudience)
+            .replace('{final_destination}', params.finalDestination)
+            .replace('{destination_guidelines}', params.finalDestinationGuidelines)
             .replace('{word_count}', params.wordCount.toString())
-            .replace('{preferred_title}', params.title || 'To be generated by AI')
+            .replace('{preferred_title}', params.title || 'AI to generate a suitable title')
+            .replace('{template_guidance}', templateGuidance)
             .replace('{style_references}', params.styleReferences)
             .replace('{source_content}', params.sourceContent)
             .replace('{reference_world}', params.referenceWorld)
             .replace('{end_of_article_summary}', params.endOfArticleSummary)
-            .replace('{template_guidance}', templateGuidance)
-            .replace('{evaluation_criteria}', params.evalCriteria)
-            .replace('{final_destination}', params.finalDestination)
-            .replace('{destination_guidelines}', params.finalDestinationGuidelines);
+            .replace('{evaluation_criteria}', params.evalCriteria);
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
@@ -533,20 +421,19 @@ ${allTemplatesString}
                                 type: Type.OBJECT,
                                 properties: {
                                     text: { type: Type.STRING },
-                                    area: { type: Type.STRING }
+                                    area: { type: Type.STRING },
                                 },
-                                required: ['text', 'area']
-                            }
-                        }
+                                required: ['text', 'area'],
+                            },
+                        },
                     },
                     required: ['title', 'content', 'evaluation', 'score', 'suggestions'],
                 },
+                temperature: 0.7,
             },
         });
 
-        const result: GeneratedArticle = JSON.parse(response.text);
-        return result;
-
+        return JSON.parse(response.text);
     } catch (error) {
         console.error("Error generating article:", error);
         if (error instanceof Error) {
@@ -559,12 +446,12 @@ ${allTemplatesString}
 export async function enhanceArticle({ originalTitle, originalContent, evalCriteria, suggestions }: { originalTitle: string; originalContent: string; evalCriteria: string; suggestions: Suggestion[] }): Promise<GeneratedArticle> {
     try {
         const ai = getAI();
-        const suggestionsString = suggestions.map(s => `- [${s.area}] ${s.text}`).join('\n');
+        const suggestionsText = suggestions.map(s => `- [${s.area}] ${s.text}`).join('\n');
         
         const prompt = ENHANCE_ARTICLE_SCRIPT
             .replace('{original_title}', originalTitle)
             .replace('{original_content}', originalContent)
-            .replace('{suggestions}', suggestionsString)
+            .replace('{suggestions}', suggestionsText)
             .replace('{evaluation_criteria}', evalCriteria);
 
         const response = await ai.models.generateContent({
@@ -585,20 +472,18 @@ export async function enhanceArticle({ originalTitle, originalContent, evalCrite
                                 type: Type.OBJECT,
                                 properties: {
                                     text: { type: Type.STRING },
-                                    area: { type: Type.STRING }
+                                    area: { type: Type.STRING },
                                 },
-                                required: ['text', 'area']
-                            }
-                        }
+                                required: ['text', 'area'],
+                            },
+                        },
                     },
                     required: ['title', 'content', 'evaluation', 'score', 'suggestions'],
                 },
+                temperature: 0.7,
             },
         });
-
-        const result: GeneratedArticle = JSON.parse(response.text);
-        return result;
-
+        return JSON.parse(response.text);
     } catch (error) {
         console.error("Error enhancing article:", error);
         if (error instanceof Error) {
@@ -608,7 +493,7 @@ export async function enhanceArticle({ originalTitle, originalContent, evalCrite
     }
 }
 
-export async function polishArticle({ originalTitle, originalContent, evalCriteria, styleReferences, polishScript }: { originalTitle: string; originalContent: string; evalCriteria: string; styleReferences: string; polishScript: string; }): Promise<GeneratedArticle> {
+export async function polishArticle({ originalTitle, originalContent, evalCriteria, styleReferences, polishScript }: { originalTitle: string; originalContent: string; evalCriteria: string; styleReferences: string; polishScript: string }): Promise<GeneratedArticle> {
     try {
         const ai = getAI();
         
@@ -636,20 +521,18 @@ export async function polishArticle({ originalTitle, originalContent, evalCriter
                                 type: Type.OBJECT,
                                 properties: {
                                     text: { type: Type.STRING },
-                                    area: { type: Type.STRING }
+                                    area: { type: Type.STRING },
                                 },
-                                required: ['text', 'area']
-                            }
-                        }
+                                required: ['text', 'area'],
+                            },
+                        },
                     },
                     required: ['title', 'content', 'evaluation', 'score', 'suggestions'],
                 },
+                temperature: 0.8, // Slightly higher for more creative stylistic changes
             },
         });
-
-        const result: GeneratedArticle = JSON.parse(response.text);
-        return result;
-
+        return JSON.parse(response.text);
     } catch (error) {
         console.error("Error polishing article:", error);
         if (error instanceof Error) {
@@ -659,52 +542,53 @@ export async function polishArticle({ originalTitle, originalContent, evalCriter
     }
 }
 
-export async function createArticleTemplateFromText({ articleText, existingTemplates }: { articleText: string; existingTemplates: SavedArticleTemplate[] }): Promise<Omit<SavedArticleTemplate, 'id'>> {
+
+export async function createArticleTemplateFromText({ articleText, existingTemplates }: { articleText: string, existingTemplates: SavedArticleTemplate[] }): Promise<Omit<SavedArticleTemplate, 'id'>> {
     try {
         const ai = getAI();
-        const examples = existingTemplates.map(t => 
-            `### ${t.title}\nDescription: ${t.description}\nStructure:\n\`\`\`\n${t.structure}\n\`\`\``
-        ).slice(0, 5).join('\n\n---\n\n'); // Use a few examples
+        const examples = existingTemplates.slice(0, 3).map(t => 
+`### ${t.title}
+Description: ${t.description}
+Structure:
+${t.structure}
+---`
+        ).join('\n');
 
         const prompt = CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT
             .replace('{existing_templates_examples}', examples)
             .replace('{article_text}', articleText);
             
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro', // Use pro for better structure analysis
+            model: 'gemini-2.5-pro',
             contents: [{ parts: [{ text: prompt }] }],
             config: {
-                responseMimeType: "application/json",
+                responseMimeType: 'application/json',
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
-                        title: { type: Type.STRING, description: "A concise, descriptive title for this new template (e.g., \"The 'Problem-Agitation-Solution' Framework\")." },
-                        description: { type: Type.STRING, description: "A short description of what the template is best for and its target platforms." },
-                        structure: { type: Type.STRING, description: "A detailed breakdown of the article's sections, estimated word counts for each, key elements, and transition phrases." },
-                        specialInstructions: { type: Type.STRING, description: "A single, concise, actionable tip for the user explaining the most important thing to focus on when using this template." }
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        structure: { type: Type.STRING },
+                        specialInstructions: { type: Type.STRING },
                     },
                     required: ['title', 'description', 'structure', 'specialInstructions'],
                 },
             },
         });
-
-        const newTemplate: Omit<SavedArticleTemplate, 'id'> = JSON.parse(response.text);
-        return newTemplate;
-
+        return JSON.parse(response.text);
     } catch (error) {
-        console.error("Error creating article template:", error);
+        console.error("Error creating template from text:", error);
         if (error instanceof Error) {
-            throw new Error(`Failed to create article template. Error: ${error.message}`);
+            throw new Error(`Failed to create template. Error: ${error.message}`);
         }
-        throw new Error("Failed to create article template. An unknown error occurred.");
+        throw new Error("Failed to create template from text. An unknown error occurred.");
     }
 }
 
-
-export async function generateHeadlinesForArticle({ articleContent, evalCriteria }: { articleContent: string; evalCriteria: string; }): Promise<Omit<GeneratedHeadline, 'id'>[]> {
+export async function generateHeadlinesForArticle({ articleContent, evalCriteria, script }: { articleContent: string; evalCriteria: string; script: string; }): Promise<Omit<GeneratedHeadline, 'id'>[]> {
     try {
         const ai = getAI();
-        const prompt = GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT
+        const prompt = script
             .replace('{article_content}', articleContent)
             .replace('{evaluation_criteria}', evalCriteria);
 
@@ -724,16 +608,17 @@ export async function generateHeadlinesForArticle({ articleContent, evalCriteria
                                     headline: { type: Type.STRING },
                                     subheadline: { type: Type.STRING },
                                     score: { type: Type.NUMBER },
-                                    reasoning: { type: Type.STRING }
+                                    reasoning: { type: Type.STRING },
                                 },
-                                required: ['headline', 'subheadline', 'score', 'reasoning']
-                            }
-                        }
+                                required: ['headline', 'subheadline', 'score', 'reasoning'],
+                            },
+                        },
                     },
-                    required: ['headlines']
-                }
-            }
+                    required: ['headlines'],
+                },
+            },
         });
+
         const { headlines } = JSON.parse(response.text);
         return headlines;
     } catch (error) {

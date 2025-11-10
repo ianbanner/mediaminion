@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArticleIdea } from '../types.ts';
 import Button from './Button.tsx';
@@ -23,8 +22,8 @@ const ArticleIdeaCard: React.FC<{
                 </ul>
             </div>
             <div className="mt-auto pt-4 text-center">
-                <Button onClick={() => onSelect(idea)} className="w-full">
-                    Generate Article from this Idea
+                <Button onClick={() => onSelect(idea)} className="w-full bg-blue-600 hover:bg-blue-500">
+                    Move This Idea to the Generate Article Page
                 </Button>
             </div>
         </div>
@@ -40,9 +39,11 @@ interface HeadlineGeneratorPanelProps {
   onSourceUrlChange: (url: string) => void;
   sourceText: string;
   onSourceTextChange: (text: string) => void;
-  onGenerateIdeas: () => void;
+  onGenerateIdeas: (script: string) => void;
   articleIdeas: ArticleIdea[] | null;
   onStartArticleFromIdea: (idea: ArticleIdea) => void;
+  generateArticleIdeasScript: string;
+  onGenerateArticleIdeasScriptChange: (script: string) => void;
 }
 
 const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
@@ -55,7 +56,9 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
   onSourceTextChange,
   onGenerateIdeas,
   articleIdeas,
-  onStartArticleFromIdea
+  onStartArticleFromIdea,
+  generateArticleIdeasScript,
+  onGenerateArticleIdeasScriptChange,
 }) => {
     const isSourceProvided = sourceType === 'url' ? sourceUrl.trim() !== '' : sourceText.trim() !== '';
 
@@ -78,8 +81,17 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
                     <textarea value={sourceText} onChange={(e) => onSourceTextChange(e.target.value)} rows={8} placeholder="Paste the source text here..." className="w-full p-3 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400" />
                 )}
             </div>
+            <div className="pt-4 border-t border-slate-700/50">
+              <h3 className="text-lg font-semibold text-gray-300 mb-2">Advanced: AI Idea Generation Script</h3>
+              <textarea 
+                  value={generateArticleIdeasScript} 
+                  onChange={(e) => onGenerateArticleIdeasScriptChange(e.target.value)} 
+                  rows={15} 
+                  className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"
+              />
+            </div>
             <div className="text-center">
-                 <Button onClick={onGenerateIdeas} isLoading={isLoading && !articleIdeas} disabled={!isSourceProvided}>
+                 <Button onClick={() => onGenerateIdeas(generateArticleIdeasScript)} isLoading={isLoading && !articleIdeas} disabled={!isSourceProvided} className="bg-blue-600 hover:bg-blue-500">
                     {isLoading && !articleIdeas ? 'Your Minion Is Working' : 'Generate Article Ideas'}
                  </Button>
             </div>

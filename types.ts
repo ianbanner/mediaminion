@@ -1,5 +1,3 @@
-
-
 export type ArticleDestination = 'LinkedIn' | 'Medium' | 'Substack' | 'Facebook' | 'Non Fiction Book' | 'Fiction Book';
 
 export interface ArticleIdea {
@@ -100,6 +98,7 @@ export interface GeneratedHeadline {
 }
 
 export interface BackupData {
+  userEmail?: string | null;
   userRole: string;
   targetAudience: string;
   referenceWorldContent?: string;
@@ -134,6 +133,7 @@ export interface BackupData {
   headlineSourceText?: string;
   
   generatedArticleIdeas?: ArticleIdea[] | null;
+  generateArticleIdeasScript?: string;
   
   generateArticleWordCount?: number;
   generateArticleSourceType?: 'url' | 'text';
@@ -147,6 +147,7 @@ export interface BackupData {
   endOfArticleSummary?: string;
   articleEvalCriteria?: string;
   headlineEvalCriteriaForArticle?: string;
+  generateHeadlinesForArticleScript?: string;
   generateArticleDestination?: ArticleDestination;
   finalDestinationGuidelines?: string;
   

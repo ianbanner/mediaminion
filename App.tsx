@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -24,6 +21,8 @@ import NewUserGuide from './components/NewUserGuide.tsx';
 import HeadlineEditModal from './components/HeadlineEditModal.tsx';
 import LandingPage from './components/LandingPage.tsx';
 import AnalyticsPanel from './components/AnalyticsPanel.tsx';
+import PricingPage from './components/PricingPage.tsx';
+import FAQPage from './components/FAQPage.tsx';
 
 
 import {
@@ -53,6 +52,8 @@ import {
   DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA,
   DESTINATION_GUIDELINES_MAP,
   LINKEDIN_DESTINATION_GUIDELINES,
+  GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT,
+  GENERATE_ARTICLE_IDEAS_SCRIPT,
 } from './services/scriptService.ts';
 
 import { initialTemplates } from './services/templateData.ts';
@@ -184,6 +185,7 @@ export const App: React.FC = () => {
   const [authError, setAuthError] = useState<React.ReactNode | null>(null);
   const isAdmin = useMemo(() => userEmail?.toLowerCase() === ADMIN_EMAIL, [userEmail]);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [page, setPage] = useState('home');
 
 
   const [view, setView] = useState('generate-posts');
@@ -246,6 +248,7 @@ export const App: React.FC = () => {
   const [headlineSourceUrl, setHeadlineSourceUrl] = useState('');
   const [headlineSourceText, setHeadlineSourceText] = useState('');
   const [generatedArticleIdeas, setGeneratedArticleIdeas] = useState<ArticleIdea[] | null>(null);
+  const [generateArticleIdeasScript, setGenerateArticleIdeasScript] = useState(GENERATE_ARTICLE_IDEAS_SCRIPT);
 
   const [generateArticleWordCount, setGenerateArticleWordCount] = useState(1000);
   const [generateArticleSourceType, setGenerateArticleSourceType] = useState<'url' | 'text'>('text');
@@ -258,6 +261,7 @@ export const App: React.FC = () => {
   const [endOfArticleSummary, setEndOfArticleSummary] = useState(DEFAULT_END_OF_ARTICLE_SUMMARY);
   const [articleEvalCriteria, setArticleEvalCriteria] = useState(DEFAULT_ARTICLE_EVAL_CRITERIA);
   const [headlineEvalCriteriaForArticle, setHeadlineEvalCriteriaForArticle] = useState(DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA);
+  const [generateHeadlinesForArticleScript, setGenerateHeadlinesForArticleScript] = useState(GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT);
   const [generatedHeadlinesForArticle, setGeneratedHeadlinesForArticle] = useState<GeneratedHeadline[] | null>(null);
   const [selectedHeadlineForEdit, setSelectedHeadlineForEdit] = useState<GeneratedHeadline | null>(null);
   const [generateArticleDestination, setGenerateArticleDestination] = useState<ArticleDestination>('LinkedIn');
@@ -273,6 +277,7 @@ export const App: React.FC = () => {
 
   const handleSaveStateToLocalStorage = useCallback(() => {
     const backupData: BackupData = {
+      userEmail,
       userRole,
       targetAudience,
       referenceWorldContent,
@@ -297,6 +302,7 @@ export const App: React.FC = () => {
       headlineSourceUrl,
       headlineSourceText,
       generatedArticleIdeas,
+      generateArticleIdeasScript,
       generateArticleWordCount,
       generateArticleSourceType,
       generateArticleSourceUrl,
@@ -308,13 +314,15 @@ export const App: React.FC = () => {
       endOfArticleSummary,
       articleEvalCriteria,
       headlineEvalCriteriaForArticle,
+      generateHeadlinesForArticleScript,
       generateArticleDestination,
       finalDestinationGuidelines,
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(backupData));
-  }, [userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings, researchScript, researchedPosts, headlineSourceType, headlineSourceUrl, headlineSourceText, generatedArticleIdeas, generateArticleWordCount, generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText, generateArticleScript, generatedArticleHistory, currentArticleIterationIndex, generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle, generateArticleDestination, finalDestinationGuidelines]);
+  }, [userEmail, userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings, researchScript, researchedPosts, headlineSourceType, headlineSourceUrl, headlineSourceText, generatedArticleIdeas, generateArticleIdeasScript, generateArticleWordCount, generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText, generateArticleScript, generatedArticleHistory, currentArticleIterationIndex, generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle, generateHeadlinesForArticleScript, generateArticleDestination, finalDestinationGuidelines]);
   
   const restoreFromBackup = useCallback((data: BackupData) => {
+    setUserEmail(data.userEmail ?? null);
     setUserRole(data.userRole ?? DEFAULT_USER_ROLE);
     setTargetAudience(data.targetAudience ?? DEFAULT_TARGET_AUDIENCE);
     setReferenceWorldContent(data.referenceWorldContent ?? '');
@@ -339,6 +347,7 @@ export const App: React.FC = () => {
     setHeadlineSourceUrl(data.headlineSourceUrl ?? '');
     setHeadlineSourceText(data.headlineSourceText ?? '');
     setGeneratedArticleIdeas(data.generatedArticleIdeas ?? null);
+    setGenerateArticleIdeasScript(data.generateArticleIdeasScript ?? GENERATE_ARTICLE_IDEAS_SCRIPT);
     setGenerateArticleWordCount(data.generateArticleWordCount ?? 1000);
     setGenerateArticleSourceType(data.generateArticleSourceType ?? 'text');
     setGenerateArticleSourceUrl(data.generateArticleSourceUrl ?? '');
@@ -350,6 +359,7 @@ export const App: React.FC = () => {
     setEndOfArticleSummary(data.endOfArticleSummary ?? DEFAULT_END_OF_ARTICLE_SUMMARY);
     setArticleEvalCriteria(data.articleEvalCriteria ?? DEFAULT_ARTICLE_EVAL_CRITERIA);
     setHeadlineEvalCriteriaForArticle(data.headlineEvalCriteriaForArticle ?? DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA);
+    setGenerateHeadlinesForArticleScript(data.generateHeadlinesForArticleScript ?? GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT);
     setGenerateArticleDestination(data.generateArticleDestination ?? 'LinkedIn');
     setFinalDestinationGuidelines(data.finalDestinationGuidelines ?? LINKEDIN_DESTINATION_GUIDELINES);
 
@@ -361,6 +371,21 @@ export const App: React.FC = () => {
     if (loadedData) {
       try {
         const parsedData: BackupData = JSON.parse(loadedData);
+        
+        const lastUserEmail = parsedData.userEmail;
+        if (lastUserEmail) {
+            const restoredAdminSettings = parsedData.adminSettings || adminSettings;
+            const authorizedEmails = restoredAdminSettings.authorizedEmails.map(e => e.toLowerCase());
+            const isAdminUser = lastUserEmail.toLowerCase() === ADMIN_EMAIL;
+            const isAuthorizedUser = authorizedEmails.includes(lastUserEmail.toLowerCase());
+
+            if (isAdminUser || isAuthorizedUser) {
+                setUserEmail(lastUserEmail);
+                setIsAuthenticated(true);
+            }
+        }
+        
+        // Restore all data *after* attempting to set auth state to prevent flicker
         restoreFromBackup(parsedData);
       } catch (e) {
         console.error("Failed to parse local storage data:", e);
@@ -375,6 +400,9 @@ export const App: React.FC = () => {
     return () => clearTimeout(saveTimer);
   }, [handleSaveStateToLocalStorage]);
 
+  const handleNavigate = (targetPage: string) => {
+      setPage(targetPage);
+  };
 
   const handleSignIn = (email: string, password?: string) => {
     setAuthError(null);
@@ -558,7 +586,7 @@ export const App: React.FC = () => {
     }
   }, [researchScript]);
   
-  const handleGenerateArticleIdeas = useCallback(async () => {
+  const handleGenerateArticleIdeas = useCallback(async (script: string) => {
     setIsLoading(true);
     setError(null);
     setGeneratedArticleIdeas(null);
@@ -569,7 +597,8 @@ export const App: React.FC = () => {
         const ideas = await generateArticleIdeas({
             sourceArticle: headlineSourceType === 'text' ? headlineSourceText : headlineSourceUrl,
             userRole,
-            targetAudience
+            targetAudience,
+            script,
         });
         setGeneratedArticleIdeas(ideas);
         playSound('success');
@@ -612,7 +641,9 @@ export const App: React.FC = () => {
             finalDestinationGuidelines: finalDestinationGuidelines,
         });
         setGeneratedArticleHistory(prev => {
-            const newHistory = [...prev, { ...article, type: 'initial' }];
+            // FIX: Explicitly type the new article object to prevent type inference issues.
+            const newArticle: GeneratedArticle = { ...article, type: 'initial' };
+            const newHistory = [...prev, newArticle];
             setCurrentArticleIterationIndex(newHistory.length - 1);
             return newHistory;
         });
@@ -646,7 +677,9 @@ export const App: React.FC = () => {
               suggestions
           });
           setGeneratedArticleHistory(prev => {
-              const newHistory = [...prev, { ...enhancedArticle, type: 'enhanced' }];
+              // FIX: Explicitly type the new article object to prevent type inference issues.
+              const newArticle: GeneratedArticle = { ...enhancedArticle, type: 'enhanced' };
+              const newHistory = [...prev, newArticle];
               setCurrentArticleIterationIndex(newHistory.length - 1);
               return newHistory;
           });
@@ -674,7 +707,9 @@ export const App: React.FC = () => {
               polishScript,
           });
           setGeneratedArticleHistory(prev => {
-              const newHistory = [...prev, { ...polishedArticle, type: 'polished' }];
+              // FIX: Explicitly type the new article object to prevent type inference issues.
+              const newArticle: GeneratedArticle = { ...polishedArticle, type: 'polished' };
+              const newHistory = [...prev, newArticle];
               setCurrentArticleIterationIndex(newHistory.length - 1);
               return newHistory;
           });
@@ -708,7 +743,7 @@ export const App: React.FC = () => {
     }
   }, [savedArticleTemplates]);
 
-  const handleGenerateHeadlinesForArticle = useCallback(async () => {
+  const handleGenerateHeadlinesForArticle = useCallback(async (script: string) => {
     if (!generatedArticleHistory[currentArticleIterationIndex]) return;
 
     setIsGeneratingHeadlines(true);
@@ -719,6 +754,7 @@ export const App: React.FC = () => {
         const headlines = await generateHeadlinesForArticle({
             articleContent,
             evalCriteria: headlineEvalCriteriaForArticle,
+            script,
         });
         setGeneratedHeadlinesForArticle(headlines.map(h => ({ ...h, id: uuidv4() })));
         playSound('success');
@@ -817,15 +853,15 @@ export const App: React.FC = () => {
         return <AdminPanel settings={adminSettings} onSettingsChange={setAdminSettings} />;
       case 'backup-restore':
         return <BackupRestorePanel userEmail={userEmail || 'unknown-user'} backupData={{
-          userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType,
+          userEmail, userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType,
           standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates,
           ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings,
           adminSettings, researchScript, researchedPosts, headlineSourceType, headlineSourceUrl,
-          headlineSourceText, generatedArticleIdeas, generateArticleWordCount,
+          headlineSourceText, generatedArticleIdeas, generateArticleIdeasScript, generateArticleWordCount,
           generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
           generateArticleScript, generatedArticleHistory, currentArticleIterationIndex,
           generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle,
-          generateArticleDestination, finalDestinationGuidelines,
+          generateHeadlinesForArticleScript, generateArticleDestination, finalDestinationGuidelines,
         }} onRestore={restoreFromBackup} />;
       case 'settings':
         return <SettingsPanel settings={settings} onSettingsChange={handleSaveSettings} isAdmin={isAdmin} />;
@@ -856,6 +892,8 @@ export const App: React.FC = () => {
             onGenerateIdeas={handleGenerateArticleIdeas}
             articleIdeas={generatedArticleIdeas}
             onStartArticleFromIdea={handleStartArticleFromIdea}
+            generateArticleIdeasScript={generateArticleIdeasScript}
+            onGenerateArticleIdeasScriptChange={setGenerateArticleIdeasScript}
         />;
       case 'generate-articles':
         return <ArticleGeneratorPanel 
@@ -882,6 +920,8 @@ export const App: React.FC = () => {
             onPolishArticle={handlePolishArticle}
             headlineEvalCriteriaForArticle={headlineEvalCriteriaForArticle}
             onHeadlineEvalCriteriaForArticleChange={setHeadlineEvalCriteriaForArticle}
+            generateHeadlinesForArticleScript={generateHeadlinesForArticleScript}
+            onGenerateHeadlinesForArticleScriptChange={setGenerateHeadlinesForArticleScript}
             onGenerateHeadlinesForArticle={handleGenerateHeadlinesForArticle}
             generatedHeadlinesForArticle={generatedHeadlinesForArticle}
             onSelectHeadlineForEdit={setSelectedHeadlineForEdit}
@@ -921,11 +961,23 @@ export const App: React.FC = () => {
   };
 
   if (!isAuthenticated) {
+    const renderUnauthenticatedPage = () => {
+        switch (page) {
+            case 'pricing':
+                return <PricingPage onLoginClick={() => setShowLoginModal(true)} onNavigate={handleNavigate} currentPage={page} />;
+            case 'questions':
+                return <FAQPage onLoginClick={() => setShowLoginModal(true)} onNavigate={handleNavigate} currentPage={page} />;
+            case 'home':
+            default:
+                return <LandingPage onLoginClick={() => setShowLoginModal(true)} onNavigate={handleNavigate} currentPage={page} />;
+        }
+    };
+
     return (
-      <>
-        <LandingPage onLoginClick={() => setShowLoginModal(true)} />
-        {showLoginModal && <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} onClose={() => setShowLoginModal(false)} />}
-      </>
+        <>
+            {renderUnauthenticatedPage()}
+            {showLoginModal && <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} onClose={() => setShowLoginModal(false)} />}
+        </>
     );
   }
 

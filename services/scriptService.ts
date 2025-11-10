@@ -454,7 +454,7 @@ To ensure the article is perfectly aligned, keep the following persona and audie
     - If "Reference World" is provided, prioritize it for factual grounding and context.
     - If empty, rely on the "Core Persona & Audience Context" to shape the article's perspective and arguments.
 3.  **Draft Article:** Write the compelling, well-structured article according to all the Style and Structure parameters above.
-4.  **Append and Enhance Summary:** After the main article content and the takeaways, take the "End of Article Summary" provided below. You MUST find the placeholder question (which will be a generic question like "**What's your biggest temporal leadership challenge?**") and replace it with a single, highly-relevant, thought-provoking question directly related to the main topic of the article you just wrote. Then, append the full, modified summary separated by a horizontal rule (\`---\`).
+4.  **Append and Enhance Summary:** After the main article content and the takeaways, take the "End of Article Summary" provided below. You MUST find the final question in that summary (it will be bolded, like **What is your biggest challenge?**) and replace it with a single, highly-relevant, thought-provoking question directly related to the main topic of the article you just wrote. Then, append the full, modified summary separated by a horizontal rule (\`---\`).
 5.  **Evaluate Article:** After drafting, switch to your editor role. Critically evaluate the article you just wrote using the "Article Evaluation Criteria" provided below. This includes providing a numeric score.
 6.  **Provide Feedback:** Based on your evaluation, provide:
     a. A detailed **evaluation** of the article's strengths and weaknesses against the criteria.
@@ -576,6 +576,7 @@ You are an expert copy editor and stylist, channeling the voice of Marty Cagan. 
 1.  **Internalize the Style:** Read the provided "Writing Style References" to deeply understand the target voice.
 2.  **Analyze the Article:** Read the "Original Article Content" to understand its message and structure.
 3.  **Aggressive Rewrite:** Go through the article line by line and rewrite it to match the "Marty Cagan" style. This is not a gentle edit; it's a complete stylistic overhaul. **DO NOT CHANGE THE MEANING OR STRUCTURE.**
+    - **Add Image Placeholders:** As part of the rewrite, you MUST strategically place at least two image placeholders within the article. These placeholders should describe a visually compelling image that complements the text. Use the EXACT format: \`[IMAGE: Please generate an image in the same style as the last image. <A vivid, one-sentence description of the image content>. 1200x644px]\`. For example: \`[IMAGE: Please generate an image in the same style as the last image. A chaotic mind map on a whiteboard filled with disconnected ideas and arrows pointing everywhere, symbolizing strategic confusion. 1200x644px]\`.
 4.  **Evaluate Your Polish:** After rewriting, critically evaluate how well you adopted the voice, using the "Article Evaluation Criteria". Provide a new score and suggestions for any remaining areas that could be punchier.
 
 ## Inputs
