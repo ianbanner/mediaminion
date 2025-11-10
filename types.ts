@@ -68,11 +68,13 @@ export interface GeneratedArticle {
   evaluation: string;
   suggestions: Suggestion[];
   score: number;
+  headlineApplied?: boolean;
 }
 
 export interface GeneratedHeadline {
   id: string;
   headline: string;
+  subheadline?: string;
   score: number;
   reasoning: string;
 }
@@ -124,6 +126,7 @@ export interface BackupData {
   generateArticleTitle?: string;
   endOfArticleSummary?: string;
   articleEvalCriteria?: string;
+  headlineEvalCriteriaForArticle?: string;
   
   showCreateArticleTemplateModal?: boolean;
 }

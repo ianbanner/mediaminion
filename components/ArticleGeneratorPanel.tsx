@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { GeneratedArticle, Suggestion } from '../types.ts';
+import { GeneratedArticle, Suggestion, GeneratedHeadline } from '../types.ts';
 import Button from './Button.tsx';
 import MarkdownRenderer from './MarkdownRenderer.tsx';
 
@@ -26,6 +27,11 @@ interface ArticleGeneratorPanelProps {
   articleEvalCriteria: string;
   onArticleEvalCriteriaChange: (value: string) => void;
   onEnhanceArticle: (selectedSuggestions: Suggestion[]) => void;
+  headlineEvalCriteriaForArticle: string;
+  onHeadlineEvalCriteriaForArticleChange: (value: string) => void;
+  onGenerateHeadlinesForArticle: () => void;
+  generatedHeadlinesForArticle: GeneratedHeadline[] | null;
+  onSelectHeadlineForEdit: (headline: GeneratedHeadline) => void;
 }
 
 const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
@@ -51,6 +57,11 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
   articleEvalCriteria,
   onArticleEvalCriteriaChange,
   onEnhanceArticle,
+  headlineEvalCriteriaForArticle,
+  onHeadlineEvalCriteriaForArticleChange,
+  onGenerateHeadlinesForArticle,
+  generatedHeadlinesForArticle,
+  onSelectHeadlineForEdit,
 }) => {
     
     const [copied, setCopied] = useState(false);
@@ -80,6 +91,9 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
 
     const fullArticleMarkdown = useMemo(() => {
         if (!currentArticle) return '';
+        if (currentArticle.headlineApplied) {
+            return `# ${currentArticle.title}\n\n${currentArticle.content}`;
+        }
         const contentStartsWithTitle = currentArticle.content.trim().startsWith(`# ${currentArticle.title}`) || currentArticle.content.trim().startsWith(`# `);
         if (contentStartsWithTitle) {
             return currentArticle.content;
@@ -202,6 +216,17 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                     className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" 
                 />
             </div>
+            
+            <div className="pt-4 border-t border-slate-700/50">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Headline Evaluation Criteria</label>
+                <p className="text-xs text-gray-500 mb-2">The AI uses these criteria to generate and score the 10 headline options for your article.</p>
+                <textarea 
+                    value={headlineEvalCriteriaForArticle} 
+                    onChange={(e) => onHeadlineEvalCriteriaForArticleChange(e.target.value)} 
+                    rows={10}
+                    className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" 
+                />
+            </div>
 
             <div className="pt-4 border-t border-slate-700/50">
                 <h3 className="text-lg font-semibold text-gray-300 mb-2">Advanced: AI Generation Script</h3>
@@ -251,12 +276,24 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={handleCopy} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white">
-                            {copied ? 'Copied!' : 'Copy Formatted Article'}
-                        </button>
-                        <button onClick={handleDownload} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-green-600 text-white hover:bg-green-500">
-                            Download .md
-                        </button>
+                        {currentArticle.headlineApplied ? (
+                             <>
+                                <button onClick={handleCopy} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white">
+                                    {copied ? 'Copied!' : 'Copy Formatted Article'}
+                                </button>
+                                <button onClick={handleDownload} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-green-600 text-white hover:bg-green-500">
+                                    Download .md
+                                </button>
+                            </>
+                        ) : (
+                            <Button 
+                                onClick={onGenerateHeadlinesForArticle} 
+                                isLoading={isLoading && !generatedHeadlinesForArticle}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-xs px-3 py-1.5"
+                            >
+                                {isLoading && !generatedHeadlinesForArticle ? 'Generating...' : 'Generate Headlines & Subs'}
+                            </Button>
+                        )}
                     </div>
                 </div>
                 
@@ -289,11 +326,34 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                         ))}
                     </div>
                     <div className="text-center pt-4">
-                        <Button onClick={() => onEnhanceArticle(selectedSuggestions)} isLoading={isLoading} disabled={selectedSuggestions.length === 0}>
-                            {isLoading ? 'Your Minion Is Working' : `Enhance Article (${selectedSuggestions.length} selected)`}
+                        <Button onClick={() => onEnhanceArticle(selectedSuggestions)} isLoading={isLoading && !generatedHeadlinesForArticle} disabled={selectedSuggestions.length === 0}>
+                            {isLoading && !generatedHeadlinesForArticle ? 'Your Minion Is Working' : `Enhance Article (${selectedSuggestions.length} selected)`}
                         </Button>
                     </div>
                 </div>
+
+                {generatedHeadlinesForArticle && (
+                    <div className="pt-4 border-t border-slate-700/50 space-y-3">
+                        <h3 className="text-xl font-semibold text-gray-200">Choose a Headline</h3>
+                        <p className="text-sm text-gray-400">Select one of the AI-generated options below to edit and apply to your article.</p>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {generatedHeadlinesForArticle.map((headline) => (
+                                <div 
+                                    key={headline.id} 
+                                    onClick={() => onSelectHeadlineForEdit(headline)} 
+                                    className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg cursor-pointer transition-all hover:border-teal-500 hover:bg-slate-700/50"
+                                >
+                                    <div className="flex justify-between items-start gap-2">
+                                        <h4 className="font-bold text-teal-300">{headline.headline}</h4>
+                                        <span className="flex-shrink-0 px-2 py-0.5 text-xs font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{headline.score}/100</span>
+                                    </div>
+                                    <p className="mt-1 text-sm text-gray-300">{headline.subheadline}</p>
+                                    <p className="mt-2 text-xs text-gray-400 italic">"{headline.reasoning}"</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         )}
     </div>

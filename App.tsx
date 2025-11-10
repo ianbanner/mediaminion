@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -20,6 +21,7 @@ import QuickPostPanel from './components/QuickPostPanel.tsx';
 import QuickArticlePanel from './components/QuickArticlePanel.tsx';
 import PostingGuides from './components/PostingGuides.tsx';
 import NewUserGuide from './components/NewUserGuide.tsx';
+import HeadlineEditModal from './components/HeadlineEditModal.tsx';
 
 
 import {
@@ -30,6 +32,7 @@ import {
   generateArticle,
   enhanceArticle,
   createArticleTemplateFromText,
+  generateHeadlinesForArticle,
   GenerationResults,
   ResearchedPost,
 } from './services/geminiService.ts';
@@ -44,6 +47,7 @@ import {
   LINKEDIN_ANALYSIS_SCRIPT,
   DEFAULT_ARTICLE_EVAL_CRITERIA,
   GENERATE_ARTICLE_SCRIPT,
+  DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA,
 } from './services/scriptService.ts';
 
 import { initialTemplates } from './services/templateData.ts';
@@ -61,6 +65,7 @@ import {
   Suggestion,
   SavedArticleTemplate,
   ArticleIdea,
+  GeneratedHeadline,
 } from './types.ts';
 
 const LOCAL_STORAGE_KEY = 'socialMediaMinionData';
@@ -229,409 +234,53 @@ export const App: React.FC = () => {
   const [generateArticleTitle, setGenerateArticleTitle] = useState('');
   const [endOfArticleSummary, setEndOfArticleSummary] = useState(DEFAULT_END_OF_ARTICLE_SUMMARY);
   const [articleEvalCriteria, setArticleEvalCriteria] = useState(DEFAULT_ARTICLE_EVAL_CRITERIA);
+  const [headlineEvalCriteriaForArticle, setHeadlineEvalCriteriaForArticle] = useState(DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA);
+  const [generatedHeadlinesForArticle, setGeneratedHeadlinesForArticle] = useState<GeneratedHeadline[] | null>(null);
+  const [selectedHeadlineForEdit, setSelectedHeadlineForEdit] = useState<GeneratedHeadline | null>(null);
 
-  const scheduleIntervalRef = useRef<number | null>(null);
 
-  const stateToBackup = useMemo(() => ({
-    userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles,
-    articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText,
-    generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue,
-    schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings,
-    researchScript, researchedPosts, headlineSourceType, headlineSourceUrl, headlineSourceText,
-    generatedArticleIdeas, generateArticleWordCount,
-    generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
-    generateArticleScript, generatedArticleHistory, currentArticleIterationIndex,
-    generateArticleTitle, endOfArticleSummary, articleEvalCriteria,
-    showCreateArticleTemplateModal,
-  }), [
-    userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles,
-    articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText,
-    generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue,
-    schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings,
-    researchScript, researchedPosts, headlineSourceType, headlineSourceUrl, headlineSourceText,
-    generatedArticleIdeas, generateArticleWordCount,
-    generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
-    generateArticleScript, generatedArticleHistory, currentArticleIterationIndex,
-    generateArticleTitle, endOfArticleSummary, articleEvalCriteria,
-    showCreateArticleTemplateModal,
-  ]);
-
-  useEffect(() => {
-    try {
-      const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (savedData) {
-        const data: BackupData = JSON.parse(savedData);
-        setUserRole(data.userRole || DEFAULT_USER_ROLE);
-        setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
-        setReferenceWorldContent(data.referenceWorldContent || '');
-        setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
-        setStandardStarterText(data.standardStarterText || DEFAULT_POST_STARTER_TEXT);
-        setStandardSummaryText(data.standardSummaryText || DEFAULT_POST_SUMMARY_TEXT);
-        setGenerationScript(data.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
-        setSavedTemplates(data.savedTemplates || initialTemplates);
-        setSavedArticleTemplates(data.savedArticleTemplates || initialArticleTemplates);
-        setAyrshareQueue(data.ayrshareQueue || []);
-        setSchedulingInstructions(data.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
-        setParsedSchedule(data.parsedSchedule || []);
-        setAyrshareLog(data.ayrshareLog || []);
-        setSettings(data.settings || { ayrshareApiKey: '' });
-        setAdminSettings(data.adminSettings || { authorizedEmails: [], secretPassword: '' });
-        setResearchScript(data.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
-        setGenerateArticleScript(data.generateArticleScript || GENERATE_ARTICLE_SCRIPT);
-        setEndOfArticleSummary(data.endOfArticleSummary || DEFAULT_END_OF_ARTICLE_SUMMARY);
-        setArticleEvalCriteria(data.articleEvalCriteria || DEFAULT_ARTICLE_EVAL_CRITERIA);
-        setGeneratedArticleIdeas(data.generatedArticleIdeas || null);
-      }
-    } catch (e) {
-      console.error("Failed to load data:", e);
-      setError("Failed to load saved data. Some settings may be reset.");
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToBackup));
-    } catch (e) {
-      console.error("Failed to save data:", e);
-      setError("Failed to save session data. Changes may not be persisted.");
-    }
-  }, [stateToBackup]);
-
-  const handleSignOut = useCallback(() => {
-    setIsAuthenticated(false);
-    setUserEmail(null);
-  }, []);
-
-  const handleSignIn = useCallback((email: string, password?: string) => {
-    setIsAuthenticated(true);
-    setUserEmail(email);
-  }, []);
-
-  const handleGeneratePosts = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    setGenerationResults(null);
-    try {
-      const results = await generateAndEvaluatePosts({
-        articleUrl: postSourceType === 'url' ? articleUrl : '',
-        articleText: postSourceType === 'text' ? articleText : '',
-        templates: savedTemplates,
-        script: generationScript,
-        targetAudience,
-        standardSummaryText,
-        standardStarterText,
-        userRole,
-      });
-      setGenerationResults(results);
-      playSound('success');
-    } catch (e: any) {
-      setError(e.message || 'An unknown error occurred during post generation.');
-      playSound('error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [postSourceType, articleUrl, articleText, savedTemplates, generationScript, targetAudience, standardSummaryText, standardStarterText, userRole]);
-
-  const handleSendToAyrshareQueue = useCallback((post: TopPostAssessment, platforms: string[]) => {
-    const newQueuedPost: QueuedPost = {
-      ...post,
-      id: uuidv4(),
-      platforms,
+  const handleSaveStateToLocalStorage = useCallback(() => {
+    const backupData: BackupData = {
+      userRole,
+      targetAudience,
+      referenceWorldContent,
+      thisIsHowIWriteArticles,
+      articleUrl,
+      articleText,
+      postSourceType,
+      standardStarterText,
+      standardSummaryText,
+      generationScript,
+      savedTemplates,
+      savedArticleTemplates,
+      ayrshareQueue,
+      schedulingInstructions,
+      parsedSchedule,
+      ayrshareLog,
+      settings,
+      adminSettings,
+      researchScript,
+      researchedPosts,
+      headlineSourceType,
+      headlineSourceUrl,
+      headlineSourceText,
+      generatedArticleIdeas,
+      generateArticleWordCount,
+      generateArticleSourceType,
+      generateArticleSourceUrl,
+      generateArticleSourceText,
+      generateArticleScript,
+      generatedArticleHistory,
+      currentArticleIterationIndex,
+      generateArticleTitle,
+      endOfArticleSummary,
+      articleEvalCriteria,
+      headlineEvalCriteriaForArticle,
     };
-    setAyrshareQueue(prev => [...prev, newQueuedPost]);
-  }, []);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(backupData));
+  }, [userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings, researchScript, researchedPosts, headlineSourceType, headlineSourceUrl, headlineSourceText, generatedArticleIdeas, generateArticleWordCount, generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText, generateArticleScript, generatedArticleHistory, currentArticleIterationIndex, generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle]);
   
-  const handleDeleteQueuedPost = useCallback((id: string) => {
-    setAyrshareQueue(prev => prev.filter(p => p.id !== id));
-  }, []);
-
-  const handleUpdateQueuedPost = useCallback((id: string, updates: Partial<QueuedPost>) => {
-    setAyrshareQueue(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
-  }, []);
-
-  const handlePostNow = useCallback(async (id: string) => {
-    if (!settings.ayrshareApiKey) {
-      setQueueError("Ayrshare API Key is missing. Please add it in Settings.");
-      playSound('error');
-      return;
-    }
-    const postToSend = ayrshareQueue.find(p => p.id === id);
-    if (!postToSend) return;
-
-    setPostingNowId(id);
-    setQueueError(null);
-    try {
-      await postToAyrshare(postToSend.content, settings.ayrshareApiKey, postToSend.platforms);
-      const newSentPost: SentPost = {
-          ...postToSend,
-          sentAt: new Date().toISOString(),
-          platforms: postToSend.platforms || ['linkedin'],
-      };
-      setAyrshareLog(prev => [newSentPost, ...prev]);
-      setAyrshareQueue(prev => prev.filter(p => p.id !== id));
-      playSound('notification');
-    } catch (e: any) {
-      setQueueError(e.message || "An unknown error occurred while posting.");
-      playSound('error');
-    } finally {
-      setPostingNowId(null);
-    }
-  }, [ayrshareQueue, settings.ayrshareApiKey]);
-
-  const handleQuickPost = useCallback(async () => {
-    setQuickPostError(null);
-    setQuickPostSuccessMessage(null);
-
-    if (!settings.ayrshareApiKey) {
-        setQuickPostError("Ayrshare API Key is missing. Please add it in Settings.");
-        playSound('error');
-        return;
-    }
-
-    if (ayrshareQueue.length === 0) {
-        setQuickPostError("The posts queue is empty. There is nothing to post.");
-        playSound('error');
-        return;
-    }
-
-    const postToSend = ayrshareQueue[0];
-    if (!postToSend) return;
-
-    setIsQuickPosting(true);
-    try {
-        await postToAyrshare(postToSend.content, settings.ayrshareApiKey, postToSend.platforms || ['linkedin']);
-        const newSentPost: SentPost = {
-            ...postToSend,
-            sentAt: new Date().toISOString(),
-            platforms: postToSend.platforms || ['linkedin'],
-        };
-        setAyrshareLog(prev => [newSentPost, ...prev]);
-        setAyrshareQueue(prev => prev.slice(1)); 
-        setQuickPostSuccessMessage(postToSend.content);
-        playSound('notification');
-    } catch (e: any) {
-        setQuickPostError(e.message || "An unknown error occurred while posting.");
-        playSound('error');
-    } finally {
-        setIsQuickPosting(false);
-    }
-  }, [ayrshareQueue, settings.ayrshareApiKey]);
-
-  const handleParseSchedule = useCallback(async () => {
-    setIsParsingSchedule(true);
-    setError(null);
-    try {
-      const times = await parseSchedule(schedulingInstructions);
-      setParsedSchedule(times);
-      playSound('notification');
-    } catch (e: any) {
-      setError(e.message || "Failed to parse schedule.");
-      playSound('error');
-    } finally {
-      setIsParsingSchedule(false);
-    }
-  }, [schedulingInstructions]);
-
-  const handleResearchPosts = useCallback(async (linkedInProfileUrl: string) => {
-    setIsLoading(true);
-    setError(null);
-    setResearchedPosts(null);
-    try {
-      const fullScript = researchScript.replace('{linkedin_profile_url}', linkedInProfileUrl);
-      const posts = await researchPopularPosts(fullScript);
-      setResearchedPosts(posts);
-    } catch (e: any) {
-      setError(e.message || 'An unknown error occurred during post research.');
-      playSound('error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [researchScript]);
-
-  const handleSaveSettings = useCallback(async (newSettings: AppSettings) => {
-    setError(null);
-    const { success, message } = await testAyrshareConnection(newSettings.ayrshareApiKey);
-    if (success) {
-      setSettings(newSettings);
-      setError(null);
-    } else {
-      setError(message);
-    }
-    return success;
-  }, []);
-
-  const handleGenerateIdeas = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    setGeneratedArticleIdeas(null);
-    try {
-        const sourceArticle = headlineSourceType === 'url' ? headlineSourceUrl : headlineSourceText;
-        const ideas = await generateArticleIdeas({ sourceArticle, userRole, targetAudience });
-        setGeneratedArticleIdeas(ideas);
-    } catch (e: any) {
-        setError(e.message || "Failed to generate article ideas.");
-        playSound('error');
-    } finally {
-        setIsLoading(false);
-    }
-  }, [headlineSourceType, headlineSourceUrl, headlineSourceText, userRole, targetAudience]);
-
-  const handleStartArticleFromIdea = useCallback((idea: ArticleIdea) => {
-    setGenerateArticleTitle(idea.title);
-    const sourceText = `Main Point:\n${idea.summary}\n\nKey Points to Develop:\n${idea.keyPoints.map(p => `- ${p}`).join('\n')}`;
-    setGenerateArticleSourceText(sourceText);
-    setGenerateArticleSourceType('text');
-    setGenerateArticleSourceUrl('');
-    setGeneratedArticleHistory([]);
-    setCurrentArticleIterationIndex(0);
-    setView('generate-articles');
-  }, []);
-  
-  const handleGenerateArticle = useCallback(async () => {
-    setError(null);
-    setShowSelectArticleTemplateModal(true);
-  }, []);
-
-  const handleContinueArticleGeneration = useCallback(async (selectedTemplate: SavedArticleTemplate | null) => {
-    setShowSelectArticleTemplateModal(false);
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const sourceContent = generateArticleSourceType === 'url' ? generateArticleSourceUrl : generateArticleSourceText;
-      
-      const newArticle = await generateArticle({
-        script: generateArticleScript,
-        wordCount: generateArticleWordCount,
-        styleReferences: thisIsHowIWriteArticles,
-        sourceContent: sourceContent,
-        referenceWorld: referenceWorldContent,
-        userRole: userRole,
-        targetAudience: targetAudience,
-        title: generateArticleTitle,
-        endOfArticleSummary: endOfArticleSummary,
-        evalCriteria: articleEvalCriteria,
-        selectedTemplate: selectedTemplate,
-        allTemplates: savedArticleTemplates,
-      });
-
-      // Reset history with the new article
-      const newHistory = [newArticle];
-      setGeneratedArticleHistory(newHistory);
-      setCurrentArticleIterationIndex(0);
-      playSound('success');
-
-    } catch (e: any) {
-      setError(e.message || "Failed to generate article.");
-      playSound('error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [
-    generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
-    generateArticleScript, generateArticleWordCount, thisIsHowIWriteArticles,
-    referenceWorldContent, userRole, targetAudience, generateArticleTitle,
-    endOfArticleSummary, articleEvalCriteria, savedArticleTemplates
-  ]);
-  
-  const handleEnhanceArticle = useCallback(async (suggestions: Suggestion[]) => {
-      if (!generatedArticleHistory[currentArticleIterationIndex]) return;
-      
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-          const currentArticle = generatedArticleHistory[currentArticleIterationIndex];
-          const enhancedArticle = await enhanceArticle({
-              originalTitle: currentArticle.title,
-              originalContent: currentArticle.content,
-              evalCriteria: articleEvalCriteria,
-              suggestions: suggestions,
-          });
-
-          const newHistory = [...generatedArticleHistory.slice(0, currentArticleIterationIndex + 1), enhancedArticle];
-          setGeneratedArticleHistory(newHistory);
-          setCurrentArticleIterationIndex(newHistory.length - 1);
-          playSound('success');
-
-      } catch (e: any) {
-          setError(e.message || "Failed to enhance article.");
-          playSound('error');
-      } finally {
-          setIsLoading(false);
-      }
-  }, [generatedArticleHistory, currentArticleIterationIndex, articleEvalCriteria]);
-
-  const handleRevertToIteration = (index: number) => {
-      setCurrentArticleIterationIndex(index);
-  };
-    
-  const handleSaveTemplate = useCallback((id: string, updates: Partial<Omit<SavedTemplate, 'id'>>) => {
-      setSavedTemplates(prev => prev.map(t => (t.id === id ? { ...t, ...updates, isNew: false } : t)));
-  }, []);
-
-  const handleDeleteTemplate = useCallback((id: string) => {
-      setSavedTemplates(prev => prev.filter(t => t.id !== id));
-  }, []);
-  
-  const handleAddNewTemplate = useCallback(() => {
-      setSavedTemplates(prev => [
-          { 
-              id: uuidv4(), 
-              title: 'New Template', 
-              template: '', 
-              example: '', 
-              instructions: '', 
-              dateAdded: new Date().toLocaleDateString(),
-              usageCount: 0,
-              lastUsed: 'Never',
-              isNew: true 
-          }, 
-          ...prev
-      ]);
-  }, []);
-
-  const handleSaveArticleTemplate = useCallback((id: string, updates: Partial<Omit<SavedArticleTemplate, 'id'>>) => {
-    setSavedArticleTemplates(prev => prev.map(t => (t.id === id ? { ...t, ...updates, isNew: false } : t)));
-  }, []);
-
-  const handleDeleteArticleTemplate = useCallback((id: string) => {
-    setSavedArticleTemplates(prev => prev.filter(t => t.id !== id));
-  }, []);
-  
-  const handleAddNewArticleTemplate = useCallback(() => {
-      setShowCreateArticleTemplateModal(true);
-  }, []);
-
-  const handleCreateArticleTemplateFromText = useCallback(async (articleText: string) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-          const newTemplateData = await createArticleTemplateFromText({ articleText, existingTemplates: savedArticleTemplates });
-          const newTemplate: SavedArticleTemplate = {
-              ...newTemplateData,
-              id: uuidv4(),
-              isNew: true,
-          };
-          setSavedArticleTemplates(prev => [newTemplate, ...prev]);
-          setView('article-template-library');
-          setShowCreateArticleTemplateModal(false);
-          playSound('success');
-          return true;
-      } catch (e: any) {
-          setError(e.message || "Failed to create template from text.");
-          playSound('error');
-          return false;
-      } finally {
-          setIsLoading(false);
-      }
-  }, [savedArticleTemplates]);
-
-  if (!isAuthenticated) {
-    return <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} />;
-  }
-  
-  const handleRestore = useCallback((data: BackupData) => {
+  const restoreFromBackup = useCallback((data: BackupData) => {
     setUserRole(data.userRole || DEFAULT_USER_ROLE);
     setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
     setReferenceWorldContent(data.referenceWorldContent || '');
@@ -666,10 +315,370 @@ export const App: React.FC = () => {
     setGenerateArticleTitle(data.generateArticleTitle || '');
     setEndOfArticleSummary(data.endOfArticleSummary || DEFAULT_END_OF_ARTICLE_SUMMARY);
     setArticleEvalCriteria(data.articleEvalCriteria || DEFAULT_ARTICLE_EVAL_CRITERIA);
+    setHeadlineEvalCriteriaForArticle(data.headlineEvalCriteriaForArticle || DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA);
+
+    playSound('success');
   }, []);
 
+  useEffect(() => {
+    const loadedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (loadedData) {
+      try {
+        const parsedData: BackupData = JSON.parse(loadedData);
+        restoreFromBackup(parsedData);
+      } catch (e) {
+        console.error("Failed to parse local storage data:", e);
+      }
+    }
+  }, [restoreFromBackup]);
+
+  useEffect(() => {
+    const saveTimer = setTimeout(() => {
+      handleSaveStateToLocalStorage();
+    }, 1000); 
+    return () => clearTimeout(saveTimer);
+  }, [handleSaveStateToLocalStorage]);
+
+
+  const handleSignIn = (email: string, password?: string) => {
+    setAuthError(null);
+    const lowerEmail = email.toLowerCase();
+    
+    if (lowerEmail === ADMIN_EMAIL) {
+        setUserEmail(lowerEmail);
+        setIsAuthenticated(true);
+        playSound('success');
+        return;
+    }
+    
+    const isAuthorized = adminSettings.authorizedEmails.map(e => e.toLowerCase()).includes(lowerEmail);
+    if (isAuthorized && password === adminSettings.secretPassword) {
+        setUserEmail(lowerEmail);
+        setIsAuthenticated(true);
+        playSound('success');
+    } else if (!isAuthorized) {
+        setAuthError(<span>Your email is not authorized. Please contact the administrator at <a href={`mailto:${ADMIN_EMAIL}`} className="underline">{ADMIN_EMAIL}</a>.</span>);
+        playSound('error');
+    } else {
+        setAuthError(<span>The secret password is incorrect. Please try again.</span>);
+        playSound('error');
+    }
+  };
+
+  const handleSignOut = () => {
+    setUserEmail(null);
+    setIsAuthenticated(false);
+  };
+  
+  const handleGeneratePosts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setGenerationResults(null);
+    try {
+      const results = await generateAndEvaluatePosts({
+        articleUrl: postSourceType === 'url' ? articleUrl : '',
+        articleText: postSourceType === 'text' ? articleText : '',
+        templates: savedTemplates,
+        script: generationScript,
+        targetAudience,
+        standardSummaryText,
+        standardStarterText,
+        userRole
+      });
+      setGenerationResults(results);
+      playSound('success');
+    } catch (err: any) {
+      setError(<span>Generation failed. Error: {err.message}</span>);
+      playSound('error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [articleUrl, articleText, postSourceType, savedTemplates, generationScript, targetAudience, standardSummaryText, standardStarterText, userRole]);
+
+  const handleSendToAyrshareQueue = useCallback((post: TopPostAssessment, platforms: string[]) => {
+    setAyrshareQueue(prev => [{ ...post, id: uuidv4(), platforms }, ...prev]);
+    playSound('notification');
+  }, []);
+
+  const handleDeleteFromQueue = useCallback((id: string) => {
+    setAyrshareQueue(prev => prev.filter(p => p.id !== id));
+  }, []);
+  
+  const handleUpdateQueuePost = useCallback((id: string, updates: Partial<QueuedPost>) => {
+    setAyrshareQueue(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  }, []);
+
+  const handleParseSchedule = useCallback(async () => {
+    setIsParsingSchedule(true);
+    try {
+        const times = await parseSchedule(schedulingInstructions);
+        setParsedSchedule(times);
+        playSound('success');
+    } catch (err: any) {
+        setError(<span>Failed to parse schedule. Error: {err.message}</span>);
+        playSound('error');
+    } finally {
+        setIsParsingSchedule(false);
+    }
+  }, [schedulingInstructions]);
+  
+  const handlePostNow = useCallback(async (id: string) => {
+    const post = ayrshareQueue.find(p => p.id === id);
+    if (!post) return;
+  
+    setPostingNowId(id);
+    setQueueError(null);
+    try {
+      if (!settings.ayrshareApiKey) {
+        throw new Error("Ayrshare API Key is not set in Settings.");
+      }
+      await postToAyrshare(post.content, settings.ayrshareApiKey, post.platforms);
+      setAyrshareLog(prev => [{ ...post, sentAt: new Date().toISOString() }, ...prev]);
+      setAyrshareQueue(prev => prev.filter(p => p.id !== id));
+      playSound('success');
+    } catch (err: any) {
+      setQueueError(<span>Failed to post: {err.message}</span>);
+      playSound('error');
+    } finally {
+      setPostingNowId(null);
+    }
+  }, [ayrshareQueue, settings.ayrshareApiKey]);
+  
+  const handleQuickPost = useCallback(async () => {
+    const topPost = ayrshareQueue[0];
+    if (!topPost) return;
+
+    setIsQuickPosting(true);
+    setQuickPostError(null);
+    setQuickPostSuccessMessage(null);
+    try {
+        if (!settings.ayrshareApiKey) {
+            throw new Error("Ayrshare API Key is not set in Settings.");
+        }
+        await postToAyrshare(topPost.content, settings.ayrshareApiKey, topPost.platforms);
+        setAyrshareLog(prev => [{ ...topPost, sentAt: new Date().toISOString() }, ...prev]);
+        setAyrshareQueue(prev => prev.slice(1));
+        setQuickPostSuccessMessage(topPost.content);
+        playSound('success');
+    } catch (err: any) {
+        setQuickPostError(<span>Failed to post: {err.message}</span>);
+        playSound('error');
+    } finally {
+        setIsQuickPosting(false);
+    }
+}, [ayrshareQueue, settings.ayrshareApiKey]);
+
+  useEffect(() => {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  
+    if (parsedSchedule.includes(currentTime)) {
+      const topPost = ayrshareQueue[0];
+      if (topPost) {
+          setTimeout(() => {
+              handlePostNow(topPost.id);
+              if (Notification.permission === "granted") {
+                new Notification("Social Media Minion", {
+                  body: `Just posted "${topPost.title.substring(0, 50)}..." as per your schedule.`,
+                });
+              }
+          }, Math.random() * 5 * 60 * 1000); // within 5 minutes
+      }
+    }
+  }, [parsedSchedule, ayrshareQueue, handlePostNow]);
+
+  useEffect(() => {
+    if (Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  const handleSaveSettings = useCallback(async (newSettings: AppSettings) => {
+    const { success, message } = await testAyrshareConnection(newSettings.ayrshareApiKey);
+    if (success) {
+      setSettings(newSettings);
+      playSound('success');
+    } else {
+      playSound('error');
+    }
+    return success;
+  }, []);
+
+  const handleResearchPosts = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setResearchedPosts(null);
+    try {
+        const posts = await researchPopularPosts(researchScript);
+        setResearchedPosts(posts);
+        playSound('success');
+    } catch (err: any) {
+        setError(<span>Research failed. Error: {err.message}</span>);
+        playSound('error');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [researchScript]);
+  
+  const handleGenerateArticleIdeas = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setGeneratedArticleIdeas(null);
+    try {
+        const ideas = await generateArticleIdeas({
+            sourceArticle: headlineSourceType === 'text' ? headlineSourceText : headlineSourceUrl,
+            userRole,
+            targetAudience
+        });
+        setGeneratedArticleIdeas(ideas);
+        playSound('success');
+    } catch (err: any) {
+        setError(<span>Failed to generate ideas. Error: {err.message}</span>);
+        playSound('error');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [headlineSourceType, headlineSourceText, headlineSourceUrl, userRole, targetAudience]);
+  
+  const handleStartArticleFromIdea = (idea: ArticleIdea) => {
+    setGenerateArticleTitle(idea.title);
+    setGenerateArticleSourceText(`Based on the idea: "${idea.title}"\n\nSummary: ${idea.summary}\n\nKey Points:\n- ${idea.keyPoints.join('\n- ')}`);
+    setGenerateArticleSourceType('text');
+    setView('generate-articles');
+  };
+
+  const handleGenerateArticle = useCallback(async (selectedTemplate: SavedArticleTemplate | null) => {
+    setIsLoading(true);
+    setError(null);
+    setGeneratedHeadlinesForArticle(null);
+    setShowSelectArticleTemplateModal(false);
+
+    try {
+        const article = await generateArticle({
+            script: generateArticleScript,
+            wordCount: generateArticleWordCount,
+            styleReferences: thisIsHowIWriteArticles,
+            sourceContent: generateArticleSourceType === 'text' ? generateArticleSourceText : generateArticleSourceUrl,
+            referenceWorld: referenceWorldContent,
+            userRole,
+            targetAudience,
+            title: generateArticleTitle,
+            endOfArticleSummary,
+            evalCriteria: articleEvalCriteria,
+            selectedTemplate,
+            allTemplates: savedArticleTemplates
+        });
+        setGeneratedArticleHistory(prev => [...prev, article]);
+        setCurrentArticleIterationIndex(prev => prev + 1);
+        playSound('success');
+    } catch (err: any) {
+        setError(<span>Article generation failed. Error: {err.message}</span>);
+        playSound('error');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [
+      generateArticleScript, generateArticleWordCount, thisIsHowIWriteArticles, 
+      generateArticleSourceType, generateArticleSourceText, generateArticleSourceUrl,
+      referenceWorldContent, userRole, targetAudience, generateArticleTitle,
+      endOfArticleSummary, articleEvalCriteria, savedArticleTemplates
+  ]);
+
+  const handleEnhanceArticle = useCallback(async (suggestions: Suggestion[]) => {
+      const currentArticle = generatedArticleHistory[currentArticleIterationIndex];
+      if (!currentArticle) return;
+      
+      setIsLoading(true);
+      setError(null);
+      try {
+          const enhancedArticle = await enhanceArticle({
+              originalTitle: currentArticle.title,
+              originalContent: currentArticle.content,
+              evalCriteria: articleEvalCriteria,
+              suggestions
+          });
+          setGeneratedArticleHistory(prev => [...prev, enhancedArticle]);
+          setCurrentArticleIterationIndex(prev => prev + 1);
+          playSound('success');
+      } catch (err: any) {
+          setError(<span>Article enhancement failed. Error: {err.message}</span>);
+          playSound('error');
+      } finally {
+          setIsLoading(false);
+      }
+  }, [generatedArticleHistory, currentArticleIterationIndex, articleEvalCriteria]);
+  
+  const handleCreateArticleTemplateFromText = useCallback(async (articleText: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+        const newTemplate = await createArticleTemplateFromText({
+            articleText,
+            existingTemplates: savedArticleTemplates
+        });
+        setSavedArticleTemplates(prev => [...prev, { ...newTemplate, id: uuidv4() }]);
+        playSound('success');
+        setShowCreateArticleTemplateModal(false);
+        return true;
+    } catch (err: any) {
+        setError(<span>Failed to create template. Error: {err.message}</span>);
+        playSound('error');
+        return false;
+    } finally {
+        setIsLoading(false);
+    }
+  }, [savedArticleTemplates]);
+
+  const handleGenerateHeadlinesForArticle = useCallback(async () => {
+    if (!generatedArticleHistory[currentArticleIterationIndex]) return;
+
+    setIsLoading(true);
+    setError(null);
+    setGeneratedHeadlinesForArticle(null);
+    try {
+        const articleContent = generatedArticleHistory[currentArticleIterationIndex].content;
+        const headlines = await generateHeadlinesForArticle({
+            articleContent,
+            evalCriteria: headlineEvalCriteriaForArticle,
+        });
+        setGeneratedHeadlinesForArticle(headlines.map(h => ({ ...h, id: uuidv4() })));
+        playSound('success');
+    } catch (err: any) {
+        setError(<span>Headline generation failed. Error: {err.message}</span>);
+        playSound('error');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [generatedArticleHistory, currentArticleIterationIndex, headlineEvalCriteriaForArticle]);
+
+  const handleApplyHeadlineToArticle = useCallback((edited: { headline: string, subheadline?: string }) => {
+      if (!generatedArticleHistory[currentArticleIterationIndex]) return;
+
+      const currentArticle = generatedArticleHistory[currentArticleIterationIndex];
+      
+      const newContent = edited.subheadline 
+          ? `## ${edited.subheadline}\n\n${currentArticle.content}`
+          : currentArticle.content;
+
+      const updatedArticle: GeneratedArticle = {
+          ...currentArticle,
+          title: edited.headline,
+          content: newContent,
+          headlineApplied: true,
+      };
+
+      const newHistory = [...generatedArticleHistory];
+      newHistory[currentArticleIterationIndex] = updatedArticle;
+      setGeneratedArticleHistory(newHistory);
+      
+      setGeneratedHeadlinesForArticle(null);
+      setSelectedHeadlineForEdit(null);
+      
+      playSound('notification');
+  }, [generatedArticleHistory, currentArticleIterationIndex]);
+
   const renderView = () => {
-    switch(view) {
+    switch (view) {
       case 'generate-posts':
         return <GenerationPanel 
           articleUrl={articleUrl} onArticleUrlChange={setArticleUrl}
@@ -683,30 +692,40 @@ export const App: React.FC = () => {
           results={generationResults}
           onSendToAyrshareQueue={handleSendToAyrshareQueue}
         />;
-      case 'template-library':
-        return <PostsTemplateLibrary 
-          templates={savedTemplates}
-          onSave={handleSaveTemplate}
-          onDelete={handleDeleteTemplate}
-          onAddNew={handleAddNewTemplate}
-        />;
       case 'ayrshare-queue':
         return <QueuedPostsDisplay 
           queuedPosts={ayrshareQueue}
-          onDeletePost={handleDeleteQueuedPost}
-          onUpdatePost={handleUpdateQueuedPost}
+          onDeletePost={handleDeleteFromQueue}
+          onUpdatePost={handleUpdateQueuePost}
           onPostNow={handlePostNow}
           postingNowId={postingNowId}
           error={queueError}
           onClearError={() => setQueueError(null)}
         />;
       case 'ayrshare-log':
-        return <QueuedPostsDisplay 
+        return <QueuedPostsDisplay
           queuedPosts={ayrshareLog}
-          readOnly
+          readOnly={true}
           title="Sent Posts Log"
           emptyMessage="No posts have been sent yet."
-        />
+        />;
+      case 'template-library':
+        return <PostsTemplateLibrary 
+          templates={savedTemplates}
+          onSave={(id, updates) => setSavedTemplates(prev => prev.map(t => t.id === id ? {...t, ...updates, isNew: false} : t))}
+          onDelete={(id) => setSavedTemplates(prev => prev.filter(t => t.id !== id))}
+          onAddNew={() => setSavedTemplates(prev => [{
+              id: uuidv4(),
+              title: 'New Template',
+              template: '',
+              example: '',
+              instructions: '',
+              dateAdded: new Date().toLocaleDateString(),
+              usageCount: 0,
+              lastUsed: 'Never',
+              isNew: true
+          }, ...prev])}
+        />;
       case 'scheduler':
         return <Scheduler 
           instructions={schedulingInstructions}
@@ -715,128 +734,154 @@ export const App: React.FC = () => {
           isParsing={isParsingSchedule}
           parsedSchedule={parsedSchedule}
         />;
+      case 'admin':
+        return <AdminPanel settings={adminSettings} onSettingsChange={setAdminSettings} />;
+      case 'backup-restore':
+        return <BackupRestorePanel backupData={{
+          userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType,
+          standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates,
+          ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings,
+          adminSettings, researchScript, researchedPosts, headlineSourceType, headlineSourceUrl,
+          headlineSourceText, generatedArticleIdeas, generateArticleWordCount,
+          generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
+          generateArticleScript, generatedArticleHistory, currentArticleIterationIndex,
+          generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle,
+        }} onRestore={restoreFromBackup} />;
       case 'settings':
         return <SettingsPanel settings={settings} onSettingsChange={handleSaveSettings} isAdmin={isAdmin} />;
-      case 'admin':
-        return isAdmin ? <AdminPanel settings={adminSettings} onSettingsChange={setAdminSettings} /> : <div>Access Denied</div>;
-      case 'backup-restore':
-        return <BackupRestorePanel backupData={stateToBackup as BackupData} onRestore={handleRestore} />;
       case 'persona':
         return <PersonaPanel 
-            userRole={userRole} onUserRoleChange={setUserRole}
-            targetAudience={targetAudience} onTargetAudienceChange={setTargetAudience}
-            referenceWorldContent={referenceWorldContent} onReferenceWorldContentChange={setReferenceWorldContent}
-            thisIsHowIWriteArticles={thisIsHowIWriteArticles} onThisIsHowIWriteArticlesChange={setThisIsHowIWriteArticles}
+          userRole={userRole} onUserRoleChange={setUserRole}
+          targetAudience={targetAudience} onTargetAudienceChange={setTargetAudience}
+          referenceWorldContent={referenceWorldContent} onReferenceWorldContentChange={setReferenceWorldContent}
+          thisIsHowIWriteArticles={thisIsHowIWriteArticles} onThisIsHowIWriteArticlesChange={setThisIsHowIWriteArticles}
         />;
       case 'researcher':
         return <PostResearcherPanel
             researchScript={researchScript}
             onResearchScriptChange={setResearchScript}
-            onResearchPosts={() => handleResearchPosts('https://www.linkedin.com/in/ianpallowsmith/')}
+            onResearchPosts={handleResearchPosts}
             isLoading={isLoading}
             results={researchedPosts}
-        />;
+        />
       case 'generate-headlines':
         return <HeadlineGeneratorPanel 
-          isLoading={isLoading}
-          sourceType={headlineSourceType}
-          onSourceTypeChange={setHeadlineSourceType}
-          sourceUrl={headlineSourceUrl}
-          onSourceUrlChange={setHeadlineSourceUrl}
-          sourceText={headlineSourceText}
-          onSourceTextChange={setHeadlineSourceText}
-          onGenerateIdeas={handleGenerateIdeas}
-          articleIdeas={generatedArticleIdeas}
-          onStartArticleFromIdea={handleStartArticleFromIdea}
+            isLoading={isLoading}
+            sourceType={headlineSourceType}
+            onSourceTypeChange={setHeadlineSourceType}
+            sourceUrl={headlineSourceUrl}
+            onSourceUrlChange={setHeadlineSourceUrl}
+            sourceText={headlineSourceText}
+            onSourceTextChange={setHeadlineSourceText}
+            onGenerateIdeas={handleGenerateArticleIdeas}
+            articleIdeas={generatedArticleIdeas}
+            onStartArticleFromIdea={handleStartArticleFromIdea}
         />;
       case 'generate-articles':
         return <ArticleGeneratorPanel 
-          wordCount={generateArticleWordCount} onWordCountChange={setGenerateArticleWordCount}
-          sourceType={generateArticleSourceType} onSourceTypeChange={setGenerateArticleSourceType}
-          sourceUrl={generateArticleSourceUrl} onSourceUrlChange={setGenerateArticleSourceUrl}
-          sourceText={generateArticleSourceText} onSourceTextChange={setGenerateArticleSourceText}
-          generationScript={generateArticleScript} onGenerationScriptChange={setGenerateArticleScript}
-          onGenerate={handleGenerateArticle}
-          isLoading={isLoading}
-          generatedArticleHistory={generatedArticleHistory}
-          currentArticleIterationIndex={currentArticleIterationIndex}
-          onRevertToIteration={handleRevertToIteration}
-          articleTitle={generateArticleTitle}
-          onArticleTitleChange={setGenerateArticleTitle}
-          endOfArticleSummary={endOfArticleSummary}
-          onEndOfArticleSummaryChange={setEndOfArticleSummary}
-          articleEvalCriteria={articleEvalCriteria}
-          onArticleEvalCriteriaChange={setArticleEvalCriteria}
-          onEnhanceArticle={handleEnhanceArticle}
+            wordCount={generateArticleWordCount} onWordCountChange={setGenerateArticleWordCount}
+            sourceType={generateArticleSourceType} onSourceTypeChange={setGenerateArticleSourceType}
+            sourceUrl={generateArticleSourceUrl} onSourceUrlChange={setGenerateArticleSourceUrl}
+            sourceText={generateArticleSourceText} onSourceTextChange={setGenerateArticleSourceText}
+            generationScript={generateArticleScript} onGenerationScriptChange={setGenerateArticleScript}
+            onGenerate={() => setShowSelectArticleTemplateModal(true)}
+            isLoading={isLoading}
+            generatedArticleHistory={generatedArticleHistory}
+            currentArticleIterationIndex={currentArticleIterationIndex}
+            onRevertToIteration={setCurrentArticleIterationIndex}
+            articleTitle={generateArticleTitle} onArticleTitleChange={setGenerateArticleTitle}
+            endOfArticleSummary={endOfArticleSummary} onEndOfArticleSummaryChange={setEndOfArticleSummary}
+            articleEvalCriteria={articleEvalCriteria} onArticleEvalCriteriaChange={setArticleEvalCriteria}
+            onEnhanceArticle={handleEnhanceArticle}
+            headlineEvalCriteriaForArticle={headlineEvalCriteriaForArticle}
+            onHeadlineEvalCriteriaForArticleChange={setHeadlineEvalCriteriaForArticle}
+            onGenerateHeadlinesForArticle={handleGenerateHeadlinesForArticle}
+            generatedHeadlinesForArticle={generatedHeadlinesForArticle}
+            onSelectHeadlineForEdit={(headline) => setSelectedHeadlineForEdit(headline)}
         />;
-      case 'article-template-library':
-        return <ArticleTemplateLibrary
-            templates={savedArticleTemplates}
-            onSave={handleSaveArticleTemplate}
-            onDelete={handleDeleteArticleTemplate}
-            onAddNew={handleAddNewArticleTemplate}
+       case 'article-template-library':
+        return <ArticleTemplateLibrary 
+          templates={savedArticleTemplates}
+          onSave={(id, updates) => setSavedArticleTemplates(prev => prev.map(t => t.id === id ? {...t, ...updates, isNew: false} : t))}
+          onDelete={(id) => setSavedArticleTemplates(prev => prev.filter(t => t.id !== id))}
+          onAddNew={() => setShowCreateArticleTemplateModal(true)}
         />;
       case 'quick-post':
         return <QuickPostPanel 
-          topPost={ayrshareQueue[0]}
-          onQuickPost={handleQuickPost}
-          isLoading={isQuickPosting}
-          error={quickPostError}
-          successMessage={quickPostSuccessMessage}
+            topPost={ayrshareQueue[0]} 
+            onQuickPost={handleQuickPost}
+            isLoading={isQuickPosting}
+            error={quickPostError}
+            successMessage={quickPostSuccessMessage}
         />;
       case 'quick-article':
-          return <QuickArticlePanel />;
+        return <QuickArticlePanel />;
       case 'posting-guides':
-          return <PostingGuides />;
+        return <PostingGuides />;
       case 'new-user-guide':
-          return <NewUserGuide />;
+        return <NewUserGuide />;
       default:
         return <div>Select a view</div>;
     }
   };
 
+  if (!isAuthenticated) {
+    return <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} />;
+  }
+
   return (
+    <>
+    {showCreateArticleTemplateModal && (
+        <CreateArticleTemplateModal 
+            onClose={() => {
+                setShowCreateArticleTemplateModal(false);
+                setError(null);
+            }}
+            onCreateTemplate={handleCreateArticleTemplateFromText}
+            isLoading={isLoading}
+            error={error}
+        />
+    )}
+    {showSelectArticleTemplateModal && (
+        <SelectArticleTemplateModal
+            templates={savedArticleTemplates}
+            onClose={() => setShowSelectArticleTemplateModal(false)}
+            onSelect={(template) => handleGenerateArticle(template)}
+        />
+    )}
+    {selectedHeadlineForEdit && (
+        <HeadlineEditModal
+            isOpen={!!selectedHeadlineForEdit}
+            headline={selectedHeadlineForEdit}
+            onClose={() => setSelectedHeadlineForEdit(null)}
+            onSave={handleApplyHeadlineToArticle}
+        />
+    )}
+
     <div className="flex h-screen bg-gray-900 text-white">
-      <Sidebar 
-        view={view} 
-        setView={setView} 
-        onSignOut={handleSignOut} 
-        userEmail={userEmail || ''}
-        isAdmin={isAdmin}
-        templateCount={savedTemplates.length}
-        articleTemplateCount={savedArticleTemplates.length}
-        showMobileMenu={showMobileMenu}
-        onToggleMobileMenu={() => setShowMobileMenu(!showMobileMenu)}
-        setShowMobileMenu={setShowMobileMenu}
-      />
-      <main className="flex-1 overflow-y-auto p-8 relative">
+      <div className="hidden md:flex">
+         <Sidebar 
+            view={view} setView={setView} 
+            onSignOut={handleSignOut}
+            userEmail={userEmail || ''}
+            isAdmin={isAdmin}
+            templateCount={savedTemplates.length}
+            articleTemplateCount={savedArticleTemplates.length}
+            showMobileMenu={showMobileMenu}
+            onToggleMobileMenu={() => setShowMobileMenu(prev => !prev)}
+            setShowMobileMenu={setShowMobileMenu}
+        />
+      </div>
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-900/50 relative">
         {error && (
-          <div className="absolute top-4 right-4 bg-red-900/70 backdrop-blur-sm p-4 rounded-lg border border-red-700 text-sm text-red-300 shadow-lg z-50 animate-fade-in-fast max-w-md">
-            <div className="flex justify-between items-center">
-              <h4 className="font-bold">An Error Occurred</h4>
-              <button onClick={() => setError(null)} className="font-bold text-lg">&times;</button>
+            <div className="bg-red-900/50 p-4 rounded-lg border border-red-700 text-sm text-red-300 mb-6 flex justify-between items-center animate-fade-in-fast">
+                <span>{error}</span>
+                <button onClick={() => setError(null)} className="font-bold text-lg">&times;</button>
             </div>
-            <div className="mt-2">{error}</div>
-          </div>
         )}
         {renderView()}
       </main>
-
-      {showCreateArticleTemplateModal && (
-          <CreateArticleTemplateModal
-              onCreateTemplate={handleCreateArticleTemplateFromText}
-              onClose={() => setShowCreateArticleTemplateModal(false)}
-              isLoading={isLoading}
-              error={error}
-          />
-      )}
-       {showSelectArticleTemplateModal && (
-        <SelectArticleTemplateModal
-          templates={savedArticleTemplates}
-          onSelect={handleContinueArticleGeneration}
-          onClose={() => setShowSelectArticleTemplateModal(false)}
-        />
-      )}
     </div>
+    </>
   );
 };

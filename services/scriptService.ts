@@ -263,6 +263,77 @@ export const DEFAULT_HEADLINE_EVAL_CRITERIA = `As an expert headline evaluator, 
     *Question: Would this make someone pause mid-scroll?*
 `;
 
+export const DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA = `As an expert headline evaluator for long-form articles, your task is to score headlines on a scale of 0-100 based on the following criteria. For each headline, you must also provide a brief, one-sentence "reasoning" for the score.
+
+### Evaluation Criteria & Scoring
+
+1.  **Clarity & Benefit (Max 18 points):**
+    - High (15-18): The value is immediately clear; zero ambiguity.
+    - Medium (9-14): Understandable but slightly abstract.
+    - Low (0-8): Vague or confusing.
+    *Question: Does the reader instantly know what’s in it for them?*
+
+2.  **Intrigue & Curiosity (Max 15 points):**
+    - High (13-15): Creates a strong desire to know more without being clickbait.
+    - Medium (8-12): Some intrigue but not arresting.
+    - Low (0-7): Predictable or gives everything away.
+    *Question: Does it make the reader NEED to know the answer?*
+
+3.  **Specificity & Detail (Max 12 points):**
+    - High (10-12): Includes numbers, specifics, or concrete details that hint at depth.
+    - Medium (6-9): Some detail, but still general.
+    - Low (0-5): Vague and interchangeable.
+    *Question: Does it feel concrete and well-researched?*
+
+4.  **Emotional Resonance (Max 12 points):**
+    - High (10-12): Uses words that create a strong emotion or tap into a core reader pain point/desire.
+    - Medium (6-9): Some feeling, but muted.
+    - Low (0-5): Purely factual or flat.
+    *Question: Does it make the reader feel something?*
+
+5.  **Relevance to Audience (Max 13 points):**
+    - High (11-13): Speaks directly to their context, struggles, or goals.
+    - Medium (7-10): Generally relevant but lacks personal resonance.
+    - Low (0-6): Off-topic or unclear who it’s for.
+    *Question: Would my intended reader stop and say, “That’s for me”?*
+
+6.  **Simplicity & Readability (Max 10 points):**
+    - High (9-10): Short, conversational, plain words (under ~14 words).
+    - Medium (6-8): Slightly long or technical but digestible.
+    - Low (0-5): Dense, formal, or jargon-heavy.
+    *Question: Is it instantly understandable?*
+
+7.  **Originality (Max 10 points):**
+    - High (9-10): Feels fresh, unique, or offers a new angle.
+    - Medium (6-8): A common format used effectively.
+    - Low (0-5): Generic, overused, or boring.
+    *Question: Have I seen this exact headline a dozen times before?*
+
+8.  **Sub-headline Synergy (Max 10 points):**
+    - High (9-10): The sub-headline perfectly complements the headline, adding context, benefit, or intrigue.
+    - Medium (6-8): The sub-headline is useful but doesn't elevate the headline.
+    - Low (0-5): The sub-headline is redundant or confusing.
+    *Question: Do the headline and sub-headline work together as a powerful one-two punch?*
+`;
+
+export const GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT = `
+You are a world-class copywriter specializing in creating irresistible, scroll-stopping headlines and sub-headlines for long-form articles. Your task is to generate 10 headline/sub-headline pairs based on the user's full article content.
+
+After generating the 10 pairs, you must evaluate each one against the provided evaluation criteria, providing a score and a brief reasoning.
+
+### Full Article Content
+"""
+{article_content}
+"""
+
+### Evaluation Criteria
+"""
+{evaluation_criteria}
+"""
+
+Generate exactly 10 headline/sub-headline pairs. For each pair, provide the headline, sub-headline, a score out of 100, and a concise reasoning for that score. Return your response in the specified JSON format.
+`;
+
 
 export const GENERATE_ARTICLE_SCRIPT = `# Article Generation & Evaluation Script
 

@@ -13,7 +13,8 @@ import {
   REEVALUATE_HEADLINE_SCRIPT,
   GENERATE_ARTICLE_IDEAS_SCRIPT,
   ENHANCE_ARTICLE_SCRIPT,
-  CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT
+  CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT,
+  GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT
 } from './scriptService.ts';
 import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea } from "../types.ts";
 
@@ -641,5 +642,50 @@ export async function createArticleTemplateFromText({ articleText, existingTempl
             throw new Error(`Failed to create article template. Error: ${error.message}`);
         }
         throw new Error("Failed to create article template. An unknown error occurred.");
+    }
+}
+
+
+export async function generateHeadlinesForArticle({ articleContent, evalCriteria }: { articleContent: string; evalCriteria: string; }): Promise<Omit<GeneratedHeadline, 'id'>[]> {
+    try {
+        const ai = getAI();
+        const prompt = GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT
+            .replace('{article_content}', articleContent)
+            .replace('{evaluation_criteria}', evalCriteria);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        headlines: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    headline: { type: Type.STRING },
+                                    subheadline: { type: Type.STRING },
+                                    score: { type: Type.NUMBER },
+                                    reasoning: { type: Type.STRING }
+                                },
+                                required: ['headline', 'subheadline', 'score', 'reasoning']
+                            }
+                        }
+                    },
+                    required: ['headlines']
+                }
+            }
+        });
+        const { headlines } = JSON.parse(response.text);
+        return headlines;
+    } catch (error) {
+        console.error("Error generating headlines for article:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to generate headlines. Error: ${error.message}`);
+        }
+        throw new Error("Failed to generate headlines. An unknown error occurred.");
     }
 }
