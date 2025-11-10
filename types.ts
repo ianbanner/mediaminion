@@ -54,9 +54,15 @@ export interface AppSettings {
   ayrshareApiKey: string;
 }
 
+export interface UserActivity {
+  posts: number[]; // Array of timestamps
+  articles: number[]; // Array of timestamps
+}
+
 export interface AdminSettings {
   authorizedEmails: string[];
   secretPassword: string;
+  userActivity?: Record<string, UserActivity>;
 }
 
 export interface Suggestion {

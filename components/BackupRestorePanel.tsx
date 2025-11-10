@@ -5,19 +5,21 @@ import Button from './Button.tsx';
 interface BackupRestorePanelProps {
   backupData: BackupData;
   onRestore: (data: BackupData) => void;
+  userEmail: string;
 }
 
-const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onRestore }) => {
+const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onRestore, userEmail }) => {
     const [restoreMessage, setRestoreMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     
     const handleDownload = useCallback(() => {
         const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(backupData, null, 2))}`;
         const link = document.createElement("a");
         link.href = jsonString;
-        const date = new Date().toISOString().split('T')[0];
-        link.download = `minion-backup-${date}.json`;
+        const safeUserEmail = userEmail.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const dateTime = new Date().toISOString().replace('T', '_').replace(/:/g, '-').slice(0, 19);
+        link.download = `minion-backup-${safeUserEmail}_${dateTime}.json`;
         link.click();
-    }, [backupData]);
+    }, [backupData, userEmail]);
 
     const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];

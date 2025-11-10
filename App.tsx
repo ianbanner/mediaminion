@@ -1,5 +1,4 @@
 
-
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -23,6 +22,7 @@ import QuickArticlePanel from './components/QuickArticlePanel.tsx';
 import PostingGuides from './components/PostingGuides.tsx';
 import NewUserGuide from './components/NewUserGuide.tsx';
 import HeadlineEditModal from './components/HeadlineEditModal.tsx';
+import LandingPage from './components/LandingPage.tsx';
 
 
 import {
@@ -177,10 +177,12 @@ const playSound = (type: 'success' | 'error' | 'notification') => {
 };
 
 export const App: React.FC = () => {
-  const [userEmail, setUserEmail] = useState<string | null>('dave@bigagility.com');
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<React.ReactNode | null>(null);
   const isAdmin = useMemo(() => userEmail?.toLowerCase() === ADMIN_EMAIL, [userEmail]);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
 
   const [view, setView] = useState('generate-posts');
   const [isLoading, setIsLoading] = useState(false);
@@ -220,7 +222,22 @@ export const App: React.FC = () => {
 
 
   const [settings, setSettings] = useState<AppSettings>({ ayrshareApiKey: '' });
-  const [adminSettings, setAdminSettings] = useState<AdminSettings>({ authorizedEmails: [], secretPassword: '' });
+  const [adminSettings, setAdminSettings] = useState<AdminSettings>(() => {
+    const now = Date.now();
+    const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000;
+    const fifteenDaysAgo = now - 15 * 24 * 60 * 60 * 1000;
+    
+    return {
+      authorizedEmails: [],
+      secretPassword: '',
+      userActivity: {
+        'dave@bigagility.com': {
+          posts: Array(6).fill(threeDaysAgo),
+          articles: [fifteenDaysAgo, fifteenDaysAgo],
+        }
+      }
+    };
+  });
 
   const [researchScript, setResearchScript] = useState(LINKEDIN_ANALYSIS_SCRIPT);
   const [researchedPosts, setResearchedPosts] = useState<ResearchedPost[] | null>(null);
@@ -366,6 +383,7 @@ export const App: React.FC = () => {
     if (lowerEmail === ADMIN_EMAIL) {
         setUserEmail(lowerEmail);
         setIsAuthenticated(true);
+        setShowLoginModal(false);
         playSound('success');
         return;
     }
@@ -374,6 +392,7 @@ export const App: React.FC = () => {
     if (isAuthorized && password === adminSettings.secretPassword) {
         setUserEmail(lowerEmail);
         setIsAuthenticated(true);
+        setShowLoginModal(false);
         playSound('success');
     } else if (!isAuthorized) {
         setAuthError(<span>Your email is not authorized. Please contact the administrator at <a href={`mailto:${ADMIN_EMAIL}`} className="underline">{ADMIN_EMAIL}</a>.</span>);
@@ -389,6 +408,29 @@ export const App: React.FC = () => {
     setIsAuthenticated(false);
   };
   
+  const logUserActivity = useCallback((type: 'post' | 'article') => {
+    if (!userEmail) return;
+    
+    setAdminSettings(prev => {
+        const currentUserActivity = prev.userActivity?.[userEmail] || { posts: [], articles: [] };
+        const newActivity = { ...currentUserActivity };
+
+        if (type === 'post') {
+            newActivity.posts = [...newActivity.posts, Date.now()];
+        } else {
+            newActivity.articles = [...newActivity.articles, Date.now()];
+        }
+
+        return {
+            ...prev,
+            userActivity: {
+                ...prev.userActivity,
+                [userEmail]: newActivity,
+            }
+        };
+    });
+  }, [userEmail]);
+
   const handleGeneratePosts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -405,6 +447,7 @@ export const App: React.FC = () => {
         userRole
       });
       setGenerationResults(results);
+      logUserActivity('post');
       playSound('success');
     } catch (err: any) {
       setError(<span>Generation failed. Error: {err.message}</span>);
@@ -412,7 +455,7 @@ export const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [articleUrl, articleText, postSourceType, savedTemplates, generationScript, targetAudience, standardSummaryText, standardStarterText, userRole]);
+  }, [articleUrl, articleText, postSourceType, savedTemplates, generationScript, targetAudience, standardSummaryText, standardStarterText, userRole, logUserActivity]);
 
   const handleSendToAyrshareQueue = useCallback((post: TopPostAssessment, platforms: string[]) => {
     setAyrshareQueue(prev => [{ ...post, id: uuidv4(), platforms }, ...prev]);
@@ -593,7 +636,8 @@ export const App: React.FC = () => {
             finalDestinationGuidelines: finalDestinationGuidelines,
         });
         setGeneratedArticleHistory(prev => [...prev, article]);
-        setCurrentArticleIterationIndex(prev => prev + 1);
+        setCurrentArticleIterationIndex(prev => prev.length);
+        logUserActivity('article');
         playSound('success');
     } catch (err: any) {
         setError(<span>Article generation failed. Error: {err.message}</span>);
@@ -606,7 +650,7 @@ export const App: React.FC = () => {
       generateArticleSourceType, generateArticleSourceText, generateArticleSourceUrl,
       referenceWorldContent, userRole, targetAudience, generateArticleTitle,
       endOfArticleSummary, articleEvalCriteria, savedArticleTemplates,
-      generateArticleDestination, finalDestinationGuidelines
+      generateArticleDestination, finalDestinationGuidelines, logUserActivity
   ]);
 
   const handleEnhanceArticle = useCallback(async (suggestions: Suggestion[]) => {
@@ -623,7 +667,7 @@ export const App: React.FC = () => {
               suggestions
           });
           setGeneratedArticleHistory(prev => [...prev, enhancedArticle]);
-          setCurrentArticleIterationIndex(prev => prev + 1);
+          setCurrentArticleIterationIndex(prev => prev.length);
           playSound('success');
       } catch (err: any) {
           setError(<span>Article enhancement failed. Error: {err.message}</span>);
@@ -762,7 +806,7 @@ export const App: React.FC = () => {
       case 'admin':
         return <AdminPanel settings={adminSettings} onSettingsChange={setAdminSettings} />;
       case 'backup-restore':
-        return <BackupRestorePanel backupData={{
+        return <BackupRestorePanel userEmail={userEmail || 'unknown-user'} backupData={{
           userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType,
           standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates,
           ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings,
@@ -859,7 +903,22 @@ export const App: React.FC = () => {
   };
 
   if (!isAuthenticated) {
-    return <LoginScreen onSignIn={handleSignIn} error={authError} adminEmail={ADMIN_EMAIL} />;
+    return (
+      <>
+        <LandingPage onLoginClick={() => setShowLoginModal(true)} />
+        {showLoginModal && (
+          <LoginScreen 
+            onSignIn={handleSignIn} 
+            error={authError} 
+            adminEmail={ADMIN_EMAIL}
+            onClose={() => {
+              setShowLoginModal(false);
+              setAuthError(null);
+            }}
+          />
+        )}
+      </>
+    );
   }
 
   return (
