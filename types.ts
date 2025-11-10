@@ -1,5 +1,7 @@
 
 
+export type ArticleDestination = 'LinkedIn' | 'Medium' | 'Substack' | 'Facebook' | 'Non Fiction Book' | 'Fiction Book';
+
 export interface ArticleIdea {
   title: string;
   summary: string;
@@ -127,6 +129,8 @@ export interface BackupData {
   endOfArticleSummary?: string;
   articleEvalCriteria?: string;
   headlineEvalCriteriaForArticle?: string;
+  generateArticleDestination?: ArticleDestination;
+  finalDestinationGuidelines?: string;
   
   showCreateArticleTemplateModal?: boolean;
 }

@@ -1,6 +1,7 @@
 
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { GeneratedArticle, Suggestion, GeneratedHeadline } from '../types.ts';
+import { GeneratedArticle, Suggestion, GeneratedHeadline, ArticleDestination } from '../types.ts';
 import Button from './Button.tsx';
 import MarkdownRenderer from './MarkdownRenderer.tsx';
 
@@ -32,6 +33,11 @@ interface ArticleGeneratorPanelProps {
   onGenerateHeadlinesForArticle: () => void;
   generatedHeadlinesForArticle: GeneratedHeadline[] | null;
   onSelectHeadlineForEdit: (headline: GeneratedHeadline) => void;
+  generateArticleDestination: ArticleDestination;
+  onGenerateArticleDestinationChange: (destination: ArticleDestination) => void;
+  finalDestinationGuidelines: string;
+  onFinalDestinationGuidelinesChange: (guidelines: string) => void;
+  onResetFinalDestinationGuidelines: () => void;
 }
 
 const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
@@ -62,11 +68,17 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
   onGenerateHeadlinesForArticle,
   generatedHeadlinesForArticle,
   onSelectHeadlineForEdit,
+  generateArticleDestination,
+  onGenerateArticleDestinationChange,
+  finalDestinationGuidelines,
+  onFinalDestinationGuidelinesChange,
+  onResetFinalDestinationGuidelines,
 }) => {
     
     const [copied, setCopied] = useState(false);
     const [selectedSuggestions, setSelectedSuggestions] = useState<Suggestion[]>([]);
     const articleContentRef = useRef<HTMLDivElement>(null);
+    const destinations: ArticleDestination[] = ['LinkedIn', 'Medium', 'Substack', 'Facebook', 'Non Fiction Book', 'Fiction Book'];
 
     const currentArticle = useMemo(() => {
         return generatedArticleHistory[currentArticleIterationIndex] || null;
@@ -140,6 +152,21 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
         <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
             
             <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Final Destination</label>
+                <div className="flex flex-wrap items-center gap-2">
+                    {destinations.map(dest => (
+                        <button 
+                            key={dest}
+                            onClick={() => onGenerateArticleDestinationChange(dest)} 
+                            className={`px-4 py-2 rounded-md font-semibold text-sm ${generateArticleDestination === dest ? 'bg-teal-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+                        >
+                            {dest}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-700/50">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Approximate Word Count</label>
                 <div className="flex items-center space-x-4">
                     {[1000, 2000, 3000].map(count => (
@@ -229,6 +256,20 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
             </div>
 
             <div className="pt-4 border-t border-slate-700/50">
+                <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-medium text-gray-300">Final Destination Guidelines</label>
+                    <button onClick={onResetFinalDestinationGuidelines} className="text-xs text-gray-400 hover:text-white hover:underline">Reset to default</button>
+                </div>
+                <p className="text-xs text-gray-500 mb-2">These guidelines are automatically selected based on your chosen destination and will be used by the AI. You can edit them for this specific article.</p>
+                <textarea 
+                    value={finalDestinationGuidelines} 
+                    onChange={(e) => onFinalDestinationGuidelinesChange(e.target.value)} 
+                    rows={10}
+                    className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" 
+                />
+            </div>
+
+            <div className="pt-4 border-t border-slate-700/50">
                 <h3 className="text-lg font-semibold text-gray-300 mb-2">Advanced: AI Generation Script</h3>
                 <div className="bg-yellow-900/50 p-3 rounded-lg border border-yellow-700 text-sm text-yellow-300 mb-3">
                     <strong>Warning:</strong> Modifying this script can break the article generation process. Only edit if you understand the AI's instructions.
@@ -278,81 +319,86 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                     <div className="flex gap-2">
                         {currentArticle.headlineApplied ? (
                              <>
-                                <button onClick={handleCopy} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white">
-                                    {copied ? 'Copied!' : 'Copy Formatted Article'}
+                                <button onClick={handleCopy} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white">
+                                    {copied ? 'Copied!' : 'Copy Article'}
                                 </button>
-                                <button onClick={handleDownload} className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-green-600 text-white hover:bg-green-500">
+                                <button onClick={handleDownload} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-500">
                                     Download .md
                                 </button>
                             </>
                         ) : (
                             <Button 
                                 onClick={onGenerateHeadlinesForArticle} 
-                                isLoading={isLoading && !generatedHeadlinesForArticle}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-xs px-3 py-1.5"
+                                isLoading={isLoading} 
+                                disabled={isLoading}
                             >
-                                {isLoading && !generatedHeadlinesForArticle ? 'Generating...' : 'Generate Headlines & Subs'}
+                                {isLoading ? 'Working...' : 'Generate Headlines'}
                             </Button>
                         )}
                     </div>
                 </div>
-                
-                <div ref={articleContentRef} className="prose prose-invert max-w-none p-4 bg-gray-900/50 rounded-lg border border-slate-700">
-                    <MarkdownRenderer content={fullArticleMarkdown} />
-                </div>
-                
-                <div className="pt-4 border-t border-slate-700/50 space-y-3">
-                    <h3 className="text-xl font-semibold text-gray-200">AI Evaluation</h3>
-                    <pre className="text-sm text-gray-400 whitespace-pre-wrap font-sans p-3 bg-gray-900/50 rounded-md">{currentArticle.evaluation}</pre>
-                </div>
 
-                <div className="pt-4 border-t border-slate-700/50 space-y-3">
-                    <h3 className="text-xl font-semibold text-gray-200">Suggested Changes</h3>
-                    <div className="space-y-3">
-                        {(currentArticle.suggestions || []).map((suggestion, index) => (
-                            <div key={index} className="flex items-start gap-3 p-3 bg-gray-900/50 rounded-md border border-slate-700">
-                                <input
-                                    type="checkbox"
-                                    id={`suggestion-${index}`}
-                                    checked={selectedSuggestions.some(s => s.text === suggestion.text)}
-                                    onChange={() => handleSuggestionToggle(suggestion)}
-                                    className="mt-1 h-4 w-4 flex-shrink-0 rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500"
-                                />
-                                <label htmlFor={`suggestion-${index}`} className="flex-1 text-sm text-gray-300">
-                                    {suggestion.text}
-                                    <span className="ml-2 px-2 py-0.5 text-xs font-semibold text-indigo-300 bg-indigo-900/50 rounded-full">{suggestion.area}</span>
-                                </label>
+                {generatedHeadlinesForArticle ? (
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-semibold text-gray-300">Choose a Headline</h3>
+                        {generatedHeadlinesForArticle.map((headline) => (
+                            <div key={headline.id} className="p-4 bg-gray-900/50 rounded-lg border border-slate-700">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-bold text-lg text-teal-300">{headline.headline}</p>
+                                        <p className="text-md text-gray-300">{headline.subheadline}</p>
+                                        <p className="text-xs text-gray-400 mt-2 italic">"{headline.reasoning}"</p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-4">
+                                        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-slate-700 text-teal-300">Score: {headline.score}/100</span>
+                                        <button 
+                                            onClick={() => onSelectHeadlineForEdit(headline)}
+                                            className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-teal-600 text-white hover:bg-teal-500"
+                                        >
+                                            Select & Edit
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         ))}
                     </div>
-                    <div className="text-center pt-4">
-                        <Button onClick={() => onEnhanceArticle(selectedSuggestions)} isLoading={isLoading && !generatedHeadlinesForArticle} disabled={selectedSuggestions.length === 0}>
-                            {isLoading && !generatedHeadlinesForArticle ? 'Your Minion Is Working' : `Enhance Article (${selectedSuggestions.length} selected)`}
-                        </Button>
-                    </div>
-                </div>
-
-                {generatedHeadlinesForArticle && (
-                    <div className="pt-4 border-t border-slate-700/50 space-y-3">
-                        <h3 className="text-xl font-semibold text-gray-200">Choose a Headline</h3>
-                        <p className="text-sm text-gray-400">Select one of the AI-generated options below to edit and apply to your article.</p>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {generatedHeadlinesForArticle.map((headline) => (
-                                <div 
-                                    key={headline.id} 
-                                    onClick={() => onSelectHeadlineForEdit(headline)} 
-                                    className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg cursor-pointer transition-all hover:border-teal-500 hover:bg-slate-700/50"
-                                >
-                                    <div className="flex justify-between items-start gap-2">
-                                        <h4 className="font-bold text-teal-300">{headline.headline}</h4>
-                                        <span className="flex-shrink-0 px-2 py-0.5 text-xs font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{headline.score}/100</span>
-                                    </div>
-                                    <p className="mt-1 text-sm text-gray-300">{headline.subheadline}</p>
-                                    <p className="mt-2 text-xs text-gray-400 italic">"{headline.reasoning}"</p>
-                                </div>
-                            ))}
+                ) : (
+                    <>
+                        <div ref={articleContentRef} className="prose prose-invert max-w-none">
+                            <MarkdownRenderer content={fullArticleMarkdown} />
                         </div>
-                    </div>
+
+                        <div className="pt-6 border-t border-slate-700/50">
+                            <h3 className="text-xl font-semibold text-gray-300 mb-2">Evaluation & Suggestions</h3>
+                            <div className="p-4 bg-gray-900/70 rounded-lg border border-slate-700">
+                                <p className="text-sm text-gray-300 whitespace-pre-wrap font-sans">{currentArticle.evaluation}</p>
+                            </div>
+                            <div className="mt-4 space-y-3">
+                                {currentArticle.suggestions.map((suggestion, index) => {
+                                    const isSelected = selectedSuggestions.some(s => s.text === suggestion.text);
+                                    return (
+                                        <label key={index} className="flex items-start p-3 bg-gray-900/50 rounded-lg border border-slate-700 hover:bg-slate-700/50 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSelected}
+                                                onChange={() => handleSuggestionToggle(suggestion)}
+                                                className="h-5 w-5 rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500 mt-1"
+                                            />
+                                            <div className="ml-3">
+                                                <span className="text-xs font-bold uppercase text-teal-400">{suggestion.area}</span>
+                                                <p className="text-sm text-gray-300">{suggestion.text}</p>
+                                            </div>
+                                        </label>
+                                    )
+                                })}
+                            </div>
+                            <div className="mt-4 text-center">
+                                <Button onClick={() => onEnhanceArticle(selectedSuggestions)} isLoading={isLoading}>
+                                    {isLoading ? 'Your Minion Is Working' : 'Enhance Article with Selected Suggestions'}
+                                </Button>
+                            </div>
+                        </div>
+                    </>
                 )}
             </div>
         )}

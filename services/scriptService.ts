@@ -1,5 +1,77 @@
 
 
+import { ArticleDestination } from '../types.ts';
+
+export const LINKEDIN_DESTINATION_GUIDELINES = `
+- **Optimal Length**: 1,500-2,000 words (7-10 minute read). The sweet spot for highest engagement is 1,900-2,000 words.
+- **Algorithm Focus**: The platform favors longer, well-researched content.
+- **Structure**:
+    - **Headlines**: Aim for under 50 characters for maximum impact.
+    - **Subheadings**: Use every 200-300 words for scannability.
+    - **Images**: Describe where illustrative images should be placed.
+- **Content Style**:
+    - Maintain a professional, corporate-friendly but conversational tone.
+    - Focus on industry expertise, data-driven insights, and actionable business value.
+    - Reference industry trends and position the content as thought leadership.
+`;
+
+export const MEDIUM_DESTINATION_GUIDELINES = `
+- **Optimal Length**: 1,600 words (a 7-minute read).
+- **Algorithm Focus**: The platform prioritizes reader "attention time."
+- **Structure**:
+    - **Subheadings**: Break content into digestible sections to keep readers engaged.
+    - **Images**: Describe where high-quality images (1200x800 px) should be placed.
+- **Content Style**:
+    - Emphasize storytelling, narrative depth, and personal anecdotes.
+    - Maintain a conversational but authoritative tone.
+    - Focus on value density; every paragraph must serve the reader.
+`;
+
+export const SUBSTACK_DESTINATION_GUIDELINES = `
+- **Optimal Length**: 800-1,200 words. Top newsletters average around 871 words.
+- **Audience Focus**: This is for a newsletter community, not a public blog post.
+- **Structure**:
+    - **Subject Lines**: The main title should be under 50 characters for mobile visibility.
+    - **Preview Text**: The sub-headline/first few sentences are critical as they appear in email clients.
+    - **Sections**: Use multiple short sections with clear headlines.
+- **Content Style**:
+    - Adopt a personal, intimate, and direct tone.
+    - Reference past newsletters to build a narrative.
+    - Include community-building elements like direct questions to encourage replies.
+`;
+
+export const FACEBOOK_DESTINATION_GUIDELINES = `
+- **Context**: While Facebook favors very short posts, this is for a long-form article (like a Facebook Note or an extended post). The primary challenge is retaining attention in a fast-scrolling feed.
+- **Structure**:
+    - **Hook**: The first 1-2 sentences are absolutely critical. They must be extremely compelling to stop the scroll.
+    - **Paragraphs**: Keep paragraphs exceptionally short, often just 1-2 sentences. Use lots of white space.
+    - **Visuals**: Describe where compelling images or videos should be placed frequently to break up text.
+- **Content Style**:
+    - Use a highly conversational, informal, and direct tone.
+    - Use emojis where appropriate to add personality.
+    - The goal is to drive engagement (comments, shares) and traffic to other resources.
+`;
+
+export const NON_FICTION_BOOK_GUIDELINES = `
+// Guidelines for a non-fiction book chapter to be defined.
+// For now, focus on deep, well-structured content that could form part of a larger, coherent work.
+// Ensure logical flow, clear arguments, and evidence-based claims.
+`;
+
+export const FICTION_BOOK_GUIDELINES = `
+// Guidelines for a fiction book chapter to be defined.
+// For now, focus on narrative, character development, setting, and plot progression.
+`;
+
+export const DESTINATION_GUIDELINES_MAP: Record<ArticleDestination, string> = {
+    'LinkedIn': LINKEDIN_DESTINATION_GUIDELINES,
+    'Medium': MEDIUM_DESTINATION_GUIDELINES,
+    'Substack': SUBSTACK_DESTINATION_GUIDELINES,
+    'Facebook': FACEBOOK_DESTINATION_GUIDELINES,
+    'Non Fiction Book': NON_FICTION_BOOK_GUIDELINES,
+    'Fiction Book': FICTION_BOOK_GUIDELINES,
+};
+
 export const LINKEDIN_GENERATION_EVALUATION_SCRIPT = `# LinkedIn Content Creation & Evaluation Script
 
 ## Introduction
@@ -357,6 +429,7 @@ To ensure the article is perfectly aligned, keep the following persona and audie
 
 ### Primary Task & Style
 - **Primary Task**: Produce an informative title and a blog article.
+- **Final Destination**: The article is intended for {final_destination}. You MUST adhere to the specific guidelines provided for this platform.
 - **Style**: Emulate Marty Cagan's direct, no-nonsense, experience-based approach, but apply it to broader leadership and transformation topics, not just Product Management.
 - **Tone**: High-energy, high-personality, engaging, and story-based. Use analogies.
 - **Language**: Use UK English terms and spelling throughout.
@@ -382,6 +455,12 @@ To ensure the article is perfectly aligned, keep the following persona and audie
     b. A structured list of actionable **suggestions** for improvement. For each suggestion, you must specify the 'area' it improves (e.g., "Clarity", "Style", "Structure").
 
 ## Inputs
+
+### Final Destination Guidelines (Crucial)
+You must tailor the article's length, tone, and structure to these platform-specific guidelines.
+"""
+{destination_guidelines}
+"""
 
 ### Writing Style References (Emulate this style)
 """

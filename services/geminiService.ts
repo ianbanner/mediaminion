@@ -65,6 +65,8 @@ export interface ArticleGenerationParams {
     evalCriteria: string;
     selectedTemplate: SavedArticleTemplate | null;
     allTemplates: SavedArticleTemplate[];
+    finalDestination: string;
+    finalDestinationGuidelines: string;
 }
 
 
@@ -509,7 +511,9 @@ ${allTemplatesString}
             .replace('{reference_world}', params.referenceWorld)
             .replace('{end_of_article_summary}', params.endOfArticleSummary)
             .replace('{template_guidance}', templateGuidance)
-            .replace('{evaluation_criteria}', params.evalCriteria);
+            .replace('{evaluation_criteria}', params.evalCriteria)
+            .replace('{final_destination}', params.finalDestination)
+            .replace('{destination_guidelines}', params.finalDestinationGuidelines);
 
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',

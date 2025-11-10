@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -48,6 +49,8 @@ import {
   DEFAULT_ARTICLE_EVAL_CRITERIA,
   GENERATE_ARTICLE_SCRIPT,
   DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA,
+  DESTINATION_GUIDELINES_MAP,
+  LINKEDIN_DESTINATION_GUIDELINES,
 } from './services/scriptService.ts';
 
 import { initialTemplates } from './services/templateData.ts';
@@ -66,6 +69,7 @@ import {
   SavedArticleTemplate,
   ArticleIdea,
   GeneratedHeadline,
+  ArticleDestination,
 } from './types.ts';
 
 const LOCAL_STORAGE_KEY = 'socialMediaMinionData';
@@ -237,7 +241,16 @@ export const App: React.FC = () => {
   const [headlineEvalCriteriaForArticle, setHeadlineEvalCriteriaForArticle] = useState(DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA);
   const [generatedHeadlinesForArticle, setGeneratedHeadlinesForArticle] = useState<GeneratedHeadline[] | null>(null);
   const [selectedHeadlineForEdit, setSelectedHeadlineForEdit] = useState<GeneratedHeadline | null>(null);
+  const [generateArticleDestination, setGenerateArticleDestination] = useState<ArticleDestination>('LinkedIn');
+  const [finalDestinationGuidelines, setFinalDestinationGuidelines] = useState(LINKEDIN_DESTINATION_GUIDELINES);
 
+  useEffect(() => {
+    setFinalDestinationGuidelines(DESTINATION_GUIDELINES_MAP[generateArticleDestination] || LINKEDIN_DESTINATION_GUIDELINES);
+  }, [generateArticleDestination]);
+
+  const handleResetDestinationGuidelines = useCallback(() => {
+    setFinalDestinationGuidelines(DESTINATION_GUIDELINES_MAP[generateArticleDestination] || LINKEDIN_DESTINATION_GUIDELINES);
+  }, [generateArticleDestination]);
 
   const handleSaveStateToLocalStorage = useCallback(() => {
     const backupData: BackupData = {
@@ -276,46 +289,50 @@ export const App: React.FC = () => {
       endOfArticleSummary,
       articleEvalCriteria,
       headlineEvalCriteriaForArticle,
+      generateArticleDestination,
+      finalDestinationGuidelines,
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(backupData));
-  }, [userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings, researchScript, researchedPosts, headlineSourceType, headlineSourceUrl, headlineSourceText, generatedArticleIdeas, generateArticleWordCount, generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText, generateArticleScript, generatedArticleHistory, currentArticleIterationIndex, generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle]);
+  }, [userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles, articleUrl, articleText, postSourceType, standardStarterText, standardSummaryText, generationScript, savedTemplates, savedArticleTemplates, ayrshareQueue, schedulingInstructions, parsedSchedule, ayrshareLog, settings, adminSettings, researchScript, researchedPosts, headlineSourceType, headlineSourceUrl, headlineSourceText, generatedArticleIdeas, generateArticleWordCount, generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText, generateArticleScript, generatedArticleHistory, currentArticleIterationIndex, generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle, generateArticleDestination, finalDestinationGuidelines]);
   
   const restoreFromBackup = useCallback((data: BackupData) => {
-    setUserRole(data.userRole || DEFAULT_USER_ROLE);
-    setTargetAudience(data.targetAudience || DEFAULT_TARGET_AUDIENCE);
-    setReferenceWorldContent(data.referenceWorldContent || '');
-    setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
-    setArticleUrl(data.articleUrl || '');
-    setArticleText(data.articleText || '');
-    setPostSourceType(data.postSourceType || 'url');
-    setStandardStarterText(data.standardStarterText || DEFAULT_POST_STARTER_TEXT);
-    setStandardSummaryText(data.standardSummaryText || DEFAULT_POST_SUMMARY_TEXT);
-    setGenerationScript(data.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
-    setSavedTemplates(data.savedTemplates || initialTemplates);
-    setSavedArticleTemplates(data.savedArticleTemplates || initialArticleTemplates);
-    setAyrshareQueue(data.ayrshareQueue || []);
-    setSchedulingInstructions(data.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
-    setParsedSchedule(data.parsedSchedule || []);
-    setAyrshareLog(data.ayrshareLog || []);
-    setSettings(data.settings || { ayrshareApiKey: '' });
-    setAdminSettings(data.adminSettings || { authorizedEmails: [], secretPassword: '' });
-    setResearchScript(data.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
-    setResearchedPosts(data.researchedPosts || null);
-    setHeadlineSourceType(data.headlineSourceType || 'url');
-    setHeadlineSourceUrl(data.headlineSourceUrl || '');
-    setHeadlineSourceText(data.headlineSourceText || '');
-    setGeneratedArticleIdeas(data.generatedArticleIdeas || null);
-    setGenerateArticleWordCount(data.generateArticleWordCount || 1000);
-    setGenerateArticleSourceType(data.generateArticleSourceType || 'text');
-    setGenerateArticleSourceUrl(data.generateArticleSourceUrl || '');
-    setGenerateArticleSourceText(data.generateArticleSourceText || '');
-    setGenerateArticleScript(data.generateArticleScript || GENERATE_ARTICLE_SCRIPT);
-    setGeneratedArticleHistory(data.generatedArticleHistory || []);
-    setCurrentArticleIterationIndex(data.currentArticleIterationIndex || 0);
-    setGenerateArticleTitle(data.generateArticleTitle || '');
-    setEndOfArticleSummary(data.endOfArticleSummary || DEFAULT_END_OF_ARTICLE_SUMMARY);
-    setArticleEvalCriteria(data.articleEvalCriteria || DEFAULT_ARTICLE_EVAL_CRITERIA);
-    setHeadlineEvalCriteriaForArticle(data.headlineEvalCriteriaForArticle || DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA);
+    setUserRole(data.userRole ?? DEFAULT_USER_ROLE);
+    setTargetAudience(data.targetAudience ?? DEFAULT_TARGET_AUDIENCE);
+    setReferenceWorldContent(data.referenceWorldContent ?? '');
+    setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles ?? DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
+    setArticleUrl(data.articleUrl ?? '');
+    setArticleText(data.articleText ?? '');
+    setPostSourceType(data.postSourceType ?? 'url');
+    setStandardStarterText(data.standardStarterText ?? DEFAULT_POST_STARTER_TEXT);
+    setStandardSummaryText(data.standardSummaryText ?? DEFAULT_POST_SUMMARY_TEXT);
+    setGenerationScript(data.generationScript ?? LINKEDIN_GENERATION_EVALUATION_SCRIPT);
+    setSavedTemplates(data.savedTemplates ?? initialTemplates);
+    setSavedArticleTemplates(data.savedArticleTemplates ?? initialArticleTemplates);
+    setAyrshareQueue(data.ayrshareQueue ?? []);
+    setSchedulingInstructions(data.schedulingInstructions ?? DEFAULT_SCHEDULING_INSTRUCTIONS);
+    setParsedSchedule(data.parsedSchedule ?? []);
+    setAyrshareLog(data.ayrshareLog ?? []);
+    setSettings(data.settings ?? { ayrshareApiKey: '' });
+    setAdminSettings(data.adminSettings ?? { authorizedEmails: [], secretPassword: '' });
+    setResearchScript(data.researchScript ?? LINKEDIN_ANALYSIS_SCRIPT);
+    setResearchedPosts(data.researchedPosts ?? null);
+    setHeadlineSourceType(data.headlineSourceType ?? 'url');
+    setHeadlineSourceUrl(data.headlineSourceUrl ?? '');
+    setHeadlineSourceText(data.headlineSourceText ?? '');
+    setGeneratedArticleIdeas(data.generatedArticleIdeas ?? null);
+    setGenerateArticleWordCount(data.generateArticleWordCount ?? 1000);
+    setGenerateArticleSourceType(data.generateArticleSourceType ?? 'text');
+    setGenerateArticleSourceUrl(data.generateArticleSourceUrl ?? '');
+    setGenerateArticleSourceText(data.generateArticleSourceText ?? '');
+    setGenerateArticleScript(data.generateArticleScript ?? GENERATE_ARTICLE_SCRIPT);
+    setGeneratedArticleHistory(data.generatedArticleHistory ?? []);
+    setCurrentArticleIterationIndex(data.currentArticleIterationIndex ?? 0);
+    setGenerateArticleTitle(data.generateArticleTitle ?? '');
+    setEndOfArticleSummary(data.endOfArticleSummary ?? DEFAULT_END_OF_ARTICLE_SUMMARY);
+    setArticleEvalCriteria(data.articleEvalCriteria ?? DEFAULT_ARTICLE_EVAL_CRITERIA);
+    setHeadlineEvalCriteriaForArticle(data.headlineEvalCriteriaForArticle ?? DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA);
+    setGenerateArticleDestination(data.generateArticleDestination ?? 'LinkedIn');
+    setFinalDestinationGuidelines(data.finalDestinationGuidelines ?? LINKEDIN_DESTINATION_GUIDELINES);
 
     playSound('success');
   }, []);
@@ -524,6 +541,9 @@ export const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setGeneratedArticleIdeas(null);
+    setGeneratedArticleHistory([]);
+    setCurrentArticleIterationIndex(0);
+    setGeneratedHeadlinesForArticle(null);
     try {
         const ideas = await generateArticleIdeas({
             sourceArticle: headlineSourceType === 'text' ? headlineSourceText : headlineSourceUrl,
@@ -566,7 +586,9 @@ export const App: React.FC = () => {
             endOfArticleSummary,
             evalCriteria: articleEvalCriteria,
             selectedTemplate,
-            allTemplates: savedArticleTemplates
+            allTemplates: savedArticleTemplates,
+            finalDestination: generateArticleDestination,
+            finalDestinationGuidelines: finalDestinationGuidelines,
         });
         setGeneratedArticleHistory(prev => [...prev, article]);
         setCurrentArticleIterationIndex(prev => prev + 1);
@@ -581,7 +603,8 @@ export const App: React.FC = () => {
       generateArticleScript, generateArticleWordCount, thisIsHowIWriteArticles, 
       generateArticleSourceType, generateArticleSourceText, generateArticleSourceUrl,
       referenceWorldContent, userRole, targetAudience, generateArticleTitle,
-      endOfArticleSummary, articleEvalCriteria, savedArticleTemplates
+      endOfArticleSummary, articleEvalCriteria, savedArticleTemplates,
+      generateArticleDestination, finalDestinationGuidelines
   ]);
 
   const handleEnhanceArticle = useCallback(async (suggestions: Suggestion[]) => {
@@ -746,6 +769,7 @@ export const App: React.FC = () => {
           generateArticleSourceType, generateArticleSourceUrl, generateArticleSourceText,
           generateArticleScript, generatedArticleHistory, currentArticleIterationIndex,
           generateArticleTitle, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle,
+          generateArticleDestination, finalDestinationGuidelines,
         }} onRestore={restoreFromBackup} />;
       case 'settings':
         return <SettingsPanel settings={settings} onSettingsChange={handleSaveSettings} isAdmin={isAdmin} />;
@@ -798,6 +822,11 @@ export const App: React.FC = () => {
             onGenerateHeadlinesForArticle={handleGenerateHeadlinesForArticle}
             generatedHeadlinesForArticle={generatedHeadlinesForArticle}
             onSelectHeadlineForEdit={(headline) => setSelectedHeadlineForEdit(headline)}
+            generateArticleDestination={generateArticleDestination}
+            onGenerateArticleDestinationChange={setGenerateArticleDestination}
+            finalDestinationGuidelines={finalDestinationGuidelines}
+            onFinalDestinationGuidelinesChange={setFinalDestinationGuidelines}
+            onResetFinalDestinationGuidelines={handleResetDestinationGuidelines}
         />;
        case 'article-template-library':
         return <ArticleTemplateLibrary 
