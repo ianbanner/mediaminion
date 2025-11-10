@@ -34,6 +34,7 @@ import {
   generateArticleIdeas,
   generateArticle,
   enhanceArticle,
+  polishArticle,
   createArticleTemplateFromText,
   generateHeadlinesForArticle,
   GenerationResults,
@@ -189,6 +190,7 @@ export const App: React.FC = () => {
   const [view, setView] = useState('generate-posts');
   const [isLoading, setIsLoading] = useState(false);
   const [isEnhancingArticle, setIsEnhancingArticle] = useState(false);
+  const [isPolishingArticle, setIsPolishingArticle] = useState(false);
   const [isGeneratingHeadlines, setIsGeneratingHeadlines] = useState(false);
   const [error, setError] = useState<React.ReactNode | null>(null);
   const [queueError, setQueueError] = useState<React.ReactNode | null>(null);
@@ -638,7 +640,7 @@ export const App: React.FC = () => {
             finalDestinationGuidelines: finalDestinationGuidelines,
         });
         setGeneratedArticleHistory(prev => [...prev, article]);
-        setCurrentArticleIterationIndex(prev => prev.length);
+        setCurrentArticleIterationIndex(generatedArticleHistory.length);
         logUserActivity('article');
         playSound('success');
     } catch (err: any) {
@@ -652,7 +654,7 @@ export const App: React.FC = () => {
       generateArticleSourceType, generateArticleSourceText, generateArticleSourceUrl,
       referenceWorldContent, userRole, targetAudience, generateArticleTitle,
       endOfArticleSummary, articleEvalCriteria, savedArticleTemplates,
-      generateArticleDestination, finalDestinationGuidelines, logUserActivity
+      generateArticleDestination, finalDestinationGuidelines, logUserActivity, generatedArticleHistory.length
   ]);
 
   const handleEnhanceArticle = useCallback(async (suggestions: Suggestion[]) => {
@@ -669,7 +671,7 @@ export const App: React.FC = () => {
               suggestions
           });
           setGeneratedArticleHistory(prev => [...prev, enhancedArticle]);
-          setCurrentArticleIterationIndex(prev => prev.length);
+          setCurrentArticleIterationIndex(generatedArticleHistory.length);
           playSound('success');
       } catch (err: any) {
           setError(<span>Article enhancement failed. Error: {err.message}</span>);
@@ -679,6 +681,30 @@ export const App: React.FC = () => {
       }
   }, [generatedArticleHistory, currentArticleIterationIndex, articleEvalCriteria]);
   
+  const handlePolishArticle = useCallback(async () => {
+      const currentArticle = generatedArticleHistory[currentArticleIterationIndex];
+      if (!currentArticle) return;
+      
+      setIsPolishingArticle(true);
+      setError(null);
+      try {
+          const polishedArticle = await polishArticle({
+              originalTitle: currentArticle.title,
+              originalContent: currentArticle.content,
+              evalCriteria: articleEvalCriteria,
+              styleReferences: thisIsHowIWriteArticles,
+          });
+          setGeneratedArticleHistory(prev => [...prev, polishedArticle]);
+          setCurrentArticleIterationIndex(generatedArticleHistory.length);
+          playSound('success');
+      } catch (err: any) {
+          setError(<span>Article polishing failed. Error: {err.message}</span>);
+          playSound('error');
+      } finally {
+          setIsPolishingArticle(false);
+      }
+  }, [generatedArticleHistory, currentArticleIterationIndex, articleEvalCriteria, thisIsHowIWriteArticles]);
+
   const handleCreateArticleTemplateFromText = useCallback(async (articleText: string) => {
     setIsLoading(true);
     setError(null);
@@ -859,6 +885,7 @@ export const App: React.FC = () => {
             onGenerate={() => setShowSelectArticleTemplateModal(true)}
             isLoading={isLoading}
             isEnhancingArticle={isEnhancingArticle}
+            isPolishingArticle={isPolishingArticle}
             isGeneratingHeadlines={isGeneratingHeadlines}
             generatedArticleHistory={generatedArticleHistory}
             currentArticleIterationIndex={currentArticleIterationIndex}
@@ -867,6 +894,7 @@ export const App: React.FC = () => {
             endOfArticleSummary={endOfArticleSummary} onEndOfArticleSummaryChange={setEndOfArticleSummary}
             articleEvalCriteria={articleEvalCriteria} onArticleEvalCriteriaChange={setArticleEvalCriteria}
             onEnhanceArticle={handleEnhanceArticle}
+            onPolishArticle={handlePolishArticle}
             headlineEvalCriteriaForArticle={headlineEvalCriteriaForArticle}
             onHeadlineEvalCriteriaForArticleChange={setHeadlineEvalCriteriaForArticle}
             onGenerateHeadlinesForArticle={handleGenerateHeadlinesForArticle}

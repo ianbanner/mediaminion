@@ -13,6 +13,7 @@ import {
   REEVALUATE_HEADLINE_SCRIPT,
   GENERATE_ARTICLE_IDEAS_SCRIPT,
   ENHANCE_ARTICLE_SCRIPT,
+  POLISH_ARTICLE_SCRIPT,
   CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT,
   GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT
 } from './scriptService.ts';
@@ -605,6 +606,57 @@ export async function enhanceArticle({ originalTitle, originalContent, evalCrite
             throw new Error(`Failed to enhance article. Error: ${error.message}`);
         }
         throw new Error("Failed to enhance article. An unknown error occurred.");
+    }
+}
+
+export async function polishArticle({ originalTitle, originalContent, evalCriteria, styleReferences }: { originalTitle: string; originalContent: string; evalCriteria: string; styleReferences: string; }): Promise<GeneratedArticle> {
+    try {
+        const ai = getAI();
+        
+        const prompt = POLISH_ARTICLE_SCRIPT
+            .replace('{original_title}', originalTitle)
+            .replace('{original_content}', originalContent)
+            .replace('{style_references}', styleReferences)
+            .replace('{evaluation_criteria}', evalCriteria);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING },
+                        content: { type: Type.STRING },
+                        evaluation: { type: Type.STRING },
+                        score: { type: Type.NUMBER },
+                        suggestions: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    text: { type: Type.STRING },
+                                    area: { type: Type.STRING }
+                                },
+                                required: ['text', 'area']
+                            }
+                        }
+                    },
+                    required: ['title', 'content', 'evaluation', 'score', 'suggestions'],
+                },
+            },
+        });
+
+        const result: GeneratedArticle = JSON.parse(response.text);
+        return result;
+
+    } catch (error) {
+        console.error("Error polishing article:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to polish article. Error: ${error.message}`);
+        }
+        throw new Error("Failed to polish article. An unknown error occurred.");
     }
 }
 

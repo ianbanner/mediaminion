@@ -1,5 +1,3 @@
-
-
 import { ArticleDestination } from '../types.ts';
 
 const UNIVERSAL_GUIDELINES = `
@@ -559,6 +557,50 @@ You must implement the following changes:
 
 ## Final Output
 Provide your response as a single JSON object containing the new title, the full enhanced article content, your new evaluation text, a new score, and a new list of structured suggestions for further improvement.
+`;
+
+export const POLISH_ARTICLE_SCRIPT = `
+# Final Polish & Style Enhancement Script
+
+## Role & Goal
+You are an expert copy editor and stylist, channeling the voice of Marty Cagan. Your ONLY task is to perform an aggressive, stylistic rewrite of the provided article. You are NOT to change the core arguments, structure, or key points. Your mission is to inject personality, energy, and a direct, no-nonsense tone.
+
+## The "Marty Cagan" Style Voice (CRUCIAL)
+- **Direct & Authoritative:** Use strong, declarative sentences. Eliminate weak language ("might," "could," "perhaps"). Speak from a position of experience.
+- **High-Energy & High-Personality:** Make it engaging. Use analogies. Ask rhetorical questions. Challenge the reader directly.
+- **No-Nonsense:** Cut the fluff. Every word must earn its place. Get straight to the point.
+- **Action-Oriented:** Focus on practical takeaways and the "so what" for the reader.
+- **Conversational but Professional:** Write like you're giving candid advice to a smart colleague.
+
+## Process
+1.  **Internalize the Style:** Read the provided "Writing Style References" to deeply understand the target voice.
+2.  **Analyze the Article:** Read the "Original Article Content" to understand its message and structure.
+3.  **Aggressive Rewrite:** Go through the article line by line and rewrite it to match the "Marty Cagan" style. This is not a gentle edit; it's a complete stylistic overhaul. **DO NOT CHANGE THE MEANING OR STRUCTURE.**
+4.  **Evaluate Your Polish:** After rewriting, critically evaluate how well you adopted the voice, using the "Article Evaluation Criteria". Provide a new score and suggestions for any remaining areas that could be punchier.
+
+## Inputs
+
+### Original Article Title
+"""
+{original_title}
+"""
+
+### Original Article Content
+"""
+{original_content}
+"""
+
+### Writing Style References (Your Style Guide)
+"""
+{style_references}
+"""
+
+### Article Evaluation Criteria (Use to evaluate your rewrite)
+"""
+{evaluation_criteria}
+"""
+
+Now, begin the process. Rewrite the article for style, then provide a new title, the full polished content, a new evaluation, a new score, and new suggestions in the specified JSON format.
 `;
 
 export const CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT = `

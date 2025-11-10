@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GeneratedArticle, Suggestion, GeneratedHeadline, ArticleDestination } from '../types.ts';
 import Button from './Button.tsx';
@@ -19,6 +17,7 @@ interface ArticleGeneratorPanelProps {
   onGenerate: () => void;
   isLoading: boolean;
   isEnhancingArticle: boolean;
+  isPolishingArticle: boolean;
   isGeneratingHeadlines: boolean;
   generatedArticleHistory: GeneratedArticle[];
   currentArticleIterationIndex: number;
@@ -30,6 +29,7 @@ interface ArticleGeneratorPanelProps {
   articleEvalCriteria: string;
   onArticleEvalCriteriaChange: (value: string) => void;
   onEnhanceArticle: (selectedSuggestions: Suggestion[]) => void;
+  onPolishArticle: () => void;
   headlineEvalCriteriaForArticle: string;
   onHeadlineEvalCriteriaForArticleChange: (value: string) => void;
   onGenerateHeadlinesForArticle: () => void;
@@ -56,6 +56,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
   onGenerate,
   isLoading,
   isEnhancingArticle,
+  isPolishingArticle,
   isGeneratingHeadlines,
   generatedArticleHistory,
   currentArticleIterationIndex,
@@ -67,6 +68,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
   articleEvalCriteria,
   onArticleEvalCriteriaChange,
   onEnhanceArticle,
+  onPolishArticle,
   headlineEvalCriteriaForArticle,
   onHeadlineEvalCriteriaForArticleChange,
   onGenerateHeadlinesForArticle,
@@ -129,16 +131,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
 
     const handleCopy = () => {
         if (articleContentRef.current) {
-            const html = articleContentRef.current.innerHTML;
-            const blob = new Blob([html], { type: 'text/html' });
-            const item = new ClipboardItem({ 'text/html': blob });
-            
-            navigator.clipboard.write([item]).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            }).catch(err => {
-                console.error('Failed to copy rich text:', err);
-                navigator.clipboard.writeText(fullArticleMarkdown); // Fallback to raw markdown
+            navigator.clipboard.writeText(fullArticleMarkdown).then(() => {
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
             });
@@ -288,153 +281,141 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
                 <div className="bg-yellow-900/50 p-3 rounded-lg border border-yellow-700 text-sm text-yellow-300 mb-3">
                     <strong>Warning:</strong> Modifying this script can break the article generation process. Only edit if you understand the AI's instructions.
                 </div>
-                <textarea value={generationScript} onChange={(e) => onGenerationScriptChange(e.target.value)} rows={15} className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"/>
+                <textarea value={generationScript} onChange={(e) => onGenerationScriptChange(e.target.value)} rows={15} className="w-full p-3 bg-gray-900 rounded-md text-sm font-mono whitespace-pre-wrap text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400" />
             </div>
 
-             <div className="text-center pt-4">
-                <Button onClick={onGenerate} isLoading={isLoading && generatedArticleHistory.length === 0}>
-                  {isLoading && generatedArticleHistory.length === 0 ? 'Your Minion Is Working' : 'Generate Article'}
+            <div className="text-center pt-4 border-t border-slate-700/50">
+                <Button onClick={onGenerate} isLoading={isLoading}>
+                    {isLoading ? 'Your Minion Is Working' : 'Generate Article'}
                 </Button>
             </div>
         </div>
-        
-        {generatedArticleHistory.length > 0 && (
-             <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-4">
-                <h2 className="text-2xl font-bold text-gray-200">Iteration History</h2>
-                <div className="flex flex-col space-y-2">
-                    {generatedArticleHistory.map((iteration, index) => (
-                        <button
-                            key={index}
-                            onClick={() => onRevertToIteration(index)}
-                            className={`p-3 rounded-md text-left transition-colors ${index === currentArticleIterationIndex ? 'bg-teal-600/30 border-teal-500 border' : 'bg-gray-900/50 hover:bg-slate-700/50 border border-slate-700'}`}
-                        >
-                            <div className="flex justify-between items-center">
-                                <span className="font-semibold text-gray-200">Iteration {index + 1}</span>
-                                <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${index === currentArticleIterationIndex ? 'bg-teal-500 text-white' : 'bg-slate-700 text-teal-300'}`}>
-                                    Score: {iteration.score}/100
-                                </span>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        )}
 
         {currentArticle && (
-            <div className="mt-8 p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+            <div className="mt-8 p-6 bg-slate-900/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                    <h2 className="text-2xl font-bold text-gray-200">Generated Article</h2>
+                    {generatedArticleHistory.length > 1 && (
+                        <div className="flex items-center gap-4">
+                            <label htmlFor="iteration-slider" className="text-sm font-medium text-gray-400 whitespace-nowrap">Version History:</label>
+                            <input
+                                id="iteration-slider"
+                                type="range"
+                                min="0"
+                                max={generatedArticleHistory.length - 1}
+                                value={currentArticleIterationIndex}
+                                onChange={(e) => onRevertToIteration(parseInt(e.target.value))}
+                                className="w-full"
+                            />
+                            <span className="text-sm font-semibold text-gray-300">{currentArticleIterationIndex + 1} / {generatedArticleHistory.length}</span>
+                        </div>
+                    )}
+                </div>
                 
-                {/* STATE 3: FINAL ARTICLE VIEW */}
-                {currentArticle.headlineApplied ? (
-                    <>
-                        <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
-                             <div>
-                                <h2 className="text-2xl font-bold text-teal-300">Final Article Ready for Publishing</h2>
-                                <p className="text-sm text-gray-400">Your article has been finalized with the new headline.</p>
-                             </div>
-                             <div className="flex gap-2">
-                                <button onClick={handleCopy} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white">
-                                    {copied ? 'Copied!' : 'Copy Article'}
-                                </button>
-                                <button onClick={handleDownload} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-md hover:bg-green-500">
-                                    Download .md
-                                </button>
-                            </div>
-                        </div>
-                        <div ref={articleContentRef} className="prose prose-invert max-w-none">
-                            <MarkdownRenderer content={fullArticleMarkdown} />
-                        </div>
-                    </>
+                <div className="prose prose-invert max-w-none bg-gray-900 p-6 rounded-lg border border-slate-700" ref={articleContentRef}>
+                    <MarkdownRenderer content={fullArticleMarkdown} />
+                </div>
+                <div className="flex justify-end gap-3">
+                    <Button onClick={handleCopy} className="bg-gray-700 hover:bg-gray-600">{copied ? 'Copied!' : 'Copy Markdown'}</Button>
+                    <Button onClick={handleDownload} className="bg-gray-700 hover:bg-gray-600">Download .md</Button>
+                </div>
 
-                /* STATE 2: HEADLINE SELECTION VIEW */
-                ) : generatedHeadlinesForArticle ? (
-                    <div className="space-y-4">
-                        <h3 className="text-xl font-semibold text-gray-300">Choose a Headline</h3>
-                        {generatedHeadlinesForArticle.map((headline) => (
-                            <div key={headline.id} className="p-4 bg-gray-900/50 rounded-lg border border-slate-700">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-lg text-teal-300">{headline.headline}</p>
-                                        <p className="text-md text-gray-300">{headline.subheadline}</p>
-                                        <p className="text-xs text-gray-400 mt-2 italic">"{headline.reasoning}"</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-4">
-                                        <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-slate-700 text-teal-300">Score: {headline.score}/100</span>
-                                        <button 
-                                            onClick={() => onSelectHeadlineForEdit(headline)}
-                                            className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-teal-600 text-white hover:bg-teal-500"
-                                        >
-                                            Select & Edit
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                <div className="pt-6 border-t border-slate-700/50">
+                    <h3 className="text-xl font-bold text-gray-200">AI Evaluation & Suggestions</h3>
+                    <div className="mt-2 flex items-baseline gap-4">
+                         <span className="px-3 py-1 text-lg font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{currentArticle.score}/100</span>
+                        <p className="text-sm text-gray-400 italic">"{currentArticle.evaluation}"</p>
                     </div>
 
-                /* STATE 1: DRAFT & ENHANCE VIEW */
-                ) : (
-                    <>
-                        <div className="flex justify-between items-center pb-4 border-b border-slate-700/50">
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-200">Generated Article</h2>
-                                <div className="flex items-center gap-4 mt-1">
-                                    <span className="text-sm font-semibold text-gray-400">Viewing Iteration: {currentArticleIterationIndex + 1}</span>
-                                    <span className="px-3 py-1 text-sm font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{currentArticle.score}/100</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div ref={articleContentRef} className="prose prose-invert max-w-none">
-                            <MarkdownRenderer content={fullArticleMarkdown} />
-                        </div>
-
-                        <div className="pt-6 border-t border-slate-700/50">
-                            <h3 className="text-xl font-semibold text-gray-300 mb-2">Evaluation & Suggestions</h3>
-                            <div className="p-4 bg-gray-900/70 rounded-lg border border-slate-700">
-                                <p className="text-sm text-gray-300 whitespace-pre-wrap font-sans">{currentArticle.evaluation}</p>
-                            </div>
-                            <div className="mt-4 space-y-3">
-                                {currentArticle.suggestions.map((suggestion, index) => {
-                                    const isSelected = selectedSuggestions.some(s => s.text === suggestion.text);
-                                    return (
-                                        <label key={index} className="flex items-start p-3 bg-gray-900/50 rounded-lg border border-slate-700 hover:bg-slate-700/50 cursor-pointer">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={isSelected}
-                                                onChange={() => handleSuggestionToggle(suggestion)}
-                                                className="h-5 w-5 rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500 mt-1"
-                                            />
-                                            <div className="ml-3">
-                                                <span className="text-xs font-bold uppercase text-teal-400">{suggestion.area}</span>
-                                                <p className="text-sm text-gray-300">{suggestion.text}</p>
-                                            </div>
-                                        </label>
-                                    )
-                                })}
-                            </div>
-
-                            <div className="mt-4">
-                                <label className="block text-sm font-medium text-gray-300 mb-1">Add a Personal Editor's Note</label>
-                                <textarea
-                                    value={editorNote}
-                                    onChange={(e) => setEditorNote(e.target.value)}
-                                    placeholder="e.g., Make it less about me being the hero..."
-                                    className="w-full p-3 bg-gray-900 rounded-md text-sm text-gray-300 border border-slate-600 focus:ring-2 focus:ring-teal-400"
-                                    rows={2}
+                    <div className="mt-4 space-y-2">
+                        <h4 className="text-md font-semibold text-gray-300">Suggestions for Enhancement:</h4>
+                        {currentArticle.suggestions.map((suggestion, index) => (
+                            <label key={index} className="flex items-start gap-3 p-3 bg-slate-800/50 rounded-md cursor-pointer hover:bg-slate-700/50">
+                                <input 
+                                    type="checkbox" 
+                                    checked={selectedSuggestions.some(s => s.text === suggestion.text)}
+                                    onChange={() => handleSuggestionToggle(suggestion)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500"
                                 />
-                             </div>
+                                <div>
+                                    <span className="font-semibold text-teal-400 text-xs uppercase">{suggestion.area}</span>
+                                    <p className="text-sm text-gray-300">{suggestion.text}</p>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                    
+                     <div className="mt-4">
+                        <h4 className="text-md font-semibold text-gray-300 mb-2">Additional Editor's Note:</h4>
+                         <textarea 
+                            value={editorNote}
+                            onChange={(e) => setEditorNote(e.target.value)}
+                            rows={3}
+                            placeholder="Add a custom instruction for the next enhancement..."
+                            className="w-full p-3 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400" 
+                        />
+                    </div>
+                    
+                    <div className="flex justify-end items-center gap-3 mt-4 flex-wrap" title={currentArticle?.headlineApplied ? "Enhancement is disabled after a headline has been applied to maintain content consistency." : ""}>
+                        <Button 
+                            onClick={handleEnhanceClick}
+                            isLoading={isEnhancingArticle}
+                            disabled={!currentArticle || isLoading || isGeneratingHeadlines || isPolishingArticle || !!currentArticle?.headlineApplied}
+                            className="bg-blue-600 hover:bg-blue-500"
+                        >
+                            {isEnhancingArticle ? 'Enhancing...' : 'Enhance Article'}
+                        </Button>
+                    </div>
+                </div>
 
-                            <div className="mt-6 text-center flex flex-col sm:flex-row justify-center gap-4">
-                                <Button onClick={handleEnhanceClick} isLoading={isEnhancingArticle}>
-                                    {isEnhancingArticle ? 'Your Minion Is Working' : 'Enhance Article'}
-                                </Button>
-                                <Button onClick={onGenerateHeadlinesForArticle} isLoading={isGeneratingHeadlines} className="bg-indigo-600 hover:bg-indigo-500">
-                                    {isGeneratingHeadlines ? 'Working...' : 'Move on to Generate Headlines'}
-                                </Button>
-                            </div>
+                {generatedHeadlinesForArticle ? (
+                    <div className="pt-6 border-t border-slate-700/50 space-y-4">
+                        <h3 className="text-xl font-bold text-gray-200">Generated Headlines</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {generatedHeadlinesForArticle.map(headline => (
+                                <div key={headline.id} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700 flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex justify-between items-start">
+                                            <p className="font-bold text-teal-300 pr-4">{headline.headline}</p>
+                                            <span className="flex-shrink-0 px-2 py-0.5 text-xs font-bold text-teal-300 bg-teal-900/50 border border-teal-700 rounded-full">{headline.score}/100</span>
+                                        </div>
+                                        {headline.subheadline && <p className="mt-1 text-sm text-gray-400">{headline.subheadline}</p>}
+                                        <p className="mt-2 text-xs text-gray-500 italic">"{headline.reasoning}"</p>
+                                    </div>
+                                    <div className="text-right mt-3">
+                                        <Button onClick={() => onSelectHeadlineForEdit(headline)} className="px-4 py-1.5 text-sm">
+                                            Edit & Apply
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </>
+                    </div>
+                ) : !currentArticle.headlineApplied ? (
+                    <div className="pt-6 border-t border-slate-700/50 text-center">
+                        <Button 
+                            onClick={onGenerateHeadlinesForArticle}
+                            isLoading={isGeneratingHeadlines}
+                            disabled={isEnhancingArticle || isLoading || isPolishingArticle}
+                        >
+                            {isGeneratingHeadlines ? 'Generating Headlines...' : 'Generate Headlines for this Article'}
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="pt-6 border-t border-slate-700/50 text-center">
+                        <h3 className="text-xl font-bold text-gray-200">Final Polish</h3>
+                        <p className="text-sm text-gray-400 my-4">Your article's content and headline are set. The final step is to apply a stylistic polish to match your brand voice.</p>
+                        <Button
+                            onClick={onPolishArticle}
+                            isLoading={isPolishingArticle}
+                            disabled={!currentArticle || isLoading || isEnhancingArticle || isGeneratingHeadlines}
+                            className="bg-purple-600 hover:bg-purple-500"
+                        >
+                            {isPolishingArticle ? 'Polishing...' : 'Apply Final Polish'}
+                        </Button>
+                    </div>
                 )}
+
             </div>
         )}
     </div>
