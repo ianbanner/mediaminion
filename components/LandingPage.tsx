@@ -47,7 +47,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onNavigate, cur
         {/* Hero Section */}
         <section className="text-center py-20 px-6 bg-slate-900/50">
           <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-indigo-400">
-            Automate Your Thought Leadership.
+            Stop Churning Content.<br />Start Building Authority.
           </h1>
           <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto text-gray-300">
             Social Media Minion is your AI-powered content partner, designed for coaches and experts to create high-quality, authentic social media content in a fraction of the time.

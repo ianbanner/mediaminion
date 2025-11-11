@@ -1,6 +1,3 @@
-
-# Stop Churning Content.<br>Start Building Authority.
-
 As an expert coach or consultant, your time is your most valuable asset. You know you need to build your personal brand on platforms like LinkedIn, but the endless cycle of content creation is a drain on the very energy you need to serve your clients.
 
 You're stuck between:
