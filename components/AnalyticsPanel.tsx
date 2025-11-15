@@ -1,119 +1,210 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { SentPost, PostAnalytics } from '../types.ts';
+import { SentPost, PostAnalytics, PlatformAnalytics } from '../types.ts';
+import { getPostAnalytics, AnalyticsResult } from '../services/ayrshareService.ts';
 
 interface AnalyticsPanelProps {
   sentPosts: SentPost[];
+  ayrshareApiKey: string;
 }
 
-// Helper to generate simulated data
-const generateSimulatedAnalytics = (postId: string): PostAnalytics => {
-  const reach = Math.floor(Math.random() * 5000) + 500;
-  const likes = Math.floor(reach * (Math.random() * 0.05 + 0.02)); // 2-7% likes
-  const comments = Math.floor(likes * (Math.random() * 0.1 + 0.05)); // 5-15% of likes
-  const shares = Math.floor(likes * (Math.random() * 0.08 + 0.02)); // 2-10% of likes
-  const clicks = Math.floor(reach * (Math.random() * 0.03 + 0.01)); // 1-4% clicks
-  const engagement = likes + comments + shares;
-  const engagementRate = reach > 0 ? parseFloat(((engagement / reach) * 100).toFixed(2)) : 0;
-  
-  return { postId, reach, likes, comments, shares, clicks, engagementRate };
-};
+interface KpiCardProps {
+    title: string;
+    value: string;
+    description: string;
+}
 
-const StatCard: React.FC<{ title: string; value: string; subtext?: string; small?: boolean }> = ({ title, value, subtext, small = false }) => (
-    <div className={`bg-slate-900/50 p-4 rounded-lg border border-slate-700 ${small ? 'text-center' : ''}`}>
-        <p className={`text-gray-400 ${small ? 'text-xs' : 'text-sm'}`}>{title}</p>
-        <p className={`font-bold text-white ${small ? 'text-2xl' : 'text-3xl'}`}>{value}</p>
-        {subtext && <p className="text-xs text-gray-500">{subtext}</p>}
+const KpiCard: React.FC<KpiCardProps> = ({ title, value, description }) => (
+    <div className="p-4 bg-slate-900/70 border border-slate-700 rounded-lg">
+        <h3 className="text-sm font-medium text-gray-400">{title}</h3>
+        <p className="mt-1 text-3xl font-bold text-teal-300">{value}</p>
+        <p className="mt-1 text-xs text-gray-500">{description}</p>
     </div>
 );
 
-const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ sentPosts }) => {
-  const [analyticsData, setAnalyticsData] = useState<Map<string, PostAnalytics>>(new Map());
+const AnalyticsPanel: React.FC<AnalyticsPanelProps> = ({ sentPosts, ayrshareApiKey }) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [analyticsData, setAnalyticsData] = useState<Record<string, PostAnalytics>>({});
+    const [debugLog, setDebugLog] = useState<AnalyticsResult[]>([]);
+    const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    setAnalyticsData(prevAnalytics => {
-        const newAnalytics = new Map(prevAnalytics);
-        let updated = false;
-        sentPosts.forEach(post => {
-            if (!newAnalytics.has(post.id)) {
-                newAnalytics.set(post.id, generateSimulatedAnalytics(post.id));
-                updated = true;
+    useEffect(() => {
+        if (!ayrshareApiKey) {
+            setError("Ayrshare API Key is not set. Please add it in the Settings panel.");
+            return;
+        }
+        if (sentPosts.length === 0) {
+            setError(null);
+            return;
+        }
+
+        const fetchData = async () => {
+            setIsLoading(true);
+            setError(null);
+            setDebugLog([]);
+            setAnalyticsData({});
+
+            const promises = sentPosts.map(post => getPostAnalytics(post.id, ayrshareApiKey));
+            const results = await Promise.allSettled(promises);
+
+            const newDebugLog: AnalyticsResult[] = [];
+            const newAnalyticsData: Record<string, PostAnalytics> = {};
+            const errors: string[] = [];
+
+            results.forEach((result, index) => {
+                const post = sentPosts[index];
+                if (result.status === 'fulfilled') {
+                    const analyticsResult = result.value;
+                    newDebugLog.push(analyticsResult);
+                    if (analyticsResult.success && analyticsResult.data) {
+                        newAnalyticsData[post.id] = analyticsResult.data;
+                    } else if (!analyticsResult.success) {
+                        errors.push(`Post ${post.id} (${post.title}): ${analyticsResult.message}`);
+                    }
+                } else {
+                    errors.push(`Post ${post.id} (${post.title}): Failed to fetch - ${result.reason}`);
+                }
+            });
+
+            setDebugLog(newDebugLog);
+            setAnalyticsData(newAnalyticsData);
+            if (errors.length > 0) {
+                setError(`Encountered ${errors.length} error(s). See debug log for details. Common issues: post is too new for analytics (wait up to 1 hour), or network/CORS problems.`);
             }
-        });
-        return updated ? newAnalytics : prevAnalytics;
-    });
-  }, [sentPosts]);
-  
-  const combinedData = useMemo(() => {
-    return sentPosts.map(post => {
-      const analytics = analyticsData.get(post.id);
-      return { ...post, analytics };
-    }).filter(item => item.analytics).sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
-  }, [sentPosts, analyticsData]);
+            setIsLoading(false);
+        };
 
-  const analyticsArray = useMemo(() => Array.from(analyticsData.values()), [analyticsData]);
+        fetchData();
+    }, [sentPosts, ayrshareApiKey]);
+    
+    const { kpis, platforms } = useMemo(() => {
+        const allMetrics: PlatformAnalytics[] = Object.values(analyticsData).flatMap(post => Object.values(post));
+        
+        const totalImpressions = allMetrics.reduce((sum, p) => sum + (p.impressions || p.views || p.reach || 0), 0);
+        const totalEngagements = allMetrics.reduce((sum, p) => sum + (p.likes || 0) + (p.comments || 0) + (p.shares || 0) + (p.retweets || 0), 0);
+        const totalClicks = allMetrics.reduce((sum, p) => sum + (p.clicks || 0), 0);
+        
+        const uniquePlatforms = [...new Set(Object.values(analyticsData).flatMap(post => Object.keys(post)))];
 
-  const totalReach = useMemo(() => analyticsArray.reduce((sum, a) => sum + a.reach, 0), [analyticsArray]);
-  const totalEngagement = useMemo(() => analyticsArray.reduce((sum, a) => sum + a.likes + a.comments + a.shares, 0), [analyticsArray]);
-  const avgEngagementRate = useMemo(() => {
-    if (analyticsArray.length === 0) return 0;
-    const totalRate = analyticsArray.reduce((sum, a) => sum + a.engagementRate, 0);
-    return parseFloat((totalRate / analyticsArray.length).toFixed(2));
-  }, [analyticsArray]);
+        return {
+            kpis: {
+                totalPosts: Object.keys(analyticsData).length,
+                totalImpressions: totalImpressions.toLocaleString(),
+                totalEngagements: totalEngagements.toLocaleString(),
+                totalClicks: totalClicks.toLocaleString(),
+            },
+            platforms: uniquePlatforms
+        };
+    }, [analyticsData]);
 
+    const renderTable = (platformFilter?: string) => {
+        const postsWithData = sentPosts.filter(p => analyticsData[p.id]);
 
-  return (
-    <div className="space-y-8 animate-fade-in">
-        <h1 className="text-3xl font-bold">Post Analytics</h1>
-        <p className="text-gray-400">
-            Performance data for posts sent via Ayrshare. This data is currently simulated for demonstration purposes.
-        </p>
+        return (
+             <div className="overflow-x-auto rounded-lg border border-slate-700">
+                <table className="min-w-full divide-y divide-slate-700">
+                    <thead className="bg-slate-800">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Post</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Platform</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Impressions</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Likes</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Comments</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Shares</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Clicks</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-slate-900/50 divide-y divide-slate-700">
+                        {postsWithData.flatMap(post => {
+                            const postAnalytics = analyticsData[post.id];
+                            const platformEntries = Object.entries(postAnalytics).filter(([platform]) => !platformFilter || platform === platformFilter);
 
-        {/* Overall Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Total Posts Analyzed" value={sentPosts.length.toString()} />
-            <StatCard title="Total Reach" value={totalReach.toLocaleString()} subtext="Estimated total impressions" />
-            <StatCard title="Total Engagements" value={totalEngagement.toLocaleString()} subtext="Likes + Comments + Shares" />
-            <StatCard title="Avg. Engagement Rate" value={`${avgEngagementRate}%`} />
-        </div>
+                            if (platformEntries.length === 0 && platformFilter) return [];
 
-        {/* Individual Post Performance */}
-        <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-4">
-            <h2 className="text-xl font-bold text-gray-200">Individual Post Performance</h2>
-            {combinedData.length > 0 ? (
+                            return platformEntries.map(([platform, metrics], index) => {
+                                // FIX: Explicitly cast `metrics` to `PlatformAnalytics` to address type inference issues
+                                // with `Object.entries` where it may be inferred as `unknown`.
+                                const typedMetrics = metrics as PlatformAnalytics;
+                                return (
+                                <tr key={`${post.id}-${platform}`}>
+                                    {index === 0 && <td rowSpan={platformEntries.length} className="px-4 py-3 align-top whitespace-nowrap text-sm font-medium text-gray-200">{post.title}</td>}
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-300">{platform}</td>
+                                    <td className="px-4 py-3 text-center text-sm text-gray-300">{typedMetrics.impressions ?? typedMetrics.views ?? typedMetrics.reach ?? 'N/A'}</td>
+                                    <td className="px-4 py-3 text-center text-sm text-gray-300">{typedMetrics.likes ?? 'N/A'}</td>
+                                    <td className="px-4 py-3 text-center text-sm text-gray-300">{typedMetrics.comments ?? 'N/A'}</td>
+                                    <td className="px-4 py-3 text-center text-sm text-gray-300">{typedMetrics.shares ?? typedMetrics.retweets ?? 'N/A'}</td>
+                                    <td className="px-4 py-3 text-center text-sm text-gray-300">{typedMetrics.clicks ?? 'N/A'}</td>
+                                </tr>
+                            );
+                            });
+                        })}
+                    </tbody>
+                </table>
+             </div>
+        )
+    };
+
+    return (
+        <div className="space-y-8 animate-fade-in">
+            <h1 className="text-3xl font-bold">Post Analytics</h1>
+
+             <details className="p-4 bg-gray-900/70 border border-slate-700 rounded-lg">
+                <summary className="cursor-pointer font-semibold text-yellow-300">
+                    View API Debug Log ({debugLog.length} calls)
+                </summary>
+                <pre className="mt-4 text-xs font-mono text-gray-400 space-y-2 max-h-96 overflow-y-auto p-2 bg-slate-800 rounded">
+                    {debugLog.length > 0 ? JSON.stringify(debugLog, null, 2) : "No API calls made yet."}
+                </pre>
+            </details>
+
+            {error && (
+                <div className="p-4 bg-red-900/50 border border-red-700 text-red-300 rounded-lg">{error}</div>
+            )}
+            
+            {isLoading && (
+                <p className="text-center text-gray-400 py-8">Fetching analytics from Ayrshare...</p>
+            )}
+
+            {!isLoading && sentPosts.length === 0 && (
+                 <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg text-center text-gray-500">
+                    No posts have been sent yet. Once you send posts, their analytics will appear here.
+                 </div>
+            )}
+
+            {!isLoading && sentPosts.length > 0 && Object.keys(analyticsData).length > 0 && (
                 <div className="space-y-6">
-                    {combinedData.map(item => (
-                        <div key={item.id} className="pt-4 border-t border-slate-700/50 first:border-t-0 first:pt-0">
-                            <div className="flex justify-between items-start mb-2">
-                                <div>
-                                    <h3 className="font-semibold text-teal-300">{item.title}</h3>
-                                    <p className="text-xs text-gray-500">Sent: {new Date(item.sentAt).toLocaleString()}</p>
-                                </div>
-                                <div className="flex gap-2 flex-shrink-0">
-                                    {item.platforms.map(p => (
-                                        <span key={p} className="text-xs font-semibold px-2 py-0.5 bg-slate-700 text-slate-300 rounded-full capitalize">{p}</span>
-                                    ))}
-                                </div>
-                            </div>
-                            <p className="text-sm text-gray-300 p-3 bg-gray-900/50 rounded-md border border-slate-700 max-h-24 overflow-y-auto font-sans whitespace-pre-wrap">
-                                {item.content.substring(0, 300)}{item.content.length > 300 ? '...' : ''}
-                            </p>
-                            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
-                                <StatCard small title="Reach" value={item.analytics!.reach.toLocaleString()} />
-                                <StatCard small title="Likes" value={item.analytics!.likes.toLocaleString()} />
-                                <StatCard small title="Comments" value={item.analytics!.comments.toLocaleString()} />
-                                <StatCard small title="Shares" value={item.analytics!.shares.toLocaleString()} />
-                                <StatCard small title="Clicks" value={item.analytics!.clicks.toLocaleString()} />
-                                <StatCard small title="Eng. Rate" value={`${item.analytics!.engagementRate}%`} />
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <KpiCard title="Analyzed Posts" value={kpis.totalPosts.toString()} description="Posts with available data" />
+                        <KpiCard title="Total Impressions" value={kpis.totalImpressions} description="Reach, Views, Impressions" />
+                        <KpiCard title="Total Engagements" value={kpis.totalEngagements} description="Likes, Comments, Shares" />
+                        <KpiCard title="Total Clicks" value={kpis.totalClicks} description="Clicks on links in posts" />
+                    </div>
+
+                    <div>
+                        <div className="border-b border-slate-700 mb-4">
+                            <nav className="-mb-px flex space-x-6">
+                                <button onClick={() => setActiveTab('overview')} className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview' ? 'border-teal-400 text-teal-300' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
+                                    Overview
+                                </button>
+                                {platforms.map(platform => (
+                                    <button 
+                                        key={platform}
+                                        onClick={() => setActiveTab(platform)} 
+                                        className={`whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === platform ? 'border-teal-400 text-teal-300' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
+                                        {platform}
+                                    </button>
+                                ))}
+                            </nav>
                         </div>
-                    ))}
+                        <div>
+                            {activeTab === 'overview' && renderTable()}
+                            {platforms.map(platform => activeTab === platform && <div key={platform}>{renderTable(platform)}</div>)}
+                        </div>
+                    </div>
                 </div>
-            ) : (
-                <p className="text-center text-gray-500 py-8">No sent posts to analyze yet. Send some posts from the queue!</p>
             )}
         </div>
-    </div>
-  );
+    );
 };
 
 export default AnalyticsPanel;

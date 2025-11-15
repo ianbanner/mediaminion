@@ -78,550 +78,365 @@ export const DESTINATION_GUIDELINES_MAP: Record<ArticleDestination, string> = {
     'Fiction Book': FICTION_BOOK_GUIDELINES,
 };
 
-export const LINKEDIN_GENERATION_EVALUATION_SCRIPT = `# LinkedIn Content Creation & Evaluation Script
+export const DEFAULT_ARTICLE_EVAL_CRITERIA = `As an expert article evaluator, your task is to score an article on a scale of 0-100 based on the following criteria. Internally, you will assess each category and sum the points to arrive at a final score.
 
-## Introduction
-I am the Social Media Minion's AI core, specializing in creating engaging LinkedIn content. I will help you create potentially viral posts by using the proven template formats stored in your Template Library.
+### Evaluation Criteria & Scoring
 
-## My Role
-My professional role is:
-"""
-{user_role}
-"""
-Keep this role in mind to ensure the tone, voice, and content are appropriate.
+1.  **Hook & Introduction (15 points):**
+    - Does the first paragraph immediately grab the reader's attention?
+    - Is the article's core promise or problem stated clearly upfront?
 
-## Target Audience
-{target_audience}
+2.  **Structure & Flow (20 points):**
+    - Is the article well-organized with clear sections and subheadings?
+    - Do the ideas transition logically from one to the next?
+    - Is it easy for a reader to scan and get the gist?
 
-## Goals
-- Provide additional insight and skills to your audience
-- Encourage them to read more of your content
-- Ultimately, guide them to attend your training courses
+3.  **Value & Insight (25 points):**
+    - Does the article provide actionable, non-obvious, and valuable information?
+    - Does it demonstrate deep expertise and offer a unique perspective?
+    - Is the content well-supported with examples, data, or stories?
 
-## Process Overview
-1. You'll provide an article URL and/or full text.
-2. I'll analyze the article to understand key points and messages.
-3. I'll create posts using all templates from your Template Library.
-4. I'll evaluate each post against our criteria.
-5. I'll present the posts in order of effectiveness.
-6. You'll have ready-to-use content for Buffer and LinkedIn.
+4.  **Voice & Tone (15 points):**
+    - Is the writing style consistent with the author's defined persona?
+    - Is the tone appropriate for the target audience?
+    - Does the article have a strong, confident, and authentic voice?
 
-## Step 1: Article Input
-The user has provided the following article content. Use the URL if provided, otherwise use the full text.
-Article URL: {article_url}
-Article Text: """
-{article_text}
-"""
+5.  **Clarity & Readability (15 points):**
+    - Is the language clear, concise, and free of jargon?
+    - Are sentences and paragraphs generally short and easy to read?
+    - Is the formatting (bolding, lists) used effectively to improve readability?
 
-## Step 2: Content Creation
-For each template in the Template Library provided below, I will:
-1. Analyze the article's key points, arguments, and data.
-2. Craft posts with strong opening lines to stop scrolling.
-3. Ensure content is concise, engaging, and professionally tailored.
-4. Incorporate relevant keywords for search visibility.
-5. End with effective calls-to-action.
-6. **IMPORTANT:** After generating the content from the template, you MUST append the full "Standard Summary Text" provided below to the end of EVERY post. The summary text should be separated by two line breaks from the main post content.
-7. Follow any special instructions for specific templates.
-
-## Step 3: Post Evaluation
-I will evaluate each generated post against these criteria (10 points each, for a total of 100):
-1. Hook Strength (Opening Line)
-2. Visual Structure & Readability
-3. Emotional Resonance
-4. Value Proposition & Actionable Insights
-5. Storytelling Elements
-6. Engagement Potential
-7. Keyword Optimization
-8. Timing & Relevance
-9. Thought Leadership Position
-10. Connection to Business Goals
-
-## Step 4: Results Presentation
-I will present the results in the specified JSON format containing:
-1. A ranked table ('rankedTable') of all posts by score.
-2. A detailed assessment ('top7Assessments') of the top 7 posts.
-
-## Standard Summary Text
-{standard_summary_text}
-
-## LinkedIn Templates Document
-Here are all the templates you must use for this task, sourced from your Template Library:
-"""
-{templates_document}
-"""
-
-Now, begin the process and provide the final output in the required JSON format.
+6.  **Conclusion & CTA (10 points):**
+    - Does the conclusion effectively summarize the key takeaways?
+    - Is there a clear and compelling call-to-action that guides the reader on what to do next?
 `;
 
-export const LINKEDIN_ANALYSIS_SCRIPT = `You are a LinkedIn marketing analyst. Your task is to analyze the provided public LinkedIn profile URL using Google Search to find the user's top-performing posts from the last few weeks (e.g., 4-8 weeks).
+// FIX: Added missing exported constants for various scripts and criteria.
+export const DEFAULT_HEADLINE_EVAL_CRITERIA = `As an expert headline evaluator, score a headline on a scale of 0-100 based on the following criteria.
 
-Your goal is to identify posts that have high engagement (likes, comments, shares) and analyze why they were successful.
+### Evaluation Criteria & Scoring
 
-For each of the top 3-5 posts you find, create a JSON object with the following keys:
-- "postContent": The full text of the post.
-- "engagementMetrics": A summary of the engagement (e.g., "150 likes, 45 comments").
-- "postUrl": The direct URL to the specific post.
-- "analysis": A brief, insightful analysis of why this post likely performed well.
+1.  **Hook & Attention (30 points):**
+    - Does it immediately grab attention and create intrigue?
+    - Is it provocative, surprising, or counter-intuitive?
 
-User's LinkedIn Profile URL:
-{linkedin_profile_url}
+2.  **Clarity & Specificity (25 points):**
+    - Is it clear what the article is about?
+    - Does it use specific numbers, names, or concepts instead of vague generalities?
 
-Analyze the profile and return a single JSON object with a key "topPosts" which is an array of the post objects you created. IMPORTANT: Respond with ONLY the raw JSON object, without any markdown formatting, introductory text, or explanations.
+3.  **Benefit & Value (25 points):**
+    - Does it clearly promise a specific benefit or value to the reader?
+    - Does it answer the reader's question: "What's in it for me?"
+
+4.  **Voice & Tone (10 points):**
+    - Does it match the author's professional, no-nonsense persona?
+    - Is the tone appropriate for the target audience (e.g., executive leaders)?
+
+5.  **Conciseness (10 points):**
+    - Is it punchy and free of unnecessary words?
+    - Is it optimized for platform character limits (e.g., LinkedIn)?
 `;
 
-export const SCAN_CONTENT_FOR_TEMPLATES_SCRIPT = `
-You are an AI that specializes in identifying and creating reusable social media templates. Analyze the provided content and extract up to 10 distinct post structures that could be turned into templates.
+export const GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT = `# AI Headline Generation Protocol
 
-For each structure you identify, create a generic template using placeholders like {{Hook}}, {{MainPoint}}, or [YourTopic]. Also, provide a clear title, an example based on the original content, and simple instructions for the user.
+You are an expert copywriter specializing in creating compelling, high-engagement headlines for a world-class business coach.
 
-Content to analyze:
+## Core Content
+- **Article Content:**
+  """
+  {article_content}
+  """
+
+## Your Task
+1.  **Analyze:** Read and understand the core message, arguments, and target audience of the provided article.
+2.  **Generate Headlines:** Create a diverse list of 5-7 potential headlines and sub-headlines for the article. They should be punchy, intriguing, and benefit-driven.
+3.  **Evaluate:** Critically evaluate each generated headline based on the following criteria.
+    - **Evaluation Criteria:**
+      """
+      {eval_criteria}
+      """
+4.  **Provide Output:** Return a single JSON object with a key "headlines", which is an array. Each object in the array should contain: "headline" (string), "subheadline" (optional string), "score" (number 0-100), and "reasoning" (a brief explanation for the score).
+`;
+
+export const GENERATE_ARTICLE_IDEAS_SCRIPT = `# AI Article Idea Generation Protocol
+
+You are a brilliant content strategist for a world-class business coach. Your task is to brainstorm new article ideas based on a source piece of content, tailored to a specific persona and audience.
+
+## Core Inputs
+- **My Professional Role:** {user_role}
+- **My Target Audience:** {target_audience}
+- **Source Content (for inspiration):**
+  """
+  {source_article}
+  """
+
+## Your Task
+1.  **Analyze:** Deeply analyze the source content to identify core themes, interesting tangents, and unanswered questions.
+2.  **Brainstorm:** Generate 3-5 distinct and compelling new article ideas that are related to but different from the source content.
+3.  **Develop Ideas:** For each idea, provide the following:
+    - **Title:** A strong, working title.
+    - **Summary:** A one-paragraph summary explaining the core premise and why it's valuable to the target audience.
+    - **Key Points:** A bulleted list of 3-5 key points or arguments that would be developed in the article.
+4.  **Provide Output:** Return a single JSON object with a key "articleIdeas", which is an array of objects. Each object should contain "title", "summary", and "keyPoints" (an array of strings).
+`;
+
+export const SCAN_CONTENT_FOR_TEMPLATES_SCRIPT = `# AI Template Scanner
+
+You are an expert in identifying content structures. Analyze the provided text and extract any recurring patterns that could be turned into reusable post templates.
+
+## Content to Analyze
 """
 {content}
 """
 
-Return the output as a JSON object.
+## Your Task
+1.  Read the content and identify distinct, repeated structural patterns for social media posts.
+2.  For each pattern, create a generic template using placeholders like {{Hook}}, {{Main Point}}, etc.
+3.  For each template, provide a concise title, the template structure, a concrete example from the text, and simple instructions for the AI on how to use it.
+4.  Return a JSON object with a key "foundTemplates", which is an array of objects. Each object should have "title", "template", "example", and "instructions".
 `;
 
-export const CREATE_TEMPLATES_FROM_POSTS_SCRIPT = `
-You are an AI that creates generalized social media templates from specific examples. You will be given a JSON array of high-performing posts. Your task is to analyze their structure and create a generic, reusable template for each one.
+export const CREATE_TEMPLATES_FROM_POSTS_SCRIPT = `# AI Template Creator from Popular Posts
 
-For each post, provide:
-1.  A descriptive title for the template.
-2.  The template itself, using placeholders like {{Hook}}, {{Story}}, [YourIndustry], etc.
-3.  The original post content as the example.
-4.  Simple instructions for a user on how to adapt the template.
+You are an expert content analyst. You have been given a list of high-performing social media posts. Your task is to reverse-engineer them into reusable templates.
 
-Posts to convert:
+## High-Performing Posts (JSON format)
 """
 {posts_json}
 """
 
-Return the output as a JSON object.
+## Your Task
+1.  Analyze each post in the provided JSON data.
+2.  Identify the underlying structure, hook, and call-to-action for each post.
+3.  Create a generic, reusable template for each distinct pattern you find. Use placeholders like {{Hook}}, {{KeyInsight}}, etc.
+4.  For each template created, provide a concise title, the template structure, a concrete example (one of the original posts), and simple instructions for the AI.
+5.  Return a JSON object with a key "createdTemplates", which is an array of objects. Each object should have "title", "template", "example", and "instructions".
 `;
 
-export const PARSE_SCHEDULE_SCRIPT = `
-You are a schedule parsing AI. Read the user's natural language instructions and extract all specified posting times. Return these times in a JSON array of strings, formatted as "HH:mm" in 24-hour format.
+export const PARSE_SCHEDULE_SCRIPT = `You are a scheduling assistant. Parse the following natural language text and extract the specific post times in HH:mm format (24-hour clock).
 
-- Only extract the times.
-- Ensure the format is always "HH:mm" (e.g., 8am is "08:00", 1:30pm is "13:30").
-- If the user provides AM/PM, convert it correctly to 24-hour time.
-- Return an empty array if no specific times can be found.
+## Schedule Text
+"{schedule_text}"
 
-User's instructions:
-"""
-{schedule_text}
-"""
+## Your Task
+1. Read the text and identify all specified posting times.
+2. Convert all times to a 24-hour HH:mm format. For example, "8am" is "08:00", "5pm" is "17:00".
+3. Ignore days of the week or other instructions, just extract the times.
+4. Return a JSON object with a single key "times", which is an array of strings (e.g., ["08:00", "17:00"]).
 `;
 
-export const GENERATE_ARTICLE_IDEAS_SCRIPT = `
-You are a creative content strategist. Your task is to analyze a source article and generate 5-7 fresh, related article ideas. These ideas should be tailored for a specific audience and from the perspective of a specific professional role.
+export const CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT = `# AI Article Template Distiller
 
-For EACH idea, you must provide:
-1. A compelling title.
-2. A one-paragraph summary of the idea's main point or argument.
-3. A list of exactly 5 key points or sub-topics to be developed in the article.
+You are an expert in analyzing content structure. Your task is to read a full article and distill its underlying structure into a reusable template for a ghostwriter.
 
-Your Professional Role:
-"""
-{user_role}
-"""
-
-Your Target Audience:
-"""
-{target_audience}
-"""
-
-Source Article Content:
-"""
-{source_article}
-"""
-
-Based on the source article, generate 5-7 distinct and compelling article ideas in the specified format. The ideas should resonate with the target audience and be consistent with the professional role.
-`;
-
-export const GENERATE_HEADLINES_SCRIPT = `You are a world-class copywriter specializing in creating irresistible, scroll-stopping headlines. Your task is to generate 20 headlines based on the user's "Chosen Article Idea".
-
-- The headlines should be diverse: some direct, some mysterious, some list-based, some question-based.
-- They must be tailored to the user's persona and target audience.
-- If a "Source Article" is provided, use its context to make the headlines more specific and compelling.
-
-### Chosen Article Idea
-"""
-{chosen_article_idea}
-"""
-
-### Source Article (for context)
-"""
-{source_article}
-"""
-
-Generate exactly 20 headlines.
-`;
-
-export const EVALUATE_HEADLINES_SCRIPT = `
-You are an AI headline evaluation expert. You will be given a set of evaluation criteria and a JSON array of headlines. Your task is to score each headline out of 100 based on the provided criteria.
-
-For each headline, you must provide the headline text, its score, and a brief, one-sentence reasoning for the score.
-
-Evaluation Criteria:
-"""
-{evaluation_criteria}
-"""
-
-Headlines to Evaluate:
-{headlines_json}
-
-Return the results in a JSON array.
-`;
-
-export const REEVALUATE_HEADLINE_SCRIPT = `
-You are an AI headline evaluation expert. You will be given evaluation criteria and a single headline. Your task is to score the headline out of 100 based on the criteria and provide a one-sentence reasoning for your score.
-
-Evaluation Criteria:
-"""
-{evaluation_criteria}
-"""
-
-Headline to Evaluate: "{headline}"
-
-Return a single JSON object with the score and reasoning.
-`;
-
-
-export const DEFAULT_HEADLINE_EVAL_CRITERIA = `As an expert headline evaluator, your task is to score headlines on a scale of 0-100 based on the following criteria. Internally, you will assess each category and sum the points to arrive at a final score. For each headline, you must also provide a brief, one-sentence "reasoning" for the score.
-
-### Evaluation Criteria & Scoring
-
-1.  **Clarity & Benefit (Max 18 points):**
-    - High (15-18): The value is immediately clear; zero ambiguity.
-    - Medium (9-14): Understandable but slightly abstract.
-    - Low (0-8): Vague or confusing.
-    *Question: Does the reader instantly know what’s in it for them?*
-
-2.  **Simplicity & Readability (Max 12 points):**
-    - High (10-12): Short, conversational, plain words (under ~14 words).
-    - Medium (6-9): Slightly long or technical but digestible.
-    - Low (0-5): Dense, formal, or jargon-heavy.
-    *Question: Is it instantly understandable?*
-
-3.  **Emotional / Trigger Words (Max 12 points):**
-    - High (10-12): Uses words that create emotion, tension, or curiosity (e.g., "uncomfortable," "broken," "secret").
-    - Medium (6-9): Some feeling, but muted.
-    - Low (0-5): Purely factual or flat.
-    *Question: Does it make the reader feel something or want to know more?*
-
-4.  **Specificity & Detail (Max 8 points):**
-    - High (7-8): Includes numbers, timeframes, or concrete details (e.g., "40% less," "in one week").
-    - Medium (4-6): Some detail, but still general.
-    - Low (0-3): Vague and interchangeable.
-    *Question: Is it concrete and specific?*
-
-5.  **Relevance to Audience (Max 13 points):**
-    - High (11-13): Speaks directly to their context, struggles, or goals.
-    - Medium (7-10): Generally relevant but lacks personal resonance.
-    - Low (0-6): Off-topic or unclear who it’s for.
-    *Question: Would my intended reader stop and say, “That’s me”?*
-
-6.  **Format & Structure (Max 10 points):**
-    - High (9-10): Strong rhythm, punchy phrasing, balanced clauses.
-    - Medium (6-8): Slightly clunky but works.
-    - Low (0-5): Hard to read aloud or oddly structured.
-    *Question: Does it sound good when spoken aloud?*
-
-7.  **Alignment & Truthfulness (Max 12 points):**
-    - High (10-12): Delivers exactly what it promises; authentic tone.
-    - Medium (6-9): Slight exaggeration.
-    - Low (0-5): Misleading or clickbait.
-    *Question: Will the reader feel the content kept its promise?*
-
-8.  **Scroll-Stopping Power (Max 15 points):**
-    - High (13-15): Bold contrast, emotional polarity, or phrasing that halts motion.
-    - Medium (8-12): Some intrigue but not arresting.
-    - Low (0-7): Predictable or ignorable.
-    *Question: Would this make someone pause mid-scroll?*
-`;
-
-export const DEFAULT_ARTICLE_HEADLINE_EVAL_CRITERIA = `As an expert headline evaluator for long-form articles, your task is to score headlines on a scale of 0-100 based on the following criteria. For each headline, you must also provide a brief, one-sentence "reasoning" for the score.
-
-### Evaluation Criteria & Scoring
-
-1.  **Clarity & Benefit (Max 18 points):**
-    - High (15-18): The value is immediately clear; zero ambiguity.
-    - Medium (9-14): Understandable but slightly abstract.
-    - Low (0-8): Vague or confusing.
-    *Question: Does the reader instantly know what’s in it for them?*
-
-2.  **Intrigue & Curiosity (Max 15 points):**
-    - High (13-15): Creates a strong desire to know more without being clickbait.
-    - Medium (8-12): Some intrigue but not arresting.
-    - Low (0-7): Predictable or gives everything away.
-    *Question: Does it make the reader NEED to know the answer?*
-
-3.  **Specificity & Detail (Max 12 points):**
-    - High (10-12): Includes numbers, specifics, or concrete details that hint at depth.
-    - Medium (6-9): Some detail, but still general.
-    - Low (0-5): Vague and interchangeable.
-    *Question: Does it feel concrete and well-researched?*
-
-4.  **Emotional Resonance (Max 12 points):**
-    - High (10-12): Uses words that create a strong emotion or tap into a core reader pain point/desire.
-    - Medium (6-9): Some feeling, but muted.
-    - Low (0-5): Purely factual or flat.
-    *Question: Does it make the reader feel something?*
-
-5.  **Relevance to Audience (Max 13 points):**
-    - High (11-13): Speaks directly to their context, struggles, or goals.
-    - Medium (7-10): Generally relevant but lacks personal resonance.
-    - Low (0-6): Off-topic or unclear who it’s for.
-    *Question: Would my intended reader stop and say, “That’s for me”?*
-
-6.  **Simplicity & Readability (Max 10 points):**
-    - High (9-10): Short, conversational, plain words (under ~14 words).
-    - Medium (6-8): Slightly long or technical but digestible.
-    - Low (0-5): Dense, formal, or jargon-heavy.
-    *Question: Is it instantly understandable?*
-
-7.  **Originality (Max 10 points):**
-    - High (9-10): Feels fresh, unique, or offers a new angle.
-    - Medium (6-8): A common format used effectively.
-    - Low (0-5): Generic, overused, or boring.
-    *Question: Have I seen this exact headline a dozen times before?*
-
-8.  **Sub-headline Synergy (Max 10 points):**
-    - High (9-10): The sub-headline perfectly complements the headline, adding context, benefit, or intrigue.
-    - Medium (6-8): The sub-headline is useful but doesn't elevate the headline.
-    - Low (0-5): The sub-headline is redundant or confusing.
-    *Question: Do the headline and sub-headline work together as a powerful one-two punch?*
-`;
-
-export const GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT = `
-You are a world-class copywriter specializing in creating irresistible, scroll-stopping headlines and sub-headlines for long-form articles. Your task is to generate 10 headline/sub-headline pairs based on the user's full article content.
-
-After generating the 10 pairs, you must evaluate each one against the provided evaluation criteria, providing a score and a brief reasoning.
-
-### Full Article Content
-"""
-{article_content}
-"""
-
-### Evaluation Criteria
-"""
-{evaluation_criteria}
-"""
-
-Generate exactly 10 headline/sub-headline pairs. For each pair, provide the headline, sub-headline, a score out of 100, and a concise reasoning for that score. Return your response in the specified JSON format.
-`;
-
-
-export const GENERATE_ARTICLE_SCRIPT = `# Article Generation & Evaluation Script
-
-## Role & Goal
-You are an expert content writer and a sharp-eyed editor, working in tandem. Your primary task is to write a high-quality article in the style of Marty Cagan, tailored for the **Target Audience** provided below. After writing, you will immediately evaluate it and provide constructive feedback for improvement.
-
-## Core Persona & Audience Context
-To ensure the article is perfectly aligned, keep the following persona and audience in mind at all times.
-
-### My Professional Role
-"""
-{user_role}
-"""
-
-### My Target Audience
-"""
-{target_audience}
-"""
-
-## Article Generation Parameters
-
-### Primary Task & Style
-- **Primary Task**: Produce an informative title and a blog article.
-- **Final Destination**: The article is intended for {final_destination}. You MUST adhere to the specific guidelines provided for this platform.
-- **Style**: Emulate Marty Cagan's direct, no-nonsense, experience-based approach, but apply it to broader leadership and transformation topics, not just Product Management.
-- **Tone**: High-energy, high-personality, engaging, and story-based. Use analogies.
-- **Language**: Use UK English terms and spelling throughout.
-- **Word Count:** Approximately {word_count} words.
-- **Working Title:** Use "{preferred_title}" as a strong guide if provided.
-
-### Structure & Quality
-{template_guidance}
-- **Readability**: Vary sentence length and structure to maintain flow and engagement.
-- **Formatting**: Use Markdown for high readability on platforms like Substack (headers, lists, bolding, etc.).
-- **Audience Focus**: Content must be practical, credible, and immediately actionable for the **Target Audience** defined above.
-
-## Process
-1.  **Analyze Context:** Deeply analyze the style references, persona, source content, and all parameters.
-2.  **Grounding Strategy:**
-    - If "Reference World" is provided, prioritize it for factual grounding and context.
-    - If empty, rely on the "Core Persona & Audience Context" to shape the article's perspective and arguments.
-3.  **Draft Article:** Write the compelling, well-structured article according to all the Style and Structure parameters above.
-4.  **Append and Enhance Summary:** After the main article content and the takeaways, take the "End of Article Summary" provided below. You MUST find the final question in that summary (it will be bolded, like **What is your biggest challenge?**) and replace it with a single, highly-relevant, thought-provoking question directly related to the main topic of the article you just wrote. Then, append the full, modified summary separated by a horizontal rule (\`---\`).
-5.  **Evaluate Article:** After drafting, switch to your editor role. Critically evaluate the article you just wrote using the "Article Evaluation Criteria" provided below. This includes providing a numeric score.
-6.  **Provide Feedback:** Based on your evaluation, provide:
-    a. A detailed **evaluation** of the article's strengths and weaknesses against the criteria.
-    b. A structured list of actionable **suggestions** for improvement. For each suggestion, you must specify the 'area' it improves (e.g., "Clarity", "Style", "Structure").
-
-## Inputs
-
-### Final Destination Guidelines (Crucial)
-You must tailor the article's length, tone, and structure to these platform-specific guidelines.
-"""
-{destination_guidelines}
-"""
-
-### Writing Style References (Emulate this style)
-"""
-{style_references}
-"""
-
-### Primary Source Content (Base the article on this)
-"""
-{source_content}
-"""
-
-### Reference World (Use for grounding and facts)
-"""
-{reference_world}
-"""
-
-### End of Article Summary (Append this at the very end)
-"""
-{end_of_article_summary}
-"""
-
-### Article Evaluation Criteria (Use these to evaluate your own work)
-"""
-{evaluation_criteria}
-"""
-
-Now, begin the process. Generate a compelling title, the full article content (including takeaways and the final summary), the evaluation, the score, and the structured suggestions. Provide the output in the specified JSON format.
-`;
-
-
-export const DEFAULT_ARTICLE_EVAL_CRITERIA = `# Article Evaluation Criteria
-
-You will evaluate the generated article based on the following criteria. Provide a detailed, actionable analysis for each point. **Crucially, you must summarise the article with a score out of 100.**
-
-### Evaluation Criteria
-
-1.  **Target Audience Alignment:**
-    *   How well is the article written for the specified **Target Audience**?
-    *   Is the content immediately actionable and practical for this audience?
-
-2.  **Structure & Clarity:**
-    *   Is the article clear, well-structured, and easy to follow?
-    *   Are the transitions between sections smooth and logical?
-
-3.  **Persuasiveness & Credibility:**
-    *   Is the content persuasive and credible?
-    *   Does it maintain a professional tone while being engaging?
-
-4.  **Style & Engagement (Marty Cagan-inspired):**
-    *   Is the article story-based, fun, interesting, and high-energy?
-    *   Does it use engaging analogies? Does it have a high personality?
-    *   Does it successfully emulate the direct, no-nonsense, experience-based style requested?
-
-5.  **Conciseness & Redundancy:**
-    *   Is the article free of redundant points or language?
-    *   Is it concise while still providing necessary depth?
-
-6.  **Completeness:**
-    *   Are there any unclear areas in the article that need further expansion or clarification?
-`;
-
-
-export const ENHANCE_ARTICLE_SCRIPT = `
-You are an AI writing assistant. Your task is to rewrite and enhance a blog article based on a specific set of suggestions. You must also re-evaluate the improved article.
-
-## Original Article
-### Title: {original_title}
-### Content:
-"""
-{original_content}
-"""
-
-## Suggestions for Improvement
-You must implement the following changes:
-"""
-{suggestions}
-"""
-
-## Core Instructions
-1.  **Rewrite the Article**: Apply the requested suggestions to improve the original text. Do not simply add notes; you must integrate the changes into a new version of the article.
-2.  **Maintain Style**: The rewritten article must still adhere to the original style guidelines: Marty Cagan-esque, UK English, 1-3-1 paragraphing, and tailored to the persona.
-3.  **Re-evaluate**: After rewriting, you must perform a new quality analysis on the *enhanced* article using the same evaluation criteria provided below.
-
-## Evaluation Criteria
-"""
-{evaluation_criteria}
-"""
-
-## Final Output
-Provide your response as a single JSON object containing the new title, the full enhanced article content, your new evaluation text, a new score, and a new list of structured suggestions for further improvement.
-`;
-
-export const POLISH_ARTICLE_SCRIPT = `
-# Final Polish & Style Enhancement Script
-
-## Role & Goal
-You are an expert copy editor and stylist, channeling the voice of Marty Cagan. Your ONLY task is to perform an aggressive, stylistic rewrite of the provided article. You are NOT to change the core arguments, structure, or key points. Your mission is to inject personality, energy, and a direct, no-nonsense tone.
-
-## The "Marty Cagan" Style Voice (CRUCIAL)
-- **Direct & Authoritative:** Use strong, declarative sentences. Eliminate weak language ("might," "could," "perhaps"). Speak from a position of experience.
-- **High-Energy & High-Personality:** Make it engaging. Use analogies. Ask rhetorical questions. Challenge the reader directly.
-- **No-Nonsense:** Cut the fluff. Every word must earn its place. Get straight to the point.
-- **Action-Oriented:** Focus on practical takeaways and the "so what" for the reader.
-- **Conversational but Professional:** Write like you're giving candid advice to a smart colleague.
-
-## Process
-1.  **Internalize the Style:** Read the provided "Writing Style References" to deeply understand the target voice.
-2.  **Analyze the Article:** Read the "Original Article Content" to understand its message and structure.
-3.  **Aggressive Rewrite:** Go through the article line by line and rewrite it to match the "Marty Cagan" style. This is not a gentle edit; it's a complete stylistic overhaul. **DO NOT CHANGE THE MEANING OR STRUCTURE.**
-    - **Add Image Placeholders:** As part of the rewrite, you MUST strategically place at least two image placeholders within the article. These placeholders should describe a visually compelling image that complements the text. Use the EXACT format: \`[IMAGE: Please generate an image in the same style as the last image. <A vivid, one-sentence description of the image content>. 1200x644px]\`. For example: \`[IMAGE: Please generate an image in the same style as the last image. A chaotic mind map on a whiteboard filled with disconnected ideas and arrows pointing everywhere, symbolizing strategic confusion. 1200x644px]\`.
-4.  **Evaluate Your Polish:** After rewriting, critically evaluate how well you adopted the voice, using the "Article Evaluation Criteria". Provide a new score and suggestions for any remaining areas that could be punchier.
-
-## Inputs
-
-### Original Article Title
-"""
-{original_title}
-"""
-
-### Original Article Content
-"""
-{original_content}
-"""
-
-### Writing Style References (Your Style Guide)
-"""
-{style_references}
-"""
-
-### Article Evaluation Criteria (Use to evaluate your rewrite)
-"""
-{evaluation_criteria}
-"""
-
-Now, begin the process. Rewrite the article for style, then provide a new title, the full polished content, a new evaluation, a new score, and new suggestions in the specified JSON format.
-`;
-
-export const CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT = `
-You are an expert AI template creator. Your task is to analyze an article provided by the user and reverse-engineer its underlying structure, converting it into a reusable article template.
-
-Use the following examples of existing templates as a guide for how to break down the article's structure, identify key elements, and format the output. Pay close attention to word counts for sections, transition phrases, and specific instructions for future users.
-
-### Existing Template Examples:
-"""
-{existing_templates_examples}
-"""
-
-### Article to Analyze:
+## Article to Analyze
 """
 {article_text}
 """
 
-Your output must be a JSON object with the following structure:
-- **title**: A concise, descriptive title for this new template (e.g., "The 'Problem-Agitation-Solution' Framework").
-- **description**: A short description of what the template is best for and its target platforms.
-- **structure**: A detailed breakdown of the article's sections, estimated word counts for each, key elements, and transition phrases, similar to the examples provided. Include any "Universal Template Guidelines" you deem appropriate from the examples.
-- **specialInstructions**: A single, concise, actionable tip for the user explaining the most important thing to focus on when using this template to create compelling content.
+## Existing Template Titles (for reference, avoid duplication)
+- {existing_templates}
+
+## Your Task
+1.  **Analyze Structure:** Read the entire article and identify its core components (e.g., Hook, Problem Definition, Solution, Case Study, Conclusion).
+2.  **Create Template:**
+    -   **Title:** Give the template a descriptive name (e.g., "The 'Problem-Agitation-Solution' Framework"). The title should be unique from the existing templates.
+    -   **Description:** Briefly explain what this template is best for and its target platforms.
+    -   **Structure:** Create a detailed, step-by-step outline of the article's structure. Include recommended word counts for each section and transition phrases to guide the writer.
+    -   **Special Instructions:** Add one key instruction for the AI to ensure it uses the template effectively (e.g., "Focus on vivid storytelling in the 'Case Study' section.").
+3.  **Provide Output:** Return a single JSON object with the keys: "title", "description", "structure", and "specialInstructions".
+`;
+
+export const GENERATE_ARTICLE_SCRIPT = `# AI Article Generation Protocol
+
+You are an expert ghostwriter for a world-class business coach and consultant. Your mission is to create a high-quality, long-form article based on the provided inputs.
+
+## Core Inputs
+
+### 1. Persona & Audience
+- **My Professional Role:** {user_role}
+- **My Target Audience:** {target_audience}
+- **My Writing Style References:**
+  """
+  {style_references}
+  """
+- **My Core Knowledge Base (Reference World):**
+  """
+  {reference_world}
+  """
+
+### 2. Article Specifics
+- **Working Title:** {title}
+- **Approximate Word Count:** {word_count}
+- **Source Content (for ideas and core concepts):**
+  """
+  {source_content}
+  """
+- **Final Destination & Guidelines:**
+  """
+  {final_destination_guidelines}
+  """
+
+### 3. Structural Components
+- **Article Starter Text (prepend this to the article body):**
+  """
+  {article_starter_text}
+  """
+- **End of Article Summary (append this template, replacing placeholder question):**
+  """
+  {end_of_article_summary}
+  """
+
+### 4. Article Templates
+- **User's Template Selection:** {selected_template_instruction}
+- **Full Template Library (for AI selection if none is provided by user):**
+  """
+  {all_templates_library}
+  """
+
+## Your Task
+1.  **Synthesize:** Deeply analyze all provided inputs: persona, audience, writing style, knowledge base, source content, and templates.
+2.  **Select Structure:**
+    - If a template is pre-selected, you MUST follow its structure precisely.
+    - If no template is selected, you must analyze the source content and choose the MOST appropriate template from the library to structure the article. Announce which template you chose in your evaluation.
+3.  **Draft the Article:**
+    - Write a compelling, in-depth article of approximately {word_count} words.
+    - Strictly adhere to the writing style found in the style references.
+    - Ground all concepts in the "Reference World" knowledge base.
+    - Use the "Source Content" as the primary inspiration and basis for the article's core message.
+    - Generate a powerful title if one is not provided.
+    - Prepend the "Article Starter Text" to the beginning of the article body (after the title).
+    - Append the "End of Article Summary" to the very end, ensuring you replace the placeholder question with a relevant one.
+    - Follow all platform-specific guidelines.
+4.  **Evaluate Your Work:** After drafting, critically evaluate your own work based on the following criteria.
+    - **Evaluation Criteria:**
+      """
+      {eval_criteria}
+      """
+5.  **Provide Output:** Return a single JSON object with the following keys: "title", "content" (the full article markdown), "evaluation" (your detailed assessment), "suggestions" (an array of actionable suggestions for improvement), and "score" (a final score out of 100).
+`;
+
+export const ENHANCE_ARTICLE_SCRIPT = `# AI Article Enhancement Protocol
+
+You are an expert ghostwriter and editor. Your task is to enhance an existing article by thoughtfully incorporating a specific list of suggestions.
+
+## Original Article
+- **Title:** {original_title}
+- **Content:**
+  """
+  {original_content}
+  """
+
+## Suggestions for Enhancement
+The user has selected the following suggestions. You must apply them to the article.
+"""
+{suggestions_list}
+"""
+
+## Your Task
+1.  **Rewrite and Enhance:** Rewrite the original article, skillfully integrating the provided suggestions. Do NOT just tack them on. Weave them into the narrative naturally. Improve the flow, clarity, and impact of the entire piece. The title may also be improved if a suggestion warrants it.
+2.  **Maintain Voice:** The enhanced article must maintain the original's core message and voice.
+3.  **Evaluate:** After rewriting, critically evaluate your new version based on the criteria below.
+    - **Evaluation Criteria:**
+      """
+      {eval_criteria}
+      """
+4.  **Provide Output:** Return a single JSON object with the following keys: "title", "content" (the full enhanced article markdown), "evaluation" (your new detailed assessment), "suggestions" (a new array of actionable suggestions for further improvement), and "score" (a new final score out of 100).
+`;
+
+export const POLISH_ARTICLE_SCRIPT = `# AI Final Polish Protocol
+
+You are an expert copy-editor with a specialization in the "no-nonsense, direct, practitioner's guide" style. Your task is to perform a final, aggressive stylistic polish on the following article.
+
+## Article to Polish
+- **Title:** {original_title}
+- **Content:**
+  """
+  {original_content}
+  """
+
+## Style Guide
+- **Reference:** The author's writing style is defined here. You must match this tone.
+  """
+  {style_references}
+  """
+
+## CRITICAL INSTRUCTION
+- **Preserve the End Summary:** The article contains a final summary section that starts with "Thanks for reading.". You MUST identify this section and preserve it completely without making ANY changes. Your polish should only apply to the main body of the article BEFORE this final summary section.
+
+## Your Task
+1.  **Rewrite for Style:** Aggressively rewrite the main body of the article to inject more personality, clarity, and punch.
+    - Shorten sentences.
+    - Use stronger verbs and the active voice.
+    - Add high-contrast analogies.
+    - Ensure a direct, confident, and opinionated tone, consistent with the style guide.
+    - Do NOT change the core arguments or structure. This is a stylistic polish, not a content rewrite.
+2.  **Preserve Summary:** Append the original, unchanged "End of Article Summary" section to your polished version.
+3.  **Evaluate:** After polishing, critically evaluate the new version.
+    - **Evaluation Criteria:**
+      """
+      {eval_criteria}
+      """
+4.  **Provide Output:** Return a single JSON object with the following keys: "title", "content" (the full polished article markdown), "evaluation" (your new detailed assessment), "suggestions" (a new array of actionable suggestions for further improvement), and "score" (a new final score out of 100).
+`;
+
+export const LINKEDIN_GENERATION_EVALUATION_SCRIPT = `# LinkedIn Post Generation & Evaluation Protocol
+
+You are an expert LinkedIn ghostwriter for a world-class business coach. Your client's persona is defined below. Your task is to generate one post for each of the provided templates and then evaluate all of them.
+
+## 1. Persona & Audience
+- **My Role:** {user_role}
+- **My Target Audience:** {target_audience}
+
+## 2. Source Content
+The following text is the source of inspiration for the posts.
+- **Source URL:** {article_url}
+- **Source Text:**
+  """
+  {article_text}
+  """
+
+## 3. Post Templates
+You MUST generate exactly one post for each template provided below.
+"""
+{templates_document}
+"""
+
+## 4. Standard Components
+- **Standard Summary Text (append to posts if relevant):** "{standard_summary_text}"
+
+## 5. Your Task
+
+### Part A: Generation
+For each template in the 'Post Templates' section, generate a compelling, high-quality LinkedIn post.
+- Adhere strictly to the persona and target audience.
+- Use the source content for ideas, facts, and themes.
+- Follow the structure and instructions of each template.
+
+### Part B: Evaluation
+After generating all posts, you must evaluate and score each one from 0-100 based on these criteria:
+- **Hook (30 pts):** Does the first line grab attention and stop the scroll?
+- **Value (30 pts):** Does the post offer a clear, valuable insight for the target audience?
+- **Authenticity (20 pts):** Does it sound like it was written by the defined persona?
+- **Clarity (10 pts):** Is the message easy to understand?
+- **Call to Action (10 pts):** Does it encourage meaningful engagement (comment, share, click)?
+
+### Part C: Output
+Return a single JSON object containing two keys: "rankedTable" and "top7Assessments".
+- **rankedTable:** An array of ALL generated posts, including their template title, final score, and the full post content. This table MUST be sorted from highest score to lowest.
+- **top7Assessments:** A detailed analysis of the top 7 posts. For each, provide the template title, score, full post content, and a detailed 'assessment' explaining *why* it's effective based on the evaluation criteria.
+`;
+
+export const LINKEDIN_ANALYSIS_SCRIPT = `# LinkedIn Post Analysis Protocol using Google Search
+
+You are an expert LinkedIn content analyst. Your task is to find and analyze 3-5 recent, high-performing posts on LinkedIn related to the topic of "agile coaching" and "digital transformation for executives".
+
+## Your Task
+1.  **Search:** Use Google Search to find relevant, recent (within the last 6 months), and high-engagement (high likes, comments, shares) LinkedIn posts. Your search queries should be specific, like "site:linkedin.com agile coaching for executives" or "site:linkedin.com 'digital transformation' high engagement post".
+2.  **Analyze:** For each of the top 3-5 posts you find, provide a detailed analysis.
+    -   **Post Content:** The full text of the post.
+    -   **Engagement Metrics:** A summary of the likes, comments, and shares.
+    -   **Post URL:** The direct link to the post.
+    -   **Analysis:** A paragraph explaining *why* the post was successful. Consider the hook, the structure, the value provided, the call to action, and the author's persona.
+3.  **Provide Output:** Return a single JSON object with a key "topPosts", which is an array of objects. Each object should contain "postContent", "engagementMetrics", "postUrl", and "analysis".
 `;

@@ -6,13 +6,11 @@ import {
   CREATE_TEMPLATES_FROM_POSTS_SCRIPT,
   PARSE_SCHEDULE_SCRIPT,
   GENERATE_ARTICLE_SCRIPT,
-  GENERATE_HEADLINES_SCRIPT,
-  EVALUATE_HEADLINES_SCRIPT,
-  REEVALUATE_HEADLINE_SCRIPT,
   GENERATE_ARTICLE_IDEAS_SCRIPT,
   ENHANCE_ARTICLE_SCRIPT,
   CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT,
-  GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT
+  GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT,
+  POLISH_ARTICLE_SCRIPT,
 } from './scriptService.ts';
 import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea } from "../types.ts";
 
@@ -59,6 +57,7 @@ export interface ArticleGenerationParams {
     userRole: string;
     targetAudience: string;
     title?: string;
+    articleStarterText: string;
     endOfArticleSummary: string;
     evalCriteria: string;
     selectedTemplate: SavedArticleTemplate | null;
@@ -330,7 +329,7 @@ export async function generateArticleIdeas({ sourceArticle, userRole, targetAudi
             .replace('{target_audience}', targetAudience);
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-pro',
             contents: [{ parts: [{ text: prompt }] }],
             config: {
                 responseMimeType: 'application/json',
@@ -366,266 +365,252 @@ export async function generateArticleIdeas({ sourceArticle, userRole, targetAudi
     }
 }
 
-
 export async function generateArticle(params: ArticleGenerationParams): Promise<GeneratedArticle> {
-    try {
-        const ai = getAI();
-
-        let templateGuidance = "The user has not selected a specific template. Analyze the source content and choose an appropriate structure yourself from your general knowledge of writing, or by subtly using one of the provided templates as inspiration.";
-        if (params.selectedTemplate) {
-            const allTemplatesString = params.allTemplates.map(t => 
-                `### ${t.title}\nDescription: ${t.description}\nStructure:\n${t.structure}\n`
-            ).join('---\n');
-            
-            templateGuidance = `
-The user has selected a specific template to guide the generation. You MUST follow this template's structure closely.
-
-### Selected Template: ${params.selectedTemplate.title}
-${params.selectedTemplate.structure}
-${params.selectedTemplate.specialInstructions ? `\nSpecial Instructions for this template: ${params.selectedTemplate.specialInstructions}` : ''}
-
-For context, here are all available templates:
-${allTemplatesString}
-`;
-        }
-
-        const prompt = params.script
-            .replace('{user_role}', params.userRole)
-            .replace('{target_audience}', params.targetAudience)
-            .replace('{final_destination}', params.finalDestination)
-            .replace('{destination_guidelines}', params.finalDestinationGuidelines)
-            .replace('{word_count}', params.wordCount.toString())
-            .replace('{preferred_title}', params.title || 'AI to generate a suitable title')
-            .replace('{template_guidance}', templateGuidance)
-            .replace('{style_references}', params.styleReferences)
-            .replace('{source_content}', params.sourceContent)
-            .replace('{reference_world}', params.referenceWorld)
-            .replace('{end_of_article_summary}', params.endOfArticleSummary)
-            .replace('{evaluation_criteria}', params.evalCriteria);
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: [{ parts: [{ text: prompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING },
-                        content: { type: Type.STRING },
-                        evaluation: { type: Type.STRING },
-                        score: { type: Type.NUMBER },
-                        suggestions: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    text: { type: Type.STRING },
-                                    area: { type: Type.STRING },
-                                },
-                                required: ['text', 'area'],
-                            },
-                        },
-                    },
-                    required: ['title', 'content', 'evaluation', 'score', 'suggestions'],
-                },
-                temperature: 0.7,
-            },
-        });
-
-        return JSON.parse(response.text);
-    } catch (error) {
-        console.error("Error generating article:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to generate article. Error: ${error.message}`);
-        }
-        throw new Error("Failed to generate article. An unknown error occurred.");
+  try {
+    const ai = getAI();
+    let templateString = "The AI should choose the most appropriate template from the library based on the source content.";
+    if (params.selectedTemplate) {
+        templateString = `The user has pre-selected a specific template to use:\n\nTitle: ${params.selectedTemplate.title}\nDescription: ${params.selectedTemplate.description}\nStructure: ${params.selectedTemplate.structure}\nSpecial Instructions: ${params.selectedTemplate.specialInstructions || 'None'}`;
     }
-}
+    const allTemplatesString = params.allTemplates.map(t => 
+        `Title: ${t.title}\nDescription: ${t.description}\nStructure: ${t.structure}\nSpecial Instructions: ${t.specialInstructions || 'None'}`
+    ).join('\n---\n');
 
-export async function enhanceArticle({ originalTitle, originalContent, evalCriteria, suggestions }: { originalTitle: string; originalContent: string; evalCriteria: string; suggestions: Suggestion[] }): Promise<GeneratedArticle> {
-    try {
-        const ai = getAI();
-        const suggestionsText = suggestions.map(s => `- [${s.area}] ${s.text}`).join('\n');
-        
-        const prompt = ENHANCE_ARTICLE_SCRIPT
-            .replace('{original_title}', originalTitle)
-            .replace('{original_content}', originalContent)
-            .replace('{suggestions}', suggestionsText)
-            .replace('{evaluation_criteria}', evalCriteria);
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: [{ parts: [{ text: prompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING },
-                        content: { type: Type.STRING },
-                        evaluation: { type: Type.STRING },
-                        score: { type: Type.NUMBER },
-                        suggestions: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    text: { type: Type.STRING },
-                                    area: { type: Type.STRING },
-                                },
-                                required: ['text', 'area'],
-                            },
-                        },
-                    },
-                    required: ['title', 'content', 'evaluation', 'score', 'suggestions'],
-                },
-                temperature: 0.7,
+    const prompt = params.script
+      .replace('{word_count}', params.wordCount.toString())
+      .replace('{style_references}', params.styleReferences)
+      .replace('{source_content}', params.sourceContent)
+      .replace('{reference_world}', params.referenceWorld)
+      .replace('{user_role}', params.userRole)
+      .replace('{target_audience}', params.targetAudience)
+      .replace('{title}', params.title || 'To be generated by AI')
+      .replace('{article_starter_text}', params.articleStarterText)
+      .replace('{end_of_article_summary}', params.endOfArticleSummary)
+      .replace('{eval_criteria}', params.evalCriteria)
+      .replace('{selected_template_instruction}', templateString)
+      .replace('{all_templates_library}', allTemplatesString)
+      .replace('{final_destination_guidelines}', params.finalDestinationGuidelines);
+      
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            content: { type: Type.STRING },
+            evaluation: { type: Type.STRING },
+            suggestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: { text: { type: Type.STRING }, area: { type: Type.STRING } },
+                required: ['text', 'area']
+              }
             },
-        });
-        return JSON.parse(response.text);
-    } catch (error) {
-        console.error("Error enhancing article:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to enhance article. Error: ${error.message}`);
-        }
-        throw new Error("Failed to enhance article. An unknown error occurred.");
+            score: { type: Type.NUMBER }
+          },
+          required: ['title', 'content', 'evaluation', 'suggestions', 'score']
+        },
+      },
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error generating article:", error);
+    if (error instanceof Error) {
+        throw new Error(`Failed to generate article. Error: ${error.message}`);
     }
-}
-
-export async function polishArticle({ originalTitle, originalContent, evalCriteria, styleReferences, polishScript }: { originalTitle: string; originalContent: string; evalCriteria: string; styleReferences: string; polishScript: string }): Promise<GeneratedArticle> {
-    try {
-        const ai = getAI();
-        
-        const prompt = polishScript
-            .replace('{original_title}', originalTitle)
-            .replace('{original_content}', originalContent)
-            .replace('{style_references}', styleReferences)
-            .replace('{evaluation_criteria}', evalCriteria);
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: [{ parts: [{ text: prompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING },
-                        content: { type: Type.STRING },
-                        evaluation: { type: Type.STRING },
-                        score: { type: Type.NUMBER },
-                        suggestions: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    text: { type: Type.STRING },
-                                    area: { type: Type.STRING },
-                                },
-                                required: ['text', 'area'],
-                            },
-                        },
-                    },
-                    required: ['title', 'content', 'evaluation', 'score', 'suggestions'],
-                },
-                temperature: 0.8, // Slightly higher for more creative stylistic changes
-            },
-        });
-        return JSON.parse(response.text);
-    } catch (error) {
-        console.error("Error polishing article:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to polish article. Error: ${error.message}`);
-        }
-        throw new Error("Failed to polish article. An unknown error occurred.");
-    }
+    throw new Error("Failed to generate article. An unknown error occurred.");
+  }
 }
 
 
-export async function createArticleTemplateFromText({ articleText, existingTemplates }: { articleText: string, existingTemplates: SavedArticleTemplate[] }): Promise<Omit<SavedArticleTemplate, 'id'>> {
-    try {
-        const ai = getAI();
-        const examples = existingTemplates.slice(0, 3).map(t => 
-`### ${t.title}
-Description: ${t.description}
-Structure:
-${t.structure}
----`
-        ).join('\n');
+export async function enhanceArticle({ originalTitle, originalContent, evalCriteria, suggestions }: {
+  originalTitle: string;
+  originalContent: string;
+  evalCriteria: string;
+  suggestions: Suggestion[];
+}): Promise<GeneratedArticle> {
+  try {
+    const ai = getAI();
+    const suggestionsList = suggestions.map(s => `- ${s.area}: ${s.text}`).join('\n');
 
-        const prompt = CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT
-            .replace('{existing_templates_examples}', examples)
-            .replace('{article_text}', articleText);
-            
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: [{ parts: [{ text: prompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING },
-                        description: { type: Type.STRING },
-                        structure: { type: Type.STRING },
-                        specialInstructions: { type: Type.STRING },
-                    },
-                    required: ['title', 'description', 'structure', 'specialInstructions'],
-                },
+    const prompt = ENHANCE_ARTICLE_SCRIPT
+      .replace('{original_title}', originalTitle)
+      .replace('{original_content}', originalContent)
+      .replace('{suggestions_list}', suggestionsList)
+      .replace('{eval_criteria}', evalCriteria);
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            content: { type: Type.STRING },
+            evaluation: { type: Type.STRING },
+            suggestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: { text: { type: Type.STRING }, area: { type: Type.STRING } },
+                required: ['text', 'area']
+              }
             },
-        });
-        return JSON.parse(response.text);
-    } catch (error) {
-        console.error("Error creating template from text:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to create template. Error: ${error.message}`);
-        }
-        throw new Error("Failed to create template from text. An unknown error occurred.");
+            score: { type: Type.NUMBER }
+          },
+          required: ['title', 'content', 'evaluation', 'suggestions', 'score']
+        },
+      },
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error enhancing article:", error);
+    if (error instanceof Error) {
+        throw new Error(`Failed to enhance article. Error: ${error.message}`);
     }
+    throw new Error("Failed to enhance article. An unknown error occurred.");
+  }
 }
 
-export async function generateHeadlinesForArticle({ articleContent, evalCriteria, script }: { articleContent: string; evalCriteria: string; script: string; }): Promise<Omit<GeneratedHeadline, 'id'>[]> {
-    try {
-        const ai = getAI();
-        const prompt = script
-            .replace('{article_content}', articleContent)
-            .replace('{evaluation_criteria}', evalCriteria);
+export async function polishArticle({ originalTitle, originalContent, evalCriteria, styleReferences, polishScript }: {
+  originalTitle: string;
+  originalContent: string;
+  evalCriteria: string;
+  styleReferences: string;
+  polishScript: string;
+}): Promise<GeneratedArticle> {
+  try {
+    const ai = getAI();
+    const prompt = polishScript
+      .replace('{original_title}', originalTitle)
+      .replace('{original_content}', originalContent)
+      .replace('{style_references}', styleReferences)
+      .replace('{eval_criteria}', evalCriteria);
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: [{ parts: [{ text: prompt }] }],
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        headlines: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    headline: { type: Type.STRING },
-                                    subheadline: { type: Type.STRING },
-                                    score: { type: Type.NUMBER },
-                                    reasoning: { type: Type.STRING },
-                                },
-                                required: ['headline', 'subheadline', 'score', 'reasoning'],
-                            },
-                        },
-                    },
-                    required: ['headlines'],
-                },
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            content: { type: Type.STRING },
+            evaluation: { type: Type.STRING },
+            suggestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: { text: { type: Type.STRING }, area: { type: Type.STRING } },
+                required: ['text', 'area']
+              }
             },
-        });
-
-        const { headlines } = JSON.parse(response.text);
-        return headlines;
-    } catch (error) {
-        console.error("Error generating headlines for article:", error);
-        if (error instanceof Error) {
-            throw new Error(`Failed to generate headlines. Error: ${error.message}`);
-        }
-        throw new Error("Failed to generate headlines. An unknown error occurred.");
+            score: { type: Type.NUMBER }
+          },
+          required: ['title', 'content', 'evaluation', 'suggestions', 'score']
+        },
+      },
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error polishing article:", error);
+    if (error instanceof Error) {
+        throw new Error(`Failed to polish article. Error: ${error.message}`);
     }
+    throw new Error("Failed to polish article. An unknown error occurred.");
+  }
+}
+
+
+export async function createArticleTemplateFromText({ articleText, existingTemplates }: {
+  articleText: string;
+  existingTemplates: SavedArticleTemplate[];
+}): Promise<Omit<SavedArticleTemplate, 'id'>> {
+  try {
+    const ai = getAI();
+    const existingTemplatesString = existingTemplates.map(t => t.title).join(', ');
+    const prompt = CREATE_ARTICLE_TEMPLATE_FROM_TEXT_SCRIPT
+      .replace('{article_text}', articleText)
+      .replace('{existing_templates}', existingTemplatesString);
+      
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            structure: { type: Type.STRING },
+            specialInstructions: { type: Type.STRING },
+          },
+          required: ['title', 'description', 'structure', 'specialInstructions']
+        },
+      },
+    });
+    return JSON.parse(response.text);
+  } catch (error) {
+    console.error("Error creating article template:", error);
+    if (error instanceof Error) {
+        throw new Error(`Failed to create article template. Error: ${error.message}`);
+    }
+    throw new Error("Failed to create article template. An unknown error occurred.");
+  }
+}
+
+export async function generateHeadlinesForArticle({ articleContent, evalCriteria, script }: {
+  articleContent: string;
+  evalCriteria: string;
+  script: string;
+}): Promise<Omit<GeneratedHeadline, 'id'>[]> {
+  try {
+    const ai = getAI();
+    const prompt = script
+      .replace('{article_content}', articleContent)
+      .replace('{eval_criteria}', evalCriteria);
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            headlines: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  headline: { type: Type.STRING },
+                  subheadline: { type: Type.STRING },
+                  score: { type: Type.NUMBER },
+                  reasoning: { type: Type.STRING },
+                },
+                required: ['headline', 'score', 'reasoning']
+              }
+            }
+          },
+          required: ['headlines']
+        },
+      },
+    });
+    const result = JSON.parse(response.text);
+    return result.headlines;
+  } catch (error) {
+    console.error("Error generating headlines for article:", error);
+    if (error instanceof Error) {
+        throw new Error(`Failed to generate headlines. Error: ${error.message}`);
+    }
+    throw new Error("Failed to generate headlines. An unknown error occurred.");
+  }
 }

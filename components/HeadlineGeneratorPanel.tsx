@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArticleIdea } from '../types.ts';
 import Button from './Button.tsx';
 
@@ -61,16 +61,50 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
   onGenerateArticleIdeasScriptChange,
 }) => {
     const isSourceProvided = sourceType === 'url' ? sourceUrl.trim() !== '' : sourceText.trim() !== '';
+    const prevIsLoadingRef = useRef<boolean>();
+
+    useEffect(() => {
+        // Play a beep when idea generation finishes
+        if (prevIsLoadingRef.current === true && isLoading === false) {
+            try {
+                const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                if (!audioContext) return;
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A4 tone
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                console.error("Could not play beep sound:", e);
+            }
+        }
+        
+        prevIsLoadingRef.current = isLoading;
+    }, [isLoading]);
+
+    const handleGenerateClick = () => {
+        onGenerateIdeas(generateArticleIdeasScript);
+    };
 
     return (
     <div className="space-y-8 animate-fade-in">
-        <h1 className="text-3xl font-bold">Generate Ideas</h1>
+        <h1 className="text-3xl font-bold">Generate Article Ideas</h1>
+        <p className="text-gray-400">Brainstorm new concepts from a source URL or text.</p>
 
         <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
-            <h2 className="text-xl font-bold text-teal-300">Generate Article Ideas</h2>
-            <p className="text-sm text-gray-400">Start by providing a source article (URL or text). The AI will analyze it and generate several new, related article ideas for you to choose from. Each idea will include a title, a summary, and key points to develop.</p>
+            <h2 className="text-xl font-bold text-teal-300">Source Content</h2>
+            <p className="text-sm text-gray-400">Provide a source article (URL or text). The AI will analyze it and generate several new, related article ideas for you to develop.</p>
              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Source Article</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Source</label>
                 <div className="flex items-center space-x-4 mb-3">
                     <button onClick={() => onSourceTypeChange('url')} className={`px-4 py-2 rounded-md font-semibold ${sourceType === 'url' ? 'bg-teal-600 text-white' : 'bg-gray-700 text-gray-300'}`}>URL</button>
                     <button onClick={() => onSourceTypeChange('text')} className={`px-4 py-2 rounded-md font-semibold ${sourceType === 'text' ? 'bg-teal-600 text-white' : 'bg-gray-700 text-gray-300'}`}>Text</button>
@@ -81,6 +115,7 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
                     <textarea value={sourceText} onChange={(e) => onSourceTextChange(e.target.value)} rows={8} placeholder="Paste the source text here..." className="w-full p-3 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400" />
                 )}
             </div>
+            
             <div className="pt-4 border-t border-slate-700/50">
               <h3 className="text-lg font-semibold text-gray-300 mb-2">Advanced: AI Idea Generation Script</h3>
               <textarea 
@@ -91,8 +126,8 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
               />
             </div>
             <div className="text-center">
-                 <Button onClick={() => onGenerateIdeas(generateArticleIdeasScript)} isLoading={isLoading && !articleIdeas} disabled={!isSourceProvided} className="bg-blue-600 hover:bg-blue-500">
-                    {isLoading && !articleIdeas ? 'Your Minion Is Working' : 'Generate Article Ideas'}
+                 <Button onClick={handleGenerateClick} isLoading={isLoading} disabled={!isSourceProvided} className="bg-blue-600 hover:bg-blue-500">
+                    {isLoading ? 'Minion is generating ideas...' : 'Generate New Ideas'}
                  </Button>
             </div>
         </div>

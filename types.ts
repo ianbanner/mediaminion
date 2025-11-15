@@ -39,6 +39,7 @@ export interface QueuedPost extends TopPostAssessment {
   id: string;
   scheduledTime?: string;
   platforms?: string[];
+  status?: 'scheduled' | 'sent-to-ayrshare' | 'posted' | 'error';
   // Fix: Add optional sentAt property to support displaying sent posts in the same component.
   sentAt?: string;
 }
@@ -49,15 +50,18 @@ export interface SentPost extends TopPostAssessment {
   platforms: string[];
 }
 
-export interface PostAnalytics {
-  postId: string;
-  reach: number;
-  likes: number;
-  comments: number;
-  shares: number;
-  clicks: number;
-  engagementRate: number;
+export interface PlatformAnalytics {
+  impressions?: number;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  clicks?: number;
+  retweets?: number;
+  reach?: number;
+  views?: number;
 }
+
+export type PostAnalytics = Record<string, PlatformAnalytics>;
 
 export interface AppSettings {
   ayrshareApiKey: string;
@@ -115,6 +119,8 @@ export interface BackupData {
   savedArticleTemplates?: SavedArticleTemplate[];
   
   ayrshareQueue: QueuedPost[];
+  scheduledPosts?: QueuedPost[];
+  historicalPosts?: QueuedPost[];
   schedulingInstructions: string;
   parsedSchedule: string[];
   ayrshareLog: SentPost[];
@@ -144,6 +150,7 @@ export interface BackupData {
   generatedArticleHistory: GeneratedArticle[];
   currentArticleIterationIndex: number;
   generateArticleTitle?: string;
+  articleStarterText?: string;
   endOfArticleSummary?: string;
   articleEvalCriteria?: string;
   headlineEvalCriteriaForArticle?: string;
