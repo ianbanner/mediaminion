@@ -147,6 +147,8 @@ export interface BackupData {
   generateArticleSourceText?: string;
   generateArticleStyleRefs?: string;
   generateArticleScript?: string;
+  recycleArticleText?: string;
+  recycleArticleScript?: string;
   generatedArticleHistory: GeneratedArticle[];
   currentArticleIterationIndex: number;
   generateArticleTitle?: string;

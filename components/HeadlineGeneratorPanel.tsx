@@ -92,6 +92,7 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
     }, [isLoading]);
 
     const handleGenerateClick = () => {
+// FIX: The onGenerateIdeas function requires the AI script as an argument, but it was being called without one.
         onGenerateIdeas(generateArticleIdeasScript);
     };
 

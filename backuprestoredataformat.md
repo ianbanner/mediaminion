@@ -46,6 +46,8 @@ The entire backup is a single JSON object. The keys at the root level correspond
 | `generateArticleSourceUrl`      | `string`      | The last used source URL for article generation.                                                        |
 | `generateArticleSourceText`     | `string`      | The last used source text for article generation.                                                       |
 | `generateArticleScript`         | `string`      | The master AI prompt for generating long-form articles.                                                 |
+| `recycleArticleText`            | `string`      | The last used article text for the Recycle Article feature.                                             |
+| `recycleArticleScript`          | `string`      | The AI prompt for the Recycle Article feature.                                                          |
 | `generatedArticleHistory`       | `array`       | An array of article versions from the iterative generation process. See `GeneratedArticle` below.     |
 | `currentArticleIterationIndex`  | `number`      | The index of the currently viewed article in `generatedArticleHistory`.                                 |
 | `generateArticleTitle`          | `string`      | The working title for the article generation.                                                           |
