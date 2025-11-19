@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   LINKEDIN_GENERATION_EVALUATION_SCRIPT,
@@ -17,7 +18,7 @@ import {
   GENERATE_PODCAST_PLAN_SCRIPT,
   GENERATE_PODCAST_TITLE_SUGGESTIONS_SCRIPT,
 } from './scriptService.ts';
-import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea, ArticleDestination, PodcastIdea, PodcastPlan } from "../types.ts";
+import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea, ArticleDestination, PodcastIdea, PodcastPlan, GeneratedAudioScript } from "../types.ts";
 
 export interface SocialPost {
   platform: string;
@@ -839,5 +840,45 @@ export async function generatePodcastPlan({ idea, userRole, script }: { idea: Po
             throw new Error(`Failed to generate podcast plan. Error: ${error.message}`);
         }
         throw new Error("Failed to generate podcast plan. An unknown error occurred.");
+    }
+}
+
+export async function generateAudioScript({ sourceText, duration, wordCount, script, userRole, targetAudience }: { sourceText: string; duration: number; wordCount: number; script: string; userRole: string; targetAudience: string; }): Promise<GeneratedAudioScript> {
+    try {
+        const ai = getAI();
+        const prompt = script
+            .replace('{source_text}', sourceText)
+            .replace('{duration}', duration.toString())
+            .replace('{word_count}', wordCount.toString())
+            .replace('{user_role}', userRole)
+            .replace('{target_audience}', targetAudience);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    scriptContent: { type: Type.STRING },
+                    estimatedDuration: { type: Type.STRING },
+                    wordCount: { type: Type.NUMBER },
+                  },
+                  required: ['title', 'scriptContent', 'estimatedDuration', 'wordCount'],
+                },
+            },
+        });
+
+        const scriptResult: GeneratedAudioScript = JSON.parse(response.text);
+        return scriptResult;
+
+    } catch (error) {
+        console.error("Error generating audio script:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to generate audio script. Error: ${error.message}`);
+        }
+        throw new Error("Failed to generate audio script. An unknown error occurred.");
     }
 }

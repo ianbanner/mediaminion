@@ -1,3 +1,4 @@
+
 export type ArticleDestination = 'LinkedIn' | 'Medium' | 'Substack' | 'Facebook' | 'Non Fiction Book' | 'Fiction Book';
 
 export interface ArticleIdea {
@@ -16,6 +17,13 @@ export interface PodcastPlan {
   title: string;
   fullPlan: string;
   outline: string;
+}
+
+export interface GeneratedAudioScript {
+    title: string;
+    scriptContent: string;
+    estimatedDuration: string;
+    wordCount: number;
 }
 
 export interface TopPostAssessment {
@@ -185,4 +193,10 @@ export interface BackupData {
   podcastSourceType?: 'url' | 'text';
   podcastTitleSuggestions?: string[] | null;
   finalPodcastIdeaForPlan?: PodcastIdea | null;
+
+  // Audio Script State
+  audioScriptSourceText?: string;
+  audioScriptDuration?: number;
+  generateAudioScriptScript?: string;
+  generatedAudioScript?: GeneratedAudioScript | null;
 }

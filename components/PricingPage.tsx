@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Header from './Header.tsx';
 import Footer from './Footer.tsx';
@@ -22,7 +23,8 @@ const PricingTier: React.FC<{
     features: string[];
     buttonText: string;
     isFeatured?: boolean;
-}> = ({ name, icon, price, description, features, buttonText, isFeatured }) => (
+    onButtonClick: () => void;
+}> = ({ name, icon, price, description, features, buttonText, isFeatured, onButtonClick }) => (
     <div className={`p-8 rounded-2xl border ${isFeatured ? 'border-teal-500 bg-slate-900/50 shadow-lg shadow-teal-500/10' : 'border-slate-700 bg-slate-900'}`}>
         <div className="flex items-center gap-4">
             <div className="text-teal-400">{icon}</div>
@@ -30,7 +32,10 @@ const PricingTier: React.FC<{
         </div>
         <p className="mt-4 text-gray-400">{description}</p>
         <p className="mt-6 text-4xl font-extrabold">{price}</p>
-        <button className={`w-full mt-8 py-3 font-semibold rounded-lg transition-colors ${isFeatured ? 'bg-teal-600 hover:bg-teal-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-gray-300'}`}>
+        <button 
+            onClick={onButtonClick}
+            className={`w-full mt-8 py-3 font-semibold rounded-lg transition-colors ${isFeatured ? 'bg-teal-600 hover:bg-teal-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-gray-300'}`}
+        >
             {buttonText}
         </button>
         <ul className="mt-8 space-y-4 text-gray-300">
@@ -71,6 +76,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onLoginClick, onNavigate, cur
               "Community support"
             ]}
             buttonText="Get Started"
+            onButtonClick={onLoginClick}
           />
           <PricingTier
             isFeatured
@@ -88,6 +94,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onLoginClick, onNavigate, cur
               "Email support"
             ]}
             buttonText="Start Free Trial"
+            onButtonClick={onLoginClick}
           />
           <PricingTier
             name="Minion for Teams"
@@ -103,6 +110,7 @@ const PricingPage: React.FC<PricingPageProps> = ({ onLoginClick, onNavigate, cur
               "Priority support"
             ]}
             buttonText="Contact Sales"
+            onButtonClick={onLoginClick}
           />
         </div>
       </main>

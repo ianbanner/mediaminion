@@ -1,3 +1,4 @@
+
 import { ArticleDestination } from '../types.ts';
 
 const UNIVERSAL_GUIDELINES = `
@@ -146,6 +147,49 @@ export const DEFAULT_HEADLINE_EVAL_CRITERIA = `As an expert headline evaluator, 
     - Does it avoid generic clickbait and instead promise tangible value? (e.g., using numbers, specific outcomes).
 `;
 
+export const GENERATE_AUDIO_SCRIPT_SCRIPT = `
+You are an expert audio scriptwriter and voice strategist for {user_role}.
+Your target audience is {target_audience}.
+Your task is to write a spoken-word audio script based on the source text provided.
+
+**Goal:**
+Create a script that is designed to be **heard**, not just read. It needs rhythm, cadence, and punch.
+
+**Tone & Style Requirements:**
+1.  **Modern Sentence Structure (The "Nicholas Cole" Influence):**
+    -   Use short, punchy sentences.
+    -   Vary sentence length for rhythm (e.g., a short sentence, a medium sentence, then a very short punchline).
+    -   Use the "1/3/1" paragraph structure often (one sentence opener, three sentences of context, one sentence closer).
+    -   High contrast: Follow a complex idea with a very simple statement.
+
+2.  **Authoritative Tone (The "Marty Cagan" Influence):**
+    -   Be direct and no-nonsense.
+    -   Speak with absolute conviction. Avoid hedging words like "maybe," "sort of," or "I think."
+    -   Focus on "hard truths" and experience-based insights.
+    -   Treat the listener as a peer who is smart but busy.
+
+3.  **Spoken-Word Optimization:**
+    -   Write for the ear. Avoid complex clauses that are hard to say in one breath.
+    -   Use natural pauses (indicate them with line breaks or ellipses if needed for effect).
+    -   Use active verbs.
+
+**Constraints:**
+-   **Target Duration:** Approximately {duration} minutes.
+-   **Target Word Count:** Approximately {word_count} words (aim for ~150 words per minute).
+
+**Source Text:**
+---
+{source_text}
+---
+
+**Output Format:**
+Return a single JSON object with:
+-   \`title\`: A catchy title for the audio piece.
+-   \`scriptContent\`: The full script in Markdown format.
+-   \`estimatedDuration\`: The estimated reading time (e.g., "7 minutes").
+-   \`wordCount\`: The actual word count of the generated script.
+`;
+
 export const LINKEDIN_GENERATION_EVALUATION_SCRIPT = `
 You are an expert LinkedIn ghostwriter for {user_role}. Your target audience is {target_audience}.
 Your task is to generate one LinkedIn post for EACH of the provided templates, based on the source article. Then, you must evaluate all the posts you generated and rank them.
@@ -181,7 +225,7 @@ Your task is to generate one LinkedIn post for EACH of the provided templates, b
     *   \`rankedTable\`: An array of objects, with each object containing the template \`title\`, the final \`score\` (0-100), and the generated \`content\`. This table should include ALL generated posts, sorted from highest score to lowest.
     *   \`top7Assessments\`: An array of objects for the TOP 7 posts. Each object must include the template \`title\`, the full \`content\`, a detailed \`assessment\` explaining why the post is effective based on the evaluation criteria, and the \`score\`.
 
-**CRITICAL:** Do NOT include any starter text. The user will add that separately. The content should start with the main hook. The output must be a valid JSON object matching the provided schema.
+**CRITICAL:** Do NOT include any starter text. The user will add that separately. The content should start with the main hook. The user output must be a valid JSON object matching the provided schema.
 `;
 
 export const LINKEDIN_ANALYSIS_SCRIPT = `

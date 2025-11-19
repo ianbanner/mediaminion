@@ -22,7 +22,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onSignIn, error, adminEmail, 
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in-fast">
+    <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[9999] p-4 animate-fade-in-fast">
       <div className="relative w-full max-w-md p-8 space-y-6 bg-slate-800 border border-slate-700 rounded-2xl shadow-xl text-center">
         <button 
           onClick={onClose} 
