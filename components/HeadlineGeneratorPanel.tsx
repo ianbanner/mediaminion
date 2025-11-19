@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ArticleIdea } from '../types.ts';
 import Button from './Button.tsx';
@@ -61,38 +62,8 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
   onGenerateArticleIdeasScriptChange,
 }) => {
     const isSourceProvided = sourceType === 'url' ? sourceUrl.trim() !== '' : sourceText.trim() !== '';
-    const prevIsLoadingRef = useRef<boolean>();
-
-    useEffect(() => {
-        // Play a beep when idea generation finishes
-        if (prevIsLoadingRef.current === true && isLoading === false) {
-            try {
-                const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-                if (!audioContext) return;
-                
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A4 tone
-                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.1);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.1);
-            } catch (e) {
-                console.error("Could not play beep sound:", e);
-            }
-        }
-        
-        prevIsLoadingRef.current = isLoading;
-    }, [isLoading]);
 
     const handleGenerateClick = () => {
-// FIX: The onGenerateIdeas function requires the AI script as an argument, but it was being called without one.
         onGenerateIdeas(generateArticleIdeasScript);
     };
 
@@ -128,14 +99,14 @@ const HeadlineGeneratorPanel: React.FC<HeadlineGeneratorPanelProps> = ({
             </div>
             <div className="text-center">
                  <Button onClick={handleGenerateClick} isLoading={isLoading} disabled={!isSourceProvided} className="bg-blue-600 hover:bg-blue-500">
-                    {isLoading ? 'Minion is generating ideas...' : 'Generate New Ideas'}
+                    {isLoading ? 'Your Minion is generating ideas...' : 'Generate New Ideas'}
                  </Button>
             </div>
         </div>
 
         {isLoading && !articleIdeas && (
             <div className="text-center p-8 text-gray-400">
-                <p>Your minion is thinking up some brilliant ideas...</p>
+                <p>Your Minion is generating brilliant ideas...</p>
             </div>
         )}
         

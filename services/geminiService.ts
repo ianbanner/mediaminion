@@ -12,8 +12,12 @@ import {
   GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT,
   POLISH_ARTICLE_SCRIPT,
   RECYCLE_ARTICLE_SCRIPT,
+  GENERATE_PODCAST_IDEAS_SCRIPT,
+  GENERATE_ADJACENT_PODCAST_IDEAS_SCRIPT,
+  GENERATE_PODCAST_PLAN_SCRIPT,
+  GENERATE_PODCAST_TITLE_SUGGESTIONS_SCRIPT,
 } from './scriptService.ts';
-import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea, ArticleDestination } from "../types.ts";
+import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea, ArticleDestination, PodcastIdea, PodcastPlan } from "../types.ts";
 
 export interface SocialPost {
   platform: string;
@@ -662,4 +666,178 @@ export async function recycleArticle(params: RecycleArticleParams): Promise<Gene
     }
     throw new Error("Failed to recycle article. An unknown error occurred.");
   }
+}
+
+export async function generatePodcastIdeas({ sourceArticle, userRole, targetAudience, script }: { sourceArticle: string; userRole: string; targetAudience: string; script: string; }): Promise<PodcastIdea[]> {
+    try {
+        const ai = getAI();
+        const prompt = script
+            .replace('{source_article}', sourceArticle)
+            .replace('{user_role}', userRole)
+            .replace('{target_audience}', targetAudience);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        podcastIdeas: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING },
+                                    summary: { type: Type.STRING },
+                                    keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                },
+                                required: ['title', 'summary', 'keyPoints'],
+                            },
+                        },
+                    },
+                    required: ['podcastIdeas'],
+                },
+            },
+        });
+
+        const { podcastIdeas } = JSON.parse(response.text);
+        return podcastIdeas;
+    } catch (error) {
+        console.error("Error generating podcast ideas:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to generate podcast ideas. Error: ${error.message}`);
+        }
+        throw new Error("Failed to generate podcast ideas. An unknown error occurred.");
+    }
+}
+
+export async function generateAdjacentPodcastIdeas({ initialIdea, userRole, targetAudience, script }: { initialIdea: PodcastIdea; userRole: string; targetAudience: string; script: string; }): Promise<PodcastIdea[]> {
+    try {
+        const ai = getAI();
+        const prompt = script
+            .replace('{initial_podcast_title}', initialIdea.title)
+            .replace('{initial_podcast_summary}', initialIdea.summary)
+            .replace('{initial_podcast_key_points}', initialIdea.keyPoints.join(', '))
+            .replace('{user_role}', userRole)
+            .replace('{target_audience}', targetAudience);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: 'application/json',
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        podcastIdeas: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING },
+                                    summary: { type: Type.STRING },
+                                    keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                },
+                                required: ['title', 'summary', 'keyPoints'],
+                            },
+                        },
+                    },
+                    required: ['podcastIdeas'],
+                },
+            },
+        });
+
+        const { podcastIdeas } = JSON.parse(response.text);
+        return podcastIdeas;
+    } catch (error) {
+        console.error("Error generating adjacent podcast ideas:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to generate adjacent podcast ideas. Error: ${error.message}`);
+        }
+        throw new Error("Failed to generate adjacent podcast ideas. An unknown error occurred.");
+    }
+}
+
+export async function generatePodcastTitleSuggestions({ idea }: { idea: PodcastIdea }): Promise<string[]> {
+    try {
+        const ai = getAI();
+        const prompt = GENERATE_PODCAST_TITLE_SUGGESTIONS_SCRIPT
+            .replace('{podcast_title}', idea.title)
+            .replace('{podcast_summary}', idea.summary)
+            .replace('{podcast_key_points}', idea.keyPoints.join(', '));
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    titles: { 
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING } 
+                    },
+                  },
+                  required: ['titles'],
+                },
+            },
+        });
+
+        const { titles } = JSON.parse(response.text);
+        if (Array.isArray(titles) && titles.length > 5) {
+            return titles.slice(0, 5);
+        }
+        if (!Array.isArray(titles)) {
+            throw new Error("AI did not return an array of titles.");
+        }
+        return titles;
+
+    } catch (error) {
+        console.error("Error generating podcast title suggestions:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to generate podcast titles. Error: ${error.message}`);
+        }
+        throw new Error("Failed to generate podcast titles. An unknown error occurred.");
+    }
+}
+
+export async function generatePodcastPlan({ idea, userRole, script }: { idea: PodcastIdea; userRole: string; script: string; }): Promise<PodcastPlan> {
+    try {
+        const ai = getAI();
+        const prompt = script
+            .replace('{user_role}', userRole)
+            .replace('{podcast_title}', idea.title)
+            .replace('{podcast_summary}', idea.summary)
+            .replace('{podcast_key_points}', idea.keyPoints.join(', '));
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    fullPlan: { type: Type.STRING },
+                    outline: { type: Type.STRING },
+                  },
+                  required: ['title', 'fullPlan', 'outline'],
+                },
+            },
+        });
+
+        const plan: PodcastPlan = JSON.parse(response.text);
+        return plan;
+
+    } catch (error) {
+        console.error("Error generating podcast plan:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to generate podcast plan. Error: ${error.message}`);
+        }
+        throw new Error("Failed to generate podcast plan. An unknown error occurred.");
+    }
 }

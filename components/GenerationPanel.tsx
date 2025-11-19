@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import Button from './Button.tsx';
 import GenerationResultDisplay from './GenerationResultDisplay.tsx';
@@ -79,7 +78,7 @@ const GenerationPanel: React.FC<GenerationPanelProps> = ({
 
         <div className="text-center pt-4">
           <Button onClick={onGenerate} isLoading={isLoading}>
-            {isLoading ? 'Your Minion Is Working' : 'Generate & Evaluate Posts'}
+            {isLoading ? 'Your Minion is generating...' : 'Generate & Evaluate Posts'}
           </Button>
         </div>
       </div>

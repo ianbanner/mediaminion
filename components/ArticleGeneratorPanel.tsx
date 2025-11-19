@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ArticleDestination } from '../types.ts';
 import Button from './Button.tsx';
@@ -53,7 +54,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
             <div className="flex flex-col items-center justify-center h-full animate-fade-in">
                 <div className="p-12 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg text-center">
                     <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-teal-400 mb-6"></div>
-                    <h2 className="text-2xl font-bold text-gray-200">Your minion is working...</h2>
+                    <h2 className="text-2xl font-bold text-gray-200">Your Minion is generating...</h2>
                     <p className="mt-2 text-gray-400">Generating your new article draft. This can take a minute.</p>
                     <p className="mt-1 text-sm text-gray-500">You will be automatically taken to the refinement page when it's ready.</p>
                 </div>
@@ -184,7 +185,7 @@ const ArticleGeneratorPanel: React.FC<ArticleGeneratorPanelProps> = ({
 
             <div className="text-center pt-4 border-t border-slate-700/50">
                 <Button onClick={onGenerate} isLoading={isLoading} className="bg-blue-600 hover:bg-blue-500">
-                    {isLoading ? 'Minion is working...' : 'Generate Article'}
+                    {isLoading ? 'Your Minion is generating...' : 'Generate Article'}
                 </Button>
             </div>
         </div>

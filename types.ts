@@ -6,6 +6,18 @@ export interface ArticleIdea {
   keyPoints: string[];
 }
 
+export interface PodcastIdea {
+  title: string;
+  summary: string;
+  keyPoints: string[];
+}
+
+export interface PodcastPlan {
+  title: string;
+  fullPlan: string;
+  outline: string;
+}
+
 export interface TopPostAssessment {
     title: string;
     content: string;
@@ -161,4 +173,16 @@ export interface BackupData {
   finalDestinationGuidelines?: string;
   
   showCreateArticleTemplateModal?: boolean;
+
+  // Podcast state
+  generatedPodcastIdeas?: PodcastIdea[] | null;
+  selectedInitialPodcastIdea?: PodcastIdea | null;
+  generatedAdjacentPodcastIdeas?: PodcastIdea[] | null;
+  generatePodcastIdeasScript?: string;
+  generatedPodcastPlan?: PodcastPlan | null;
+  podcastSourceUrl?: string;
+  podcastSourceText?: string;
+  podcastSourceType?: 'url' | 'text';
+  podcastTitleSuggestions?: string[] | null;
+  finalPodcastIdeaForPlan?: PodcastIdea | null;
 }

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ResearchedPost } from '../services/geminiService.ts';
 import Button from './Button.tsx';
@@ -40,7 +41,7 @@ const PostResearcherPanel: React.FC<PostResearcherPanelProps> = ({
 
         <div className="text-center pt-4 border-t border-slate-700/50">
           <Button onClick={onResearchPosts} isLoading={isLoading}>
-            {isLoading ? 'Your Minion Is Working' : 'Research Popular Posts'}
+            {isLoading ? 'Your Minion is researching...' : 'Research Popular Posts'}
           </Button>
         </div>
       </div>

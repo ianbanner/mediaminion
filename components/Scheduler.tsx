@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Button from './Button.tsx';
 import { QueuedPost } from '../types.ts';
@@ -96,7 +97,7 @@ const Scheduler: React.FC<SchedulerProps> = ({
                 />
                 <div className="text-center">
                     <Button onClick={onUpdateSchedule} isLoading={isUpdating}>
-                        {isUpdating ? 'Your Minion Is Working...' : 'Update Schedule & Move Queued Posts'}
+                        {isUpdating ? 'Your Minion is updating...' : 'Update Schedule & Move Queued Posts'}
                     </Button>
                 </div>
             </div>

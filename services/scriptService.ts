@@ -69,6 +69,20 @@ ${UNIVERSAL_GUIDELINES}
 - **Structure**: The chapter should advance the story, develop characters, and end in a way that makes the reader want to continue to the next chapter.
 `;
 
+export const PODCAST_PLAN_GUIDELINES = `
+${UNIVERSAL_GUIDELINES}
+---
+### Platform-Specific Guidelines for a Podcast Plan
+- **Context**: This is not an article for reading, but a structured plan for a podcast episode. The output should be a script or detailed outline for the host.
+- **Content Style**: The tone should be conversational and directed at a podcast host. Use bullet points heavily. The language should be clear, concise, and focused on creating a compelling audio narrative.
+- **Structure**: The plan must follow this exact 5-part structure:
+    1.  **Defining Thought (The Hook):** A single, powerful sentence that encapsulates the core idea of the episode. This is the main takeaway.
+    2.  **Show Me the Problem:** Clearly describe the problem or pain point the listener is facing. Use relatable scenarios and stories.
+    3.  **Agitate the Problem:** Explain the consequences of not solving this problem. What are the hidden costs? Why is this more urgent than the listener thinks?
+    4.  **The 3 Transformations (The Solution):** Outline three distinct, actionable points that form the solution. Each point should be a mini-discussion topic for the podcast, representing a shift in thinking or a new capability.
+    5.  **Final Call to Action:** Conclude with a clear next step for the listener, tying back to the host's business goals (e.g., visit website, subscribe to newsletter, book a call).
+`;
+
 export const DESTINATION_GUIDELINES_MAP: Record<ArticleDestination, string> = {
     'LinkedIn': LINKEDIN_DESTINATION_GUIDELINES,
     'Medium': MEDIUM_DESTINATION_GUIDELINES,
@@ -489,4 +503,107 @@ For example, if the user says "post at 8am and 5pm", you should return ["08:00",
 If the user specifies days, only return times for today if today is one of those days. For this task, you can assume today is a weekday if not specified.
 
 **CRITICAL:** Output only the JSON object.
+`;
+
+export const GENERATE_PODCAST_IDEAS_SCRIPT = `
+You are a creative podcast producer for {user_role}.
+Your target audience is {target_audience}.
+Your task is to analyze the provided source article and generate 5 distinct, compelling podcast episode ideas. These should be structured for an audio format.
+
+**Source Article Content:**
+---
+{source_article}
+---
+
+**Your Process:**
+
+1.  **Analyze the Source:** Identify core concepts, compelling stories, and actionable advice suitable for a podcast.
+2.  **Ideate for Audio:** Brainstorm 5 new podcast episode ideas. Each idea should:
+    *   Have a catchy, spoken-word-friendly title.
+    *   Address a key pain point for the {target_audience}.
+    *   Be framed as a solo episode for {user_role}.
+3.  **Develop Each Idea:** For each of the 5 ideas, develop the following:
+    *   A compelling, working \`title\`.
+    *   A short \`summary\` (1-2 sentences) explaining the episode's core premise.
+    *   A list of 3-5 \`keyPoints\` or segments that would be covered.
+4.  **Format Output:** Return a single JSON object containing a key "podcastIdeas", which is an array of the 5 idea objects you developed.
+
+**CRITICAL:** The output must be a single, valid JSON object.
+`;
+
+export const GENERATE_ADJACENT_PODCAST_IDEAS_SCRIPT = `
+You are a creative podcast producer for {user_role}, tasked with expanding on a core idea.
+Your target audience is {target_audience}.
+Your task is to take the provided initial podcast idea and generate 5 adjacent, more specific, or alternative-angle episode ideas based on it.
+
+**Initial Idea:**
+- **Title:** {initial_podcast_title}
+- **Summary:** {initial_podcast_summary}
+- **Key Points:** {initial_podcast_key_points}
+
+**Your Process:**
+
+1.  **Analyze the Core Idea:** Deeply understand the premise of the initial idea.
+2.  **Brainstorm Adjacent Concepts:** Generate 5 new, related ideas. They could be:
+    *   A deep-dive into one of the key points.
+    *   A contrarian take on the initial premise.
+    *   A case-study-focused episode.
+    *   An "advanced techniques" follow-up.
+    *   An episode focused on common mistakes related to the topic.
+3.  **Develop Each Idea:** For each of the 5 new ideas, develop the following:
+    *   A compelling, working \`title\`.
+    *   A short \`summary\` (1-2 sentences) explaining the episode's core premise.
+    *   A list of 3-5 \`keyPoints\` or segments that would be covered.
+4.  **Format Output:** Return a single JSON object containing a key "podcastIdeas", which is an array of the 5 new idea objects you developed.
+
+**CRITICAL:** The new ideas must be clearly related to the initial idea but distinct from it. The output must be a single, valid JSON object.
+`;
+
+export const GENERATE_PODCAST_TITLE_SUGGESTIONS_SCRIPT = `
+You are an expert podcast producer known for creating catchy, viral episode titles.
+Your task is to generate 5 alternative titles for the provided podcast episode idea.
+
+**Podcast Idea:**
+- **Title:** {podcast_title}
+- **Summary:** {podcast_summary}
+- **Key Points:** {podcast_key_points}
+
+**Your Process:**
+1.  **Analyze the Idea:** Deeply understand the core value proposition and the target audience's interests.
+2.  **Brainstorm Titles:** Generate 5 distinct and compelling alternative titles. Use different angles:
+    *   Benefit-driven (e.g., "How to...")
+    *   Intrigue/Curiosity (e.g., "The One Mistake...")
+    *   Direct & Punchy
+    *   Question-based
+3.  **Format Output:** Return a single JSON object with a key "titles", which is an array of 5 strings.
+
+**CRITICAL:** The titles should be concise and optimized for spoken word and podcast apps. The output must be a single, valid JSON object.
+`;
+
+export const GENERATE_PODCAST_PLAN_SCRIPT = `
+You are an expert podcast scriptwriter for {user_role}, preparing a detailed episode plan.
+
+**Selected Podcast Idea:**
+- **Title:** {podcast_title}
+- **Summary:** {podcast_summary}
+- **Key Points:** {podcast_key_points}
+
+**Your Task:**
+Create a comprehensive podcast plan and a concise outline for the selected idea. The full plan must follow the provided 5-part structure guidelines.
+
+**Podcast Plan Structure Guidelines:**
+---
+${PODCAST_PLAN_GUIDELINES}
+---
+
+**Your Process:**
+
+1.  **Develop Full Plan:** Write the detailed \`fullPlan\` in Markdown format, strictly adhering to the 5-part structure. Fill each section with compelling content, talking points, and stories based on the provided idea.
+2.  **Create Outline:** Create a concise \`outline\` of the plan. This should be a bulleted list of the main headings and key sub-points, perfect for a quick overview.
+3.  **Format Output:** Return a single, valid JSON object with the following keys:
+    *   \`title\`: The original title of the podcast idea.
+    *   \`fullPlan\`: The complete, detailed podcast plan in Markdown.
+    *   \`outline\`: The concise, bulleted outline.
+
+**CRITICAL:** The output must be a single, valid JSON object matching the schema.
 `;

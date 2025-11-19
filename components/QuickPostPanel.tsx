@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Button from './Button.tsx';
 import { QueuedPost } from '../types.ts';
@@ -55,7 +56,7 @@ const QuickPostPanel: React.FC<QuickPostPanelProps> = ({
                         
                         <div className="text-center pt-4 border-t border-slate-700/50">
                             <Button onClick={onQuickPost} isLoading={isLoading} disabled={!topPost || isLoading}>
-                                {isLoading ? 'Your Minion Is Working' : 'Quick Post Top Item'}
+                                {isLoading ? 'Your Minion is posting...' : 'Quick Post Top Item'}
                             </Button>
                         </div>
                     </>

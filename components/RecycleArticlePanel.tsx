@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Button from './Button.tsx';
 
@@ -23,7 +24,7 @@ const RecycleArticlePanel: React.FC<RecycleArticlePanelProps> = ({
         <div className="flex flex-col items-center justify-center h-full animate-fade-in">
             <div className="p-12 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg text-center">
                 <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-teal-400 mb-6"></div>
-                <h2 className="text-2xl font-bold text-gray-200">Your minion is recycling...</h2>
+                <h2 className="text-2xl font-bold text-gray-200">Your Minion is recycling...</h2>
                 <p className="mt-2 text-gray-400">Refreshing the article and preparing it for refinement.</p>
                 <p className="mt-1 text-sm text-gray-500">You will be automatically taken to the refinement page when it's ready.</p>
             </div>
@@ -63,7 +64,7 @@ const RecycleArticlePanel: React.FC<RecycleArticlePanelProps> = ({
 
         <div className="text-center pt-4 border-t border-slate-700/50">
           <Button onClick={onRecycle} isLoading={isLoading} disabled={!articleText.trim()} className="bg-blue-600 hover:bg-blue-500">
-            {isLoading ? 'Your Minion Is Working...' : 'Move to Refine Article'}
+            {isLoading ? 'Your Minion is recycling...' : 'Move to Refine Article'}
           </Button>
         </div>
       </div>

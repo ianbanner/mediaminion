@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GeneratedArticle, Suggestion, GeneratedHeadline } from '../types.ts';
 import Button from './Button.tsx';
@@ -245,7 +246,7 @@ const RefineArticlePanel: React.FC<RefineArticlePanelProps> = ({
                         disabled={isGeneratingHeadlines || isPolishingArticle || !!currentArticle?.headlineApplied}
                         className="bg-blue-600 hover:bg-blue-500"
                     >
-                        {isEnhancingArticle ? 'Minion is working on Enhancing...' : 'Enhance Article'}
+                        {isEnhancingArticle ? 'Your Minion is enhancing...' : 'Enhance Article'}
                     </Button>
                 </div>
             </div>
@@ -269,7 +270,7 @@ const RefineArticlePanel: React.FC<RefineArticlePanelProps> = ({
                         disabled={isEnhancingArticle || isGeneratingHeadlines || !!currentArticle.headlineApplied}
                         className="bg-blue-600 hover:bg-blue-500"
                     >
-                       {isPolishingArticle ? 'Minion is working on Polishing...' : 'Apply Final Polish'}
+                       {isPolishingArticle ? 'Your Minion is polishing...' : 'Apply Final Polish'}
                     </Button>
                  </div>
             </div>
@@ -315,7 +316,7 @@ const RefineArticlePanel: React.FC<RefineArticlePanelProps> = ({
                         disabled={isEnhancingArticle || isPolishingArticle}
                         className="bg-blue-600 hover:bg-blue-500"
                     >
-                        {isGeneratingHeadlines ? 'Minion is working on Generating Headlines...' : 'Generate Headlines for this Article'}
+                        {isGeneratingHeadlines ? 'Your Minion is generating headlines...' : 'Generate Headlines for this Article'}
                     </Button>
                 </div>
             ) : (
