@@ -121,6 +121,13 @@ export interface GeneratedHeadline {
   reasoning: string;
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  url?: string;
+  isCompleted: boolean;
+}
+
 export interface BackupData {
   userEmail?: string | null;
   userRole: string;
@@ -199,4 +206,7 @@ export interface BackupData {
   audioScriptDuration?: number;
   generateAudioScriptScript?: string;
   generatedAudioScript?: GeneratedAudioScript | null;
+
+  // Checklist State
+  checklistItems?: ChecklistItem[];
 }

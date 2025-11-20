@@ -1,10 +1,14 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
-import { AdminSettings, UserActivity } from '../types.ts';
+import { AdminSettings, UserActivity, ChecklistItem } from '../types.ts';
 import Button from './Button.tsx';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AdminPanelProps {
   settings: AdminSettings;
   onSettingsChange: (newSettings: AdminSettings) => void;
+  checklistItems: ChecklistItem[];
+  onChecklistChange: (items: ChecklistItem[]) => void;
 }
 
 interface ActivityStats {
@@ -28,7 +32,6 @@ const UserActivityTable: React.FC<{ activityData: Record<string, UserActivity> }
         const lastMonth = now - 30 * 24 * 60 * 60 * 1000;
 
         return Object.entries(activityData).map(([user, activity]) => {
-            // Fix: Cast `activity` to `UserActivity` to address TypeScript's weak type inference for `Object.entries`.
             const posts = (activity as UserActivity).posts || [];
             const articles = (activity as UserActivity).articles || [];
 
@@ -117,8 +120,112 @@ const UserActivityTable: React.FC<{ activityData: Record<string, UserActivity> }
     );
 };
 
+const ChecklistManager: React.FC<{ checklistItems: ChecklistItem[], onChecklistChange: (items: ChecklistItem[]) => void }> = ({ checklistItems, onChecklistChange }) => {
+  const [newItemText, setNewItemText] = useState('');
+  const [newItemUrl, setNewItemUrl] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [editUrl, setEditUrl] = useState('');
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange }) => {
+  const handleAdd = () => {
+    if (!newItemText.trim()) return;
+    const newItem: ChecklistItem = {
+      id: uuidv4(),
+      text: newItemText,
+      url: newItemUrl.trim() || undefined,
+      isCompleted: false
+    };
+    onChecklistChange([...checklistItems, newItem]);
+    setNewItemText('');
+    setNewItemUrl('');
+  };
+
+  const handleDelete = (id: string) => {
+    onChecklistChange(checklistItems.filter(i => i.id !== id));
+  };
+
+  const startEditing = (item: ChecklistItem) => {
+    setEditingId(item.id);
+    setEditText(item.text);
+    setEditUrl(item.url || '');
+  };
+
+  const saveEdit = () => {
+    onChecklistChange(checklistItems.map(i => i.id === editingId ? { ...i, text: editText, url: editUrl.trim() || undefined } : i));
+    setEditingId(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xl font-bold">Manage Set Up Actions</h3>
+      <p className="text-sm text-gray-400">Define the checklist items that appear in the "Set Up Actions" guide.</p>
+      
+      {/* Add New Item */}
+      <div className="flex flex-col md:flex-row gap-3 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
+        <input 
+          type="text" 
+          placeholder="Checklist Task Description" 
+          value={newItemText} 
+          onChange={(e) => setNewItemText(e.target.value)}
+          className="flex-grow p-2 bg-gray-800 border border-slate-600 rounded-md text-sm focus:ring-2 focus:ring-teal-400"
+        />
+        <input 
+          type="text" 
+          placeholder="Training URL (Optional)" 
+          value={newItemUrl} 
+          onChange={(e) => setNewItemUrl(e.target.value)}
+          className="flex-grow md:w-1/3 p-2 bg-gray-800 border border-slate-600 rounded-md text-sm focus:ring-2 focus:ring-teal-400"
+        />
+        <button onClick={handleAdd} className="px-4 py-2 bg-teal-600 hover:bg-teal-500 rounded-md text-sm font-bold text-white">Add Item</button>
+      </div>
+
+      {/* List Items */}
+      <div className="space-y-2">
+        {checklistItems.map((item, index) => (
+          <div key={item.id} className="p-3 bg-slate-800/30 border border-slate-700 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-3">
+             {editingId === item.id ? (
+                <>
+                   <input 
+                      type="text" 
+                      value={editText} 
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="flex-grow p-2 bg-gray-800 border border-slate-600 rounded-md text-sm"
+                    />
+                    <input 
+                      type="text" 
+                      value={editUrl} 
+                      onChange={(e) => setEditUrl(e.target.value)}
+                      placeholder="URL"
+                      className="flex-grow md:w-1/3 p-2 bg-gray-800 border border-slate-600 rounded-md text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={saveEdit} className="text-green-400 hover:text-green-300 font-bold text-sm">Save</button>
+                      <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-300 text-sm">Cancel</button>
+                    </div>
+                </>
+             ) : (
+                <>
+                   <span className="text-gray-500 font-mono text-xs w-6">{index + 1}.</span>
+                   <div className="flex-grow">
+                      <p className="text-gray-200 text-sm font-medium">{item.text}</p>
+                      {item.url && <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline truncate block max-w-xs">{item.url}</a>}
+                   </div>
+                   <div className="flex gap-2 flex-shrink-0">
+                      <button onClick={() => startEditing(item)} className="text-gray-400 hover:text-teal-300 text-sm px-2">Edit</button>
+                      <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-red-400 text-sm px-2">Delete</button>
+                   </div>
+                </>
+             )}
+          </div>
+        ))}
+        {checklistItems.length === 0 && <p className="text-gray-500 italic text-sm text-center py-4">No checklist items defined yet.</p>}
+      </div>
+    </div>
+  );
+};
+
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, checklistItems, onChecklistChange }) => {
   const [password, setPassword] = useState(settings.secretPassword);
   const [emails, setEmails] = useState(settings.authorizedEmails.join('\n'));
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -150,6 +257,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange }) =
        <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
          <UserActivityTable activityData={settings.userActivity || {}} />
        </div>
+
+      <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
+        <ChecklistManager checklistItems={checklistItems} onChecklistChange={onChecklistChange} />
+      </div>
 
       <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
         <h3 className="text-xl font-bold">Access Management</h3>
