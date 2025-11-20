@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { BackupData } from '../types.ts';
 import Button from './Button.tsx';
@@ -9,7 +10,7 @@ interface BackupRestorePanelProps {
 }
 
 const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onRestore, userEmail }) => {
-    const [restoreMessage, setRestoreMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [restoreMessage, setRestoreMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null);
     
     const handleDownload = useCallback(() => {
         const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(backupData, null, 2))}`;
@@ -34,9 +35,30 @@ const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onR
                     throw new Error("Failed to read file content.");
                 }
                 const data = JSON.parse(text);
+                
+                // VALIDATION 1: Check basic structure
                 if (!data.savedTemplates || !data.userRole) {
                     throw new Error("This does not appear to be a valid backup file.");
                 }
+
+                // VALIDATION 2: Persona Safety Check
+                // Ensure we don't accidentally restore 'Dave's' data into 'Chris's' session.
+                if (data.userEmail && data.userEmail.toLowerCase() !== userEmail.toLowerCase()) {
+                     const confirmed = window.confirm(
+                         `⚠️ DATA MISMATCH WARNING ⚠️\n\n` +
+                         `This backup file belongs to: ${data.userEmail}\n` +
+                         `You are currently logged in as: ${userEmail}\n\n` +
+                         `Restoring this file will OVERWRITE your current ${userEmail} data with ${data.userEmail}'s data.\n\n` +
+                         `Are you sure you want to proceed?`
+                     );
+
+                     if (!confirmed) {
+                         setRestoreMessage({ type: 'warning', text: 'Restore cancelled to prevent persona data mix-up.' });
+                         event.target.value = ''; // Reset input
+                         return;
+                     }
+                }
+
                 onRestore(data);
                 setRestoreMessage({ type: 'success', text: 'Data restored successfully!' });
             } catch (error: any) {
@@ -55,7 +77,7 @@ const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onR
     return (
         <div className="space-y-8 animate-fade-in">
             <h1 className="text-3xl font-bold">Backup & Restore</h1>
-            <p className="text-gray-400">Save all your settings, templates, and queues to a file on your computer, or restore from a previous backup.</p>
+            <p className="text-gray-400">Save all your settings, templates, and queues to a file on your computer, or restore from a previous backup. <br/><span className="text-teal-400 text-sm">Data is strictly isolated to the current user: <strong>{userEmail}</strong></span></p>
 
             {/* Backup Section */}
             <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-4">
@@ -72,7 +94,7 @@ const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onR
             <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-4">
                 <h2 className="text-xl font-bold">Load from Backup File</h2>
                 <p className="text-sm text-gray-400">
-                    Select a previously saved <code>.json</code> backup file. This will <strong className="text-yellow-400">overwrite all current data</strong> in the application. This action cannot be undone.
+                    Select a previously saved <code>.json</code> backup file. This will <strong className="text-yellow-400">overwrite all current data</strong> for {userEmail}. This action cannot be undone.
                 </p>
                 <div>
                     <input
@@ -88,7 +110,11 @@ const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onR
                     />
                 </div>
                 {restoreMessage && (
-                    <div className={`p-3 rounded-lg text-sm ${restoreMessage.type === 'success' ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+                    <div className={`p-3 rounded-lg text-sm ${
+                        restoreMessage.type === 'success' ? 'bg-green-900/50 text-green-300' : 
+                        restoreMessage.type === 'warning' ? 'bg-yellow-900/50 text-yellow-300' :
+                        'bg-red-900/50 text-red-300'
+                    }`}>
                         {restoreMessage.text}
                     </div>
                 )}

@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import LoginScreen from './components/LoginScreen.tsx';
 import Sidebar from './components/Sidebar.tsx';
@@ -95,8 +95,12 @@ import {
   GeneratedAudioScript,
 } from './types.ts';
 
-const LOCAL_STORAGE_KEY = 'socialMediaMinionData';
-const ADMIN_EMAIL = 'dave@bigagility.com'; 
+// Define the list of Super Users who bypass password checks and have admin access
+const SUPER_USERS = [
+  'dave@bigagility.com',
+  'chris@bigagility.com',
+  'sshp@bigagility.com'
+];
 
 const DEFAULT_USER_ROLE = `I am an executive business , Product & Transformation Coach 
 I use Agile, Lean, Coaching and Product Framework to get stuff done and help others do the same`;
@@ -166,6 +170,7 @@ export function App() {
   const [view, setView] = useState('landing');
   const [showLogin, setShowLogin] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   // Persona State
   const [userRole, setUserRole] = useState(DEFAULT_USER_ROLE);
@@ -314,81 +319,111 @@ export function App() {
     }
   }, []);
 
+  // Load data specific to the logged-in user
   useEffect(() => {
-    const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedData) {
+    if (!userEmail) {
+        setIsDataLoaded(false);
+        return;
+    }
+
+    const key = `socialMediaMinionData_${userEmail.toLowerCase()}`;
+    const savedDataString = localStorage.getItem(key);
+    let parsedData: BackupData | null = null;
+    
+    if (savedDataString) {
       try {
-        const parsedData: BackupData = JSON.parse(savedData);
-        if (parsedData.userEmail) setUserEmail(parsedData.userEmail);
-        if (parsedData.userEmail === ADMIN_EMAIL) setIsAdmin(true);
-
-        setUserRole(parsedData.userRole || DEFAULT_USER_ROLE);
-        setTargetAudience(parsedData.targetAudience || DEFAULT_TARGET_AUDIENCE);
-        setReferenceWorldContent(parsedData.referenceWorldContent || '');
-        setThisIsHowIWriteArticles(parsedData.thisIsHowIWriteArticles || DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
-        setArticleUrl(parsedData.articleUrl || '');
-        setArticleText(parsedData.articleText || '');
-        setPostSourceType(parsedData.postSourceType || 'url');
-        setStandardStarterText(parsedData.standardStarterText || '');
-        setStandardSummaryText(parsedData.standardSummaryText || '');
-        setGenerationScript(parsedData.generationScript || LINKEDIN_GENERATION_EVALUATION_SCRIPT);
-        setSavedTemplates(parsedData.savedTemplates || initialTemplates);
-        setSavedArticleTemplates(parsedData.savedArticleTemplates || initialArticleTemplates);
-        setAyrshareQueue(parsedData.ayrshareQueue || []);
-        setScheduledPosts(parsedData.scheduledPosts || []);
-        setHistoricalPosts(parsedData.historicalPosts || []);
-        setSchedulingInstructions(parsedData.schedulingInstructions || DEFAULT_SCHEDULING_INSTRUCTIONS);
-        setParsedSchedule(parsedData.parsedSchedule || []);
-        setAyrshareLog(parsedData.ayrshareLog || []);
-        if (parsedData.settings) setSettings(parsedData.settings);
-        if (parsedData.adminSettings) setAdminSettings(parsedData.adminSettings);
-        setResearchScript(parsedData.researchScript || LINKEDIN_ANALYSIS_SCRIPT);
-        setResearchedPosts(parsedData.researchedPosts || null);
-        setHeadlineEvalCriteria(parsedData.headlineEvalCriteria || DEFAULT_HEADLINE_EVAL_CRITERIA);
-        setHeadlineGenerationScript(parsedData.headlineGenerationScript || GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT);
-        setGeneratedHeadlines(parsedData.generatedHeadlines || null);
-        setHeadlineSourceType(parsedData.headlineSourceType || 'url');
-        setHeadlineSourceUrl(parsedData.headlineSourceUrl || '');
-        setHeadlineSourceText(parsedData.headlineSourceText || '');
-        setGeneratedArticleIdeas(parsedData.generatedArticleIdeas || null);
-        setGenerateArticleIdeasScript(parsedData.generateArticleIdeasScript || GENERATE_ARTICLE_IDEAS_SCRIPT);
-        setGenerateArticleWordCount(parsedData.generateArticleWordCount || 2000);
-        setGenerateArticleSourceType(parsedData.generateArticleSourceType || 'url');
-        setGenerateArticleSourceUrl(parsedData.generateArticleSourceUrl || '');
-        setGenerateArticleSourceText(parsedData.generateArticleSourceText || '');
-        setGenerateArticleScript(parsedData.generateArticleScript || GENERATE_ARTICLE_SCRIPT);
-        setRecycleArticleText(parsedData.recycleArticleText || '');
-        setRecycleArticleScript(parsedData.recycleArticleScript || RECYCLE_ARTICLE_SCRIPT);
-        setGeneratedArticleHistory(parsedData.generatedArticleHistory || []);
-        setCurrentArticleIterationIndex(parsedData.currentArticleIterationIndex || 0);
-        setGenerateArticleTitle(parsedData.generateArticleTitle || '');
-        setArticleStarterText(parsedData.articleStarterText || '');
-        setEndOfArticleSummary(parsedData.endOfArticleSummary || DEFAULT_END_OF_ARTICLE_SUMMARY);
-        setArticleEvalCriteria(parsedData.articleEvalCriteria || DEFAULT_ARTICLE_EVAL_CRITERIA);
-        setHeadlineEvalCriteriaForArticle(parsedData.headlineEvalCriteriaForArticle || DEFAULT_HEADLINE_EVAL_CRITERIA);
-        setGenerateHeadlinesForArticleScript(parsedData.generateHeadlinesForArticleScript || GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT);
-        setGenerateArticleDestination(parsedData.generateArticleDestination || 'LinkedIn');
-        setPodcastSourceType(parsedData.podcastSourceType || 'url');
-        setPodcastSourceUrl(parsedData.podcastSourceUrl || '');
-        setPodcastSourceText(parsedData.podcastSourceText || '');
-        setGeneratedPodcastIdeas(parsedData.generatedPodcastIdeas || null);
-        setSelectedInitialPodcastIdea(parsedData.selectedInitialPodcastIdea || null);
-        setGeneratedAdjacentPodcastIdeas(parsedData.generatedAdjacentPodcastIdeas || null);
-        setGeneratedPodcastPlan(parsedData.generatedPodcastPlan || null);
-        setPodcastTitleSuggestions(parsedData.podcastTitleSuggestions || null);
-        setFinalPodcastIdeaForPlan(parsedData.finalPodcastIdeaForPlan || null);
-        setAudioScriptSourceText(parsedData.audioScriptSourceText || '');
-        setAudioScriptDuration(parsedData.audioScriptDuration || 7);
-        setGenerateAudioScriptScript(parsedData.generateAudioScriptScript || GENERATE_AUDIO_SCRIPT_SCRIPT);
-        setGeneratedAudioScript(parsedData.generatedAudioScript || null);
-
+        parsedData = JSON.parse(savedDataString);
       } catch (e) {
         console.error("Failed to parse backup data from local storage", e);
       }
     }
-  }, []);
 
+    // Initialize defaults specific to personas if no data exists
+    let initUserRole = DEFAULT_USER_ROLE;
+    let initTargetAudience = DEFAULT_TARGET_AUDIENCE;
+
+    if (!parsedData) {
+        if (userEmail.toLowerCase().includes('dave')) {
+            initUserRole = "Professional Business & Agile Coach";
+            initTargetAudience = "C-level Executives, Business Leaders, and Transformation Agents";
+        } else if (userEmail.toLowerCase().includes('chris')) {
+            initUserRole = "Christian Writer and Podcaster";
+            initTargetAudience = "Christian listeners seeking spiritual growth and modern application of faith";
+        }
+    }
+
+    // Set state from parsed data OR defaults
+    setUserRole(parsedData?.userRole ?? initUserRole);
+    setTargetAudience(parsedData?.targetAudience ?? initTargetAudience);
+    setReferenceWorldContent(parsedData?.referenceWorldContent ?? '');
+    setThisIsHowIWriteArticles(parsedData?.thisIsHowIWriteArticles ?? DEFAULT_THIS_IS_HOW_I_WRITE_ARTICLES);
+    setArticleUrl(parsedData?.articleUrl ?? '');
+    setArticleText(parsedData?.articleText ?? '');
+    setPostSourceType(parsedData?.postSourceType ?? 'url');
+    setStandardStarterText(parsedData?.standardStarterText ?? '');
+    setStandardSummaryText(parsedData?.standardSummaryText ?? '');
+    setGenerationScript(parsedData?.generationScript ?? LINKEDIN_GENERATION_EVALUATION_SCRIPT);
+    setSavedTemplates(parsedData?.savedTemplates ?? initialTemplates);
+    setSavedArticleTemplates(parsedData?.savedArticleTemplates ?? initialArticleTemplates);
+    setAyrshareQueue(parsedData?.ayrshareQueue ?? []);
+    setScheduledPosts(parsedData?.scheduledPosts ?? []);
+    setHistoricalPosts(parsedData?.historicalPosts ?? []);
+    setSchedulingInstructions(parsedData?.schedulingInstructions ?? DEFAULT_SCHEDULING_INSTRUCTIONS);
+    setParsedSchedule(parsedData?.parsedSchedule ?? []);
+    setAyrshareLog(parsedData?.ayrshareLog ?? []);
+    if (parsedData?.settings) setSettings(parsedData.settings);
+    if (parsedData?.adminSettings) setAdminSettings(parsedData.adminSettings);
+    else setAdminSettings({ authorizedEmails: [], secretPassword: 'password123', userActivity: {} });
+    
+    setResearchScript(parsedData?.researchScript ?? LINKEDIN_ANALYSIS_SCRIPT);
+    setResearchedPosts(parsedData?.researchedPosts ?? null);
+    setHeadlineEvalCriteria(parsedData?.headlineEvalCriteria ?? DEFAULT_HEADLINE_EVAL_CRITERIA);
+    setHeadlineGenerationScript(parsedData?.headlineGenerationScript ?? GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT);
+    setGeneratedHeadlines(parsedData?.generatedHeadlines ?? null);
+    setHeadlineSourceType(parsedData?.headlineSourceType ?? 'url');
+    setHeadlineSourceUrl(parsedData?.headlineSourceUrl ?? '');
+    setHeadlineSourceText(parsedData?.headlineSourceText ?? '');
+    setGeneratedArticleIdeas(parsedData?.generatedArticleIdeas ?? null);
+    setGenerateArticleIdeasScript(parsedData?.generateArticleIdeasScript ?? GENERATE_ARTICLE_IDEAS_SCRIPT);
+    setGenerateArticleWordCount(parsedData?.generateArticleWordCount ?? 2000);
+    setGenerateArticleSourceType(parsedData?.generateArticleSourceType ?? 'url');
+    setGenerateArticleSourceUrl(parsedData?.generateArticleSourceUrl ?? '');
+    setGenerateArticleSourceText(parsedData?.generateArticleSourceText ?? '');
+    setGenerateArticleScript(parsedData?.generateArticleScript ?? GENERATE_ARTICLE_SCRIPT);
+    setRecycleArticleText(parsedData?.recycleArticleText ?? '');
+    setRecycleArticleScript(parsedData?.recycleArticleScript ?? RECYCLE_ARTICLE_SCRIPT);
+    setGeneratedArticleHistory(parsedData?.generatedArticleHistory ?? []);
+    setCurrentArticleIterationIndex(parsedData?.currentArticleIterationIndex ?? 0);
+    setGenerateArticleTitle(parsedData?.generateArticleTitle ?? '');
+    setArticleStarterText(parsedData?.articleStarterText ?? '');
+    setEndOfArticleSummary(parsedData?.endOfArticleSummary ?? DEFAULT_END_OF_ARTICLE_SUMMARY);
+    setArticleEvalCriteria(parsedData?.articleEvalCriteria ?? DEFAULT_ARTICLE_EVAL_CRITERIA);
+    setHeadlineEvalCriteriaForArticle(parsedData?.headlineEvalCriteriaForArticle ?? DEFAULT_HEADLINE_EVAL_CRITERIA);
+    setGenerateHeadlinesForArticleScript(parsedData?.generateHeadlinesForArticleScript ?? GENERATE_HEADLINES_FOR_ARTICLE_SCRIPT);
+    setGenerateArticleDestination(parsedData?.generateArticleDestination ?? 'LinkedIn');
+    setPodcastSourceType(parsedData?.podcastSourceType ?? 'url');
+    setPodcastSourceUrl(parsedData?.podcastSourceUrl ?? '');
+    setPodcastSourceText(parsedData?.podcastSourceText ?? '');
+    setGeneratedPodcastIdeas(parsedData?.generatedPodcastIdeas ?? null);
+    setSelectedInitialPodcastIdea(parsedData?.selectedInitialPodcastIdea ?? null);
+    setGeneratedAdjacentPodcastIdeas(parsedData?.generatedAdjacentPodcastIdeas ?? null);
+    setGeneratedPodcastPlan(parsedData?.generatedPodcastPlan ?? null);
+    setPodcastTitleSuggestions(parsedData?.podcastTitleSuggestions ?? null);
+    setFinalPodcastIdeaForPlan(parsedData?.finalPodcastIdeaForPlan ?? null);
+    setAudioScriptSourceText(parsedData?.audioScriptSourceText ?? '');
+    setAudioScriptDuration(parsedData?.audioScriptDuration ?? 7);
+    setGenerateAudioScriptScript(parsedData?.generateAudioScriptScript ?? GENERATE_AUDIO_SCRIPT_SCRIPT);
+    setGeneratedAudioScript(parsedData?.generatedAudioScript ?? null);
+    
+    // Mark data as loaded so we can start saving changes
+    setIsDataLoaded(true);
+
+  }, [userEmail]);
+
+  // Save data when state changes, but only if user is logged in AND data has been initially loaded
   useEffect(() => {
+    if (!userEmail || !isDataLoaded) return;
+
     const dataToSave: BackupData = {
       userEmail,
       userRole,
@@ -451,9 +486,12 @@ export function App() {
       generateAudioScriptScript,
       generatedAudioScript,
     };
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+    
+    const key = `socialMediaMinionData_${userEmail.toLowerCase()}`;
+    localStorage.setItem(key, JSON.stringify(dataToSave));
   }, [
     userEmail,
+    isDataLoaded, // Dependency critical to avoid overwriting data with defaults before load
     userRole,
     targetAudience,
     referenceWorldContent,
@@ -516,7 +554,8 @@ export function App() {
   ]);
 
   const handleSignIn = (email: string, password?: string) => {
-    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    // Check if email is in SUPER_USERS list for instant admin access
+    if (SUPER_USERS.some(u => u.toLowerCase() === email.toLowerCase())) {
         setUserEmail(email);
         setIsAdmin(true);
         setAuthError(null);
@@ -539,6 +578,7 @@ export function App() {
   };
 
   const handleSignOut = () => {
+    setIsDataLoaded(false); // Prevent saving current state to new user key if we switch immediately
     setUserEmail(null);
     setIsAdmin(false);
     setView('landing');
@@ -996,7 +1036,7 @@ export function App() {
           <LoginScreen
             onSignIn={handleSignIn}
             error={authError}
-            adminEmail={ADMIN_EMAIL}
+            superUsers={SUPER_USERS}
             onClose={() => setShowLogin(false)}
           />
         )}

@@ -4,17 +4,19 @@ import React, { useState, useMemo } from 'react';
 interface LoginScreenProps {
   onSignIn: (email: string, password?: string) => void;
   error: React.ReactNode | null;
-  adminEmail: string;
+  superUsers: string[];
   onClose: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onSignIn, error, adminEmail, onClose }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onSignIn, error, superUsers, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const isStandardUser = useMemo(() => {
-    return email.trim() !== '' && email.toLowerCase() !== adminEmail.toLowerCase();
-  }, [email, adminEmail]);
+    if (!email.trim()) return false;
+    // Check if email matches any super user (case-insensitive)
+    return !superUsers.some(admin => admin.toLowerCase() === email.toLowerCase());
+  }, [email, superUsers]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
