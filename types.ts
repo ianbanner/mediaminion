@@ -14,12 +14,16 @@ export interface PodcastIdea {
 }
 
 export interface PodcastPlan {
+  id?: string;
+  dateCreated?: string;
   title: string;
   fullPlan: string;
   outline: string;
 }
 
 export interface GeneratedAudioScript {
+    id?: string;
+    dateCreated?: string;
     title: string;
     scriptContent: string;
     estimatedDuration: string;
@@ -200,12 +204,14 @@ export interface BackupData {
   podcastSourceType?: 'url' | 'text';
   podcastTitleSuggestions?: string[] | null;
   finalPodcastIdeaForPlan?: PodcastIdea | null;
+  archivedPodcastPlans?: PodcastPlan[];
 
   // Audio Script State
   audioScriptSourceText?: string;
   audioScriptDuration?: number;
   generateAudioScriptScript?: string;
   generatedAudioScript?: GeneratedAudioScript | null;
+  archivedAudioScripts?: GeneratedAudioScript[];
 
   // Checklist State
   checklistItems?: ChecklistItem[];

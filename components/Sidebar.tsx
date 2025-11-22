@@ -95,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         setOpenSection('posts');
     } else if (['headline-generator', 'generate-articles', 'refine-article', 'article-templates', 'recycle-article'].includes(view)) {
         setOpenSection('articles');
-    } else if (['audio-script', 'podcast-plan'].includes(view)) {
+    } else if (['audio-script', 'audio-script-archive', 'podcast-plan', 'podcast-plan-archive'].includes(view)) {
         setOpenSection('audio');
     } else if (['posting-guides', 'checklist', 'new-user-guide'].includes(view)) {
         setOpenSection('guides');
@@ -230,16 +230,30 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onToggle={() => toggleSection('audio')}
             >
                 <NavItem 
-                    label="Audio Script" 
+                    label="Audio Script Creation" 
                     active={view === 'audio-script'} 
                     onClick={() => handleNav('audio-script')} 
                     icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>}
                 />
                 <NavItem 
-                    label="Podcast Plan" 
+                    label="Audio Script Archive" 
+                    active={view === 'audio-script-archive'} 
+                    onClick={() => handleNav('audio-script-archive')} 
+                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>}
+                    indent
+                />
+                <NavItem 
+                    label="Podcast Plan Creation" 
                     active={view === 'podcast-plan'} 
                     onClick={() => handleNav('podcast-plan')} 
                     icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>}
+                />
+                <NavItem 
+                    label="Podcast Plan Archive" 
+                    active={view === 'podcast-plan-archive'} 
+                    onClick={() => handleNav('podcast-plan-archive')} 
+                    icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>}
+                    indent
                 />
             </SidebarSection>
 

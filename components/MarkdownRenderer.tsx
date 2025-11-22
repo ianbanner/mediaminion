@@ -1,17 +1,13 @@
+
 import React from 'react';
 
-// This function will handle inline markdown like bold, italic, and links.
 const renderInlineMarkdown = (line: string): string => {
     return line
-        // Bold
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/__(.*?)__/g, '<strong>$1</strong>')
-        // Italic
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/_(.*?)_/g, '<em>$1</em>')
-        // Special Substack underlined links
         .replace(/\[\[([^\]]+)\]\{.underline\}\]\(([^)]+)\)/g, '<a href="$2" style="text-decoration:underline" target="_blank" rel="noopener noreferrer">$1</a>')
-        // Standard links
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 };
 
@@ -21,94 +17,98 @@ const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
 
         const lines = content.split('\n');
         const htmlElements: string[] = [];
-        let inUnorderedList = false;
-        let inOrderedList = false;
+        
+        // Track nesting
+        let currentIndentLevel = 0;
+        const listTypeStack: string[] = []; // 'ul' or 'ol'
 
-        const closeOpenLists = () => {
-            if (inUnorderedList) {
-                htmlElements.push('</ul>');
-                inUnorderedList = false;
-            }
-            if (inOrderedList) {
-                htmlElements.push('</ol>');
-                inOrderedList = false;
+        const closeLists = (toLevel: number) => {
+            while (currentIndentLevel > toLevel) {
+                const closingTag = listTypeStack.pop();
+                if (closingTag) htmlElements.push(`</${closingTag}>`);
+                currentIndentLevel--;
             }
         };
 
         lines.forEach(line => {
-            let currentLine = line.trim();
+            // Normalize tabs to 4 spaces for calculation
+            const expandedLine = line.replace(/\t/g, '    ');
             
-            // Handle horizontal rules, which might be on a line with other content.
-            if (currentLine.startsWith('---') || currentLine.startsWith('***') || currentLine.startsWith('___')) {
-                closeOpenLists();
+            // Ignore purely empty lines to prevent breaking lists unnecessarily
+            if (!expandedLine.trim()) return;
+
+            // Headers
+            if (expandedLine.trim().startsWith('#')) {
+                closeLists(0);
+                const level = expandedLine.trim().match(/^#+/)?.[0].length || 0;
+                const text = expandedLine.trim().replace(/^#+\s*/, '');
+                htmlElements.push(`<h${level}>${renderInlineMarkdown(text)}</h${level}>`);
+                return;
+            }
+
+            // Horizontal Rules
+            if (expandedLine.trim().match(/^(-{3,}|\*{3,}|_{3,})$/)) {
+                closeLists(0);
                 htmlElements.push('<hr />');
-                currentLine = currentLine.replace(/^(-{3,}|\*{3,}|_{3,})\s*/, '').trim();
-                // If there was nothing else on the line, we're done with this line.
-                if (currentLine === '') {
-                    return;
-                }
+                return;
             }
 
-            const isUnordered = currentLine.startsWith('- ') || currentLine.startsWith('* ');
-            const isOrdered = currentLine.match(/^\d+\.\s/);
-            const isImagePlaceholder = currentLine.match(/^\[(Image placement:.*?)\]$/);
+            // Lists
+            // Match indentation, marker (- * or 1.), and text
+            const listMatch = expandedLine.match(/^(\s*)([-*]|\d+\.)\s+(.*)/);
+            
+            if (listMatch) {
+                const [_, spaces, marker, text] = listMatch;
+                const isOrdered = /^\d+\./.test(marker);
+                const listTag = isOrdered ? 'ol' : 'ul';
+                
+                // Calculate depth: 2 spaces per level logic (standard for many AI outputs)
+                // Level 1: 0-1 spaces
+                // Level 2: 2-3 spaces
+                // Level 3: 4-5 spaces
+                const newLevel = Math.floor(spaces.length / 2) + 1;
 
-            // Close lists if the current line is not a list item of the same type.
-            if (inUnorderedList && !isUnordered) {
-                htmlElements.push('</ul>');
-                inUnorderedList = false;
-            }
-            if (inOrderedList && !isOrdered) {
-                htmlElements.push('</ol>');
-                inOrderedList = false;
-            }
+                if (newLevel > currentIndentLevel) {
+                    // Go deeper: Open new lists
+                    while (currentIndentLevel < newLevel) {
+                        htmlElements.push(`<${listTag}>`);
+                        listTypeStack.push(listTag);
+                        currentIndentLevel++;
+                    }
+                } else if (newLevel < currentIndentLevel) {
+                    // Go shallower: Close lists
+                    closeLists(newLevel);
+                } else {
+                    // Same level: Check if type changed (e.g. bullet to number)
+                    const currentType = listTypeStack[listTypeStack.length - 1];
+                    if (currentType !== listTag) {
+                        htmlElements.push(`</${currentType}>`);
+                        listTypeStack.pop();
+                        htmlElements.push(`<${listTag}>`);
+                        listTypeStack.push(listTag);
+                    }
+                }
 
-            // Process the line
-            if (currentLine.startsWith('# ')) {
-                closeOpenLists();
-                htmlElements.push(`<h1>${renderInlineMarkdown(currentLine.substring(2))}</h1>`);
-            } else if (currentLine.startsWith('## ')) {
-                closeOpenLists();
-                htmlElements.push(`<h2>${renderInlineMarkdown(currentLine.substring(3))}</h2>`);
-            } else if (currentLine.startsWith('### ')) {
-                closeOpenLists();
-                htmlElements.push(`<h3>${renderInlineMarkdown(currentLine.substring(4))}</h3>`);
-            } else if (currentLine.startsWith('#### ')) {
-                closeOpenLists();
-                htmlElements.push(`<h4>${renderInlineMarkdown(currentLine.substring(5))}</h4>`);
-            } else if (currentLine.startsWith('##### ')) {
-                closeOpenLists();
-                htmlElements.push(`<h5>${renderInlineMarkdown(currentLine.substring(6))}</h5>`);
-            } else if (currentLine.startsWith('###### ')) {
-                closeOpenLists();
-                htmlElements.push(`<h6>${renderInlineMarkdown(currentLine.substring(7))}</h6>`);
-            } else if (isUnordered) {
-                if (!inUnorderedList) {
-                    htmlElements.push('<ul>');
-                    inUnorderedList = true;
+                htmlElements.push(`<li>${renderInlineMarkdown(text)}</li>`);
+            } else {
+                // Not a list item - reset lists
+                closeLists(0);
+                
+                const currentLine = expandedLine.trim();
+                
+                // Image placeholder check
+                const imageMatch = currentLine.match(/^\[(Image placement:.*?)\]$/);
+                
+                if (imageMatch) {
+                    htmlElements.push(`<div style="padding: 1rem; border: 1px dashed #4A5568; background-color: #2D3748; color: #A0AEC0; font-style: italic; text-align: center; border-radius: 0.5rem; margin: 1rem 0;">${imageMatch[1]}</div>`);
+                } else {
+                    htmlElements.push(`<p>${renderInlineMarkdown(currentLine)}</p>`);
                 }
-                htmlElements.push(`<li>${renderInlineMarkdown(currentLine.substring(2))}</li>`);
-            } else if (isOrdered) {
-                if (!inOrderedList) {
-                    htmlElements.push('<ol>');
-                    inOrderedList = true;
-                }
-                htmlElements.push(`<li>${renderInlineMarkdown(currentLine.replace(/^\d+\.\s/, ''))}</li>`);
-            } else if (isImagePlaceholder) {
-                closeOpenLists();
-                htmlElements.push(`<div style="padding: 1rem; border: 1px dashed #4A5568; background-color: #2D3748; color: #A0AEC0; font-style: italic; text-align: center; border-radius: 0.5rem; margin: 1rem 0;">${isImagePlaceholder[1]}</div>`);
-            } else if (currentLine.trim().match(/^(?:-|\*|_){3,}$/)) {
-                 closeOpenLists();
-                 htmlElements.push('<hr />');
-            } else if (currentLine !== '') {
-                closeOpenLists();
-                htmlElements.push(`<p>${renderInlineMarkdown(currentLine)}</p>`);
             }
-            // empty lines are ignored, which helps create paragraph breaks naturally
         });
 
-        // Close any open lists at the end
-        closeOpenLists();
+        // Close any remaining open lists at end of document
+        closeLists(0);
 
         return { __html: htmlElements.join('') };
     };

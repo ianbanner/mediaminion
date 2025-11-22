@@ -30,6 +30,7 @@ import GeneratePodcastPanel from './components/GeneratePodcastPanel.tsx';
 import PodcastTitleModal from './components/PodcastTitleModal.tsx';
 import AudioScriptGeneratorPanel from './components/AudioScriptGeneratorPanel.tsx';
 import ChecklistGuide from './components/ChecklistGuide.tsx';
+import ArchivePanel from './components/ArchivePanel.tsx';
 
 
 import {
@@ -287,6 +288,7 @@ export function App() {
   const [isGeneratingPodcastTitles, setIsGeneratingPodcastTitles] = useState(false);
   const [showPodcastTitleModal, setShowPodcastTitleModal] = useState(false);
   const [finalPodcastIdeaForPlan, setFinalPodcastIdeaForPlan] = useState<PodcastIdea | null>(null);
+  const [archivedPodcastPlans, setArchivedPodcastPlans] = useState<PodcastPlan[]>([]);
 
   // Audio Script Generation State
   const [audioScriptSourceText, setAudioScriptSourceText] = useState('');
@@ -294,6 +296,7 @@ export function App() {
   const [generateAudioScriptScript, setGenerateAudioScriptScript] = useState(GENERATE_AUDIO_SCRIPT_SCRIPT);
   const [generatedAudioScript, setGeneratedAudioScript] = useState<GeneratedAudioScript | null>(null);
   const [isGeneratingAudioScript, setIsGeneratingAudioScript] = useState(false);
+  const [archivedAudioScripts, setArchivedAudioScripts] = useState<GeneratedAudioScript[]>([]);
 
   // Checklist State
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
@@ -365,12 +368,14 @@ export function App() {
       podcastSourceType,
       podcastTitleSuggestions,
       finalPodcastIdeaForPlan,
+      archivedPodcastPlans,
 
       // Audio Script State
       audioScriptSourceText,
       audioScriptDuration,
       generateAudioScriptScript,
       generatedAudioScript,
+      archivedAudioScripts,
 
       // Checklist State
       checklistItems,
@@ -389,8 +394,8 @@ export function App() {
     articleStarterText, endOfArticleSummary, articleEvalCriteria, headlineEvalCriteriaForArticle,
     generateHeadlinesForArticleScript, generateArticleDestination,
     generatedPodcastIdeas, selectedInitialPodcastIdea, generatedAdjacentPodcastIdeas, generatePodcastIdeasScript,
-    generatedPodcastPlan, podcastSourceUrl, podcastSourceText, podcastSourceType, podcastTitleSuggestions, finalPodcastIdeaForPlan,
-    audioScriptSourceText, audioScriptDuration, generateAudioScriptScript, generatedAudioScript, checklistItems
+    generatedPodcastPlan, podcastSourceUrl, podcastSourceText, podcastSourceType, podcastTitleSuggestions, finalPodcastIdeaForPlan, archivedPodcastPlans,
+    audioScriptSourceText, audioScriptDuration, generateAudioScriptScript, generatedAudioScript, archivedAudioScripts, checklistItems
   ]);
 
   useEffect(() => {
@@ -471,12 +476,14 @@ export function App() {
         setPodcastSourceType(parsedData.podcastSourceType || 'url');
         setPodcastTitleSuggestions(parsedData.podcastTitleSuggestions || null);
         setFinalPodcastIdeaForPlan(parsedData.finalPodcastIdeaForPlan || null);
+        setArchivedPodcastPlans(parsedData.archivedPodcastPlans || []);
 
         // Audio Script Load
         setAudioScriptSourceText(parsedData.audioScriptSourceText || '');
         setAudioScriptDuration(parsedData.audioScriptDuration || 7);
         setGenerateAudioScriptScript(parsedData.generateAudioScriptScript || GENERATE_AUDIO_SCRIPT_SCRIPT);
         setGeneratedAudioScript(parsedData.generatedAudioScript || null);
+        setArchivedAudioScripts(parsedData.archivedAudioScripts || []);
 
         // Checklist Load
         setChecklistItems(parsedData.checklistItems || []);
@@ -552,6 +559,9 @@ export function App() {
 
     if (data.checklistItems) setChecklistItems(data.checklistItems);
     
+    if (data.archivedAudioScripts) setArchivedAudioScripts(data.archivedAudioScripts);
+    if (data.archivedPodcastPlans) setArchivedPodcastPlans(data.archivedPodcastPlans);
+
     alert('Data restored successfully!');
   };
 
@@ -630,7 +640,17 @@ export function App() {
         userRole,
         targetAudience
       });
-      setGeneratedAudioScript(result);
+      
+      // Add metadata for archiving
+      const scriptWithMeta: GeneratedAudioScript = {
+          ...result,
+          id: uuidv4(),
+          dateCreated: new Date().toISOString()
+      };
+
+      setGeneratedAudioScript(scriptWithMeta);
+      setArchivedAudioScripts(prev => [scriptWithMeta, ...prev]);
+
     } catch (e) {
       console.error(e);
       alert("Failed to generate audio script.");
@@ -1097,6 +1117,13 @@ export function App() {
                         result={generatedAudioScript}
                     />
                 )}
+                {view === 'audio-script-archive' && (
+                    <ArchivePanel 
+                        title="Audio Script Archive" 
+                        type="audio" 
+                        items={archivedAudioScripts} 
+                    />
+                )}
 
                 {/* Podcast Views */}
                 {view === 'podcast-plan' && (
@@ -1137,12 +1164,29 @@ export function App() {
                             setIsGeneratingPodcastPlan(true);
                             try {
                                 const plan = await generatePodcastPlan({ idea, userRole, script: generatePodcastPlanScript });
-                                setGeneratedPodcastPlan(plan);
+                                
+                                // Add metadata for archive
+                                const planWithMeta: PodcastPlan = {
+                                    ...plan,
+                                    id: uuidv4(),
+                                    dateCreated: new Date().toISOString()
+                                };
+
+                                setGeneratedPodcastPlan(planWithMeta);
+                                setArchivedPodcastPlans(prev => [planWithMeta, ...prev]);
+
                             } catch (e) { console.error(e); alert("Plan generation failed."); } finally { setIsGeneratingPodcastPlan(false); }
                         }}
                         isGeneratingPlan={isGeneratingPodcastPlan}
                         generatedPlan={generatedPodcastPlan}
                      />
+                )}
+                {view === 'podcast-plan-archive' && (
+                    <ArchivePanel 
+                        title="Podcast Plan Archive" 
+                        type="podcast" 
+                        items={archivedPodcastPlans} 
+                    />
                 )}
 
                 {/* Guides */}
@@ -1188,8 +1232,8 @@ export function App() {
                             currentArticleIterationIndex, generateArticleTitle, articleStarterText, endOfArticleSummary, articleEvalCriteria,
                             headlineEvalCriteriaForArticle, generateHeadlinesForArticleScript, generateArticleDestination,
                             generatedPodcastIdeas, selectedInitialPodcastIdea, generatedAdjacentPodcastIdeas, generatePodcastIdeasScript,
-                            generatedPodcastPlan, podcastSourceUrl, podcastSourceText, podcastSourceType, podcastTitleSuggestions, finalPodcastIdeaForPlan,
-                            audioScriptSourceText, audioScriptDuration, generateAudioScriptScript, generatedAudioScript, checklistItems
+                            generatedPodcastPlan, podcastSourceUrl, podcastSourceText, podcastSourceType, podcastTitleSuggestions, finalPodcastIdeaForPlan, archivedPodcastPlans,
+                            audioScriptSourceText, audioScriptDuration, generateAudioScriptScript, generatedAudioScript, archivedAudioScripts, checklistItems
                         }}
                         onRestore={handleRestoreData}
                         userEmail={userEmail || 'Guest'}

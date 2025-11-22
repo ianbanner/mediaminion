@@ -194,30 +194,18 @@ export async function researchPopularPosts(script: string): Promise<ResearchedPo
       contents: [{ parts: [{ text: prompt }] }],
       config: {
         tools: [{ googleSearch: {} }],
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            topPosts: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  postContent: { type: Type.STRING },
-                  engagementMetrics: { type: Type.STRING },
-                  postUrl: { type: Type.STRING },
-                  analysis: { type: Type.STRING },
-                },
-                required: ['postContent', 'engagementMetrics', 'postUrl', 'analysis'],
-              },
-            },
-          },
-          required: ['topPosts'],
-        },
+        // NOTE: responseMimeType and responseSchema are NOT compatible with tools in the current API version.
+        // We rely on the prompt to enforce JSON output and parse the text manually.
       },
     });
 
-    const { topPosts } = JSON.parse(response.text);
+    let text = response.text;
+    if (!text) throw new Error("No response received from AI.");
+
+    // Clean up potential markdown code blocks if the model includes them
+    text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    const { topPosts } = JSON.parse(text);
     return topPosts;
   } catch (error) {
     console.error("Error researching posts:", error);
