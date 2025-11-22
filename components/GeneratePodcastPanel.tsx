@@ -95,6 +95,7 @@ interface GeneratePodcastPanelProps {
   onGeneratePlan: (idea: PodcastIdea) => Promise<void>; // Promisified
   isGeneratingPlan: boolean;
   generatedPlan: PodcastPlan | null;
+  onClearPlan: () => void;
 }
 
 const GeneratePodcastPanel: React.FC<GeneratePodcastPanelProps> = ({
@@ -102,7 +103,7 @@ const GeneratePodcastPanel: React.FC<GeneratePodcastPanelProps> = ({
   script, onScriptChange, 
   onGenerateIdeas, isGeneratingIdeas, generatedIdeas,
   onGenerateAdjacentIdeas, isGeneratingAdjacentIdeas, selectedInitialIdea, generatedAdjacentIdeas,
-  onGeneratePlan, isGeneratingPlan, generatedPlan,
+  onGeneratePlan, isGeneratingPlan, generatedPlan, onClearPlan,
 }) => {
     const isSourceProvided = sourceType === 'url' ? sourceUrl.trim() !== '' : sourceText.trim() !== '';
     
@@ -149,26 +150,22 @@ const GeneratePodcastPanel: React.FC<GeneratePodcastPanelProps> = ({
     // --- Handlers with State Reset Logic ---
 
     const handleStep1Generate = async () => {
-        // Reset downstream steps
-        // Note: The parent component holds the data state, but these calls trigger updates
-        // We need to ensure we don't show old data while generating new
+        // Reset downstream steps handled by parent, but we ensure we trigger the prop
         await onGenerateIdeas();
-        // Implicitly, the parent should handle clearing downstream data if we re-run step 1, 
-        // but since state is lifted, we rely on the props updating.
     };
 
     const handleStep2Select = async (idea: PodcastIdea) => {
         setSelectedFinalIdea(null); // Clear step 3 selection
         setFinalTitle(''); 
-        // Step 4 plan is cleared via parent logic usually, or we just won't show it because `generatedPlan` will be replaced
+        onClearPlan(); // Clear Step 4 result immediately
         await onGenerateAdjacentIdeas(idea);
     };
 
     const handleStep3Select = (idea: PodcastIdea) => {
+        onClearPlan(); // Clear any existing plan from a previous selection
         setSelectedFinalIdea(idea);
         setFinalTitle(idea.title);
         setTitleError(null);
-        // We don't auto-generate plan here, we wait for user confirmation in Step 4
     };
 
     const handleStep4Generate = async () => {
