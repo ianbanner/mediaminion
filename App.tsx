@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import Sidebar from './components/Sidebar.tsx';
 import LoginScreen from './components/LoginScreen.tsx';
@@ -201,77 +201,121 @@ export const App: React.FC = () => {
   // Checklist
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
 
-  useEffect(() => {
-    const savedData = localStorage.getItem('minionData');
-    if (savedData) {
-        try {
-            const parsed: BackupData = JSON.parse(savedData);
-            if (parsed.userEmail) setUserEmail(parsed.userEmail);
-            if (parsed.userRole) setUserRole(parsed.userRole);
-            if (parsed.targetAudience) setTargetAudience(parsed.targetAudience);
-            if (parsed.referenceWorldContent) setReferenceWorldContent(parsed.referenceWorldContent);
-            if (parsed.thisIsHowIWriteArticles) setThisIsHowIWriteArticles(parsed.thisIsHowIWriteArticles);
-            if (parsed.articleUrl) setArticleUrl(parsed.articleUrl);
-            if (parsed.articleText) setArticleText(parsed.articleText);
-            if (parsed.postSourceType) setPostSourceType(parsed.postSourceType);
-            if (parsed.standardStarterText) setStandardStarterText(parsed.standardStarterText);
-            if (parsed.standardSummaryText) setStandardSummaryText(parsed.standardSummaryText);
-            if (parsed.generationScript) setGenerationScript(parsed.generationScript);
-            if (parsed.savedTemplates) setPostsTemplates(parsed.savedTemplates);
-            if (parsed.savedArticleTemplates) setArticleTemplates(parsed.savedArticleTemplates);
-            if (parsed.ayrshareQueue) setAyrshareQueue(parsed.ayrshareQueue);
-            if (parsed.scheduledPosts) setScheduledPosts(parsed.scheduledPosts);
-            if (parsed.historicalPosts) setHistoricalPosts(parsed.historicalPosts);
-            if (parsed.schedulingInstructions) setSchedulingInstructions(parsed.schedulingInstructions);
-            if (parsed.parsedSchedule) setParsedSchedule(parsed.parsedSchedule);
-            if (parsed.settings) setSettings(parsed.settings);
-            if (parsed.adminSettings) setAdminSettings(parsed.adminSettings);
-            if (parsed.researchScript) setResearchScript(parsed.researchScript);
-            if (parsed.researchedPosts) setResearchedPosts(parsed.researchedPosts);
-            if (parsed.generatedArticleIdeas) setGeneratedArticleIdeas(parsed.generatedArticleIdeas);
-            if (parsed.generateArticleIdeasScript) setGenerateArticleIdeasScript(parsed.generateArticleIdeasScript);
-            if (parsed.generateArticleWordCount) setGenerateArticleWordCount(parsed.generateArticleWordCount);
-            if (parsed.generateArticleSourceType) setGenerateArticleSourceType(parsed.generateArticleSourceType);
-            if (parsed.generateArticleSourceUrl) setGenerateArticleSourceUrl(parsed.generateArticleSourceUrl);
-            if (parsed.generateArticleSourceText) setGenerateArticleSourceText(parsed.generateArticleSourceText);
-            if (parsed.generateArticleScript) setGenerateArticleScript(parsed.generateArticleScript);
-            if (parsed.recycleArticleText) setRecycleArticleText(parsed.recycleArticleText);
-            if (parsed.recycleArticleScript) setRecycleArticleScript(parsed.recycleArticleScript);
-            if (parsed.generatedArticleHistory) setGeneratedArticleHistory(parsed.generatedArticleHistory);
-            if (parsed.currentArticleIterationIndex !== undefined) setCurrentArticleIterationIndex(parsed.currentArticleIterationIndex);
-            if (parsed.generateArticleTitle) setGenerateArticleTitle(parsed.generateArticleTitle);
-            if (parsed.articleStarterText) setArticleStarterText(parsed.articleStarterText);
-            if (parsed.endOfArticleSummary) setEndOfArticleSummary(parsed.endOfArticleSummary);
-            if (parsed.generateHeadlinesForArticleScript) setGenerateHeadlinesForArticleScript(parsed.generateHeadlinesForArticleScript);
-            if (parsed.generateArticleDestination) setGenerateArticleDestination(parsed.generateArticleDestination);
-            
-            // Podcast
-            if (parsed.generatedPodcastIdeas) setGeneratedPodcastIdeas(parsed.generatedPodcastIdeas);
-            if (parsed.selectedInitialPodcastIdea) setSelectedInitialPodcastIdea(parsed.selectedInitialPodcastIdea);
-            if (parsed.generatedAdjacentPodcastIdeas) setGeneratedAdjacentPodcastIdeas(parsed.generatedAdjacentPodcastIdeas);
-            if (parsed.generatePodcastIdeasScript) setGeneratePodcastIdeasScript(parsed.generatePodcastIdeasScript);
-            if (parsed.generatedPodcastPlan) setGeneratedPodcastPlan(parsed.generatedPodcastPlan);
-            if (parsed.podcastSourceUrl) setPodcastSourceUrl(parsed.podcastSourceUrl);
-            if (parsed.podcastSourceText) setPodcastSourceText(parsed.podcastSourceText);
-            if (parsed.podcastSourceType) setPodcastSourceType(parsed.podcastSourceType);
-            if (parsed.archivedPodcastPlans) setArchivedPodcastPlans(parsed.archivedPodcastPlans);
+  // Helper to get storage key
+  const getStorageKey = (email: string) => `minionData_${email.toLowerCase().trim()}`;
 
-            // Audio Script
-            if (parsed.audioScriptSourceText) setAudioScriptSourceText(parsed.audioScriptSourceText);
-            if (parsed.audioScriptDuration) setAudioScriptDuration(parsed.audioScriptDuration);
-            if (parsed.generateAudioScriptScript) setGenerateAudioScriptScript(parsed.generateAudioScriptScript);
-            if (parsed.generatedAudioScript) setGeneratedAudioScript(parsed.generatedAudioScript);
-            if (parsed.archivedAudioScripts) setArchivedAudioScripts(parsed.archivedAudioScripts);
+  // Function to apply backup data to state (used by load and restore)
+  const applyBackupData = useCallback((data: BackupData) => {
+      if (data.userRole) setUserRole(data.userRole);
+      if (data.targetAudience) setTargetAudience(data.targetAudience);
+      if (data.referenceWorldContent) setReferenceWorldContent(data.referenceWorldContent);
+      if (data.thisIsHowIWriteArticles) setThisIsHowIWriteArticles(data.thisIsHowIWriteArticles);
+      if (data.articleUrl) setArticleUrl(data.articleUrl);
+      if (data.articleText) setArticleText(data.articleText);
+      if (data.postSourceType) setPostSourceType(data.postSourceType);
+      if (data.standardStarterText) setStandardStarterText(data.standardStarterText);
+      if (data.standardSummaryText) setStandardSummaryText(data.standardSummaryText);
+      if (data.generationScript) setGenerationScript(data.generationScript);
+      if (data.savedTemplates) setPostsTemplates(data.savedTemplates);
+      if (data.savedArticleTemplates) setArticleTemplates(data.savedArticleTemplates);
+      if (data.ayrshareQueue) setAyrshareQueue(data.ayrshareQueue);
+      if (data.scheduledPosts) setScheduledPosts(data.scheduledPosts);
+      if (data.historicalPosts) setHistoricalPosts(data.historicalPosts);
+      if (data.schedulingInstructions) setSchedulingInstructions(data.schedulingInstructions);
+      if (data.parsedSchedule) setParsedSchedule(data.parsedSchedule);
+      if (data.settings) setSettings(data.settings);
+      if (data.adminSettings) setAdminSettings(data.adminSettings);
+      if (data.researchScript) setResearchScript(data.researchScript);
+      if (data.researchedPosts) setResearchedPosts(data.researchedPosts);
+      
+      if (data.generatedArticleIdeas) setGeneratedArticleIdeas(data.generatedArticleIdeas);
+      if (data.generateArticleIdeasScript) setGenerateArticleIdeasScript(data.generateArticleIdeasScript);
+      if (data.generateArticleWordCount) setGenerateArticleWordCount(data.generateArticleWordCount);
+      if (data.generateArticleSourceType) setGenerateArticleSourceType(data.generateArticleSourceType);
+      if (data.generateArticleSourceUrl) setGenerateArticleSourceUrl(data.generateArticleSourceUrl);
+      if (data.generateArticleSourceText) setGenerateArticleSourceText(data.generateArticleSourceText);
+      if (data.generateArticleScript) setGenerateArticleScript(data.generateArticleScript);
+      if (data.recycleArticleText) setRecycleArticleText(data.recycleArticleText);
+      if (data.recycleArticleScript) setRecycleArticleScript(data.recycleArticleScript);
+      if (data.generatedArticleHistory) setGeneratedArticleHistory(data.generatedArticleHistory);
+      if (data.currentArticleIterationIndex !== undefined) setCurrentArticleIterationIndex(data.currentArticleIterationIndex);
+      if (data.generateArticleTitle) setGenerateArticleTitle(data.generateArticleTitle);
+      if (data.articleStarterText) setArticleStarterText(data.articleStarterText);
+      if (data.endOfArticleSummary) setEndOfArticleSummary(data.endOfArticleSummary);
+      if (data.generateHeadlinesForArticleScript) setGenerateHeadlinesForArticleScript(data.generateHeadlinesForArticleScript);
+      if (data.generateArticleDestination) setGenerateArticleDestination(data.generateArticleDestination);
+      
+      // Podcast
+      if (data.generatedPodcastIdeas) setGeneratedPodcastIdeas(data.generatedPodcastIdeas);
+      if (data.selectedInitialPodcastIdea) setSelectedInitialPodcastIdea(data.selectedInitialPodcastIdea);
+      if (data.generatedAdjacentPodcastIdeas) setGeneratedAdjacentPodcastIdeas(data.generatedAdjacentPodcastIdeas);
+      if (data.generatePodcastIdeasScript) setGeneratePodcastIdeasScript(data.generatePodcastIdeasScript);
+      if (data.generatedPodcastPlan) setGeneratedPodcastPlan(data.generatedPodcastPlan);
+      if (data.podcastSourceUrl) setPodcastSourceUrl(data.podcastSourceUrl);
+      if (data.podcastSourceText) setPodcastSourceText(data.podcastSourceText);
+      if (data.podcastSourceType) setPodcastSourceType(data.podcastSourceType);
+      if (data.archivedPodcastPlans) setArchivedPodcastPlans(data.archivedPodcastPlans);
 
-            // Checklist
-            if (parsed.checklistItems) setChecklistItems(parsed.checklistItems);
+      // Audio Script
+      if (data.audioScriptSourceText) setAudioScriptSourceText(data.audioScriptSourceText);
+      if (data.audioScriptDuration) setAudioScriptDuration(data.audioScriptDuration);
+      if (data.generateAudioScriptScript) setGenerateAudioScriptScript(data.generateAudioScriptScript);
+      if (data.generatedAudioScript) setGeneratedAudioScript(data.generatedAudioScript);
+      if (data.archivedAudioScripts) setArchivedAudioScripts(data.archivedAudioScripts);
 
-        } catch (e) {
-            console.error("Failed to parse saved data", e);
-        }
-    }
+      // Checklist
+      if (data.checklistItems) setChecklistItems(data.checklistItems);
   }, []);
 
+  // Reset state to defaults
+  const resetStateToDefaults = useCallback(() => {
+      setUserRole('');
+      setTargetAudience('');
+      setReferenceWorldContent('');
+      setThisIsHowIWriteArticles('');
+      setPostsTemplates(initialTemplates);
+      setArticleTemplates(initialArticleTemplates);
+      setAyrshareQueue([]);
+      setScheduledPosts([]);
+      setHistoricalPosts([]);
+      setGeneratedArticleHistory([]);
+      setArchivedAudioScripts([]);
+      setArchivedPodcastPlans([]);
+      setChecklistItems([]);
+      // Reset other generation states
+      setGeneratedPostsResults(null);
+      setGeneratedArticleIdeas(null);
+      setGeneratedPodcastIdeas(null);
+      setGeneratedAdjacentPodcastIdeas(null);
+      setGeneratedPodcastPlan(null);
+      setGeneratedAudioScript(null);
+  }, []);
+
+  // Load Data on Login
+  const loadUserData = useCallback((email: string) => {
+      const key = getStorageKey(email);
+      const savedData = localStorage.getItem(key);
+      if (savedData) {
+          try {
+              const parsed: BackupData = JSON.parse(savedData);
+              applyBackupData(parsed);
+          } catch (e) {
+              console.error("Failed to parse saved data for user", e);
+          }
+      } else {
+          // Initialize defaults for new user/fresh session
+          resetStateToDefaults();
+          
+          // Optional: Specific seeds for known personas (as per previous request)
+          if (email.includes('dave')) {
+              setUserRole("Executive Leadership Coach");
+          } else if (email.includes('chris')) {
+              setUserRole("Christian Writer & Podcaster");
+          }
+      }
+  }, [applyBackupData, resetStateToDefaults]);
+
+  // Auto-Save Effect
   useEffect(() => {
     if (userEmail) {
         const backupData: BackupData = {
@@ -330,7 +374,12 @@ export const App: React.FC = () => {
             archivedAudioScripts,
             checklistItems
         };
-        localStorage.setItem('minionData', JSON.stringify(backupData));
+        
+        try {
+            localStorage.setItem(getStorageKey(userEmail), JSON.stringify(backupData));
+        } catch (e) {
+            console.error("Failed to save to localStorage (quota likely exceeded)", e);
+        }
     }
   }, [
       userEmail, userRole, targetAudience, referenceWorldContent, thisIsHowIWriteArticles,
@@ -349,16 +398,35 @@ export const App: React.FC = () => {
 
   const handleSignIn = (email: string, password?: string) => {
     setUserEmail(email);
+    loadUserData(email);
     setShowLoginModal(false);
     setView('checklist');
   };
 
   const handleSignOut = () => {
       setUserEmail(null);
+      resetStateToDefaults();
       setView('home');
-      setGeneratedPostsResults(null);
   };
 
+  const handleRestoreState = (data: BackupData) => {
+      // 1. Apply state immediately (Crash-free restore)
+      applyBackupData(data);
+      
+      // 2. Persist to storage
+      if (userEmail) {
+          try {
+              localStorage.setItem(getStorageKey(userEmail), JSON.stringify(data));
+              alert("Restored successfully!");
+          } catch (e) {
+              alert("Restored to current session, but failed to save to storage (quota exceeded). Try clearing some history.");
+          }
+      } else {
+          alert("Restored to current session (not signed in).");
+      }
+  };
+
+  // Render Logic for Unauthenticated Views (To ensure LoginScreen is reachable)
   if (!userEmail) {
       let CurrentPage;
       switch (view) {
@@ -929,12 +997,7 @@ export const App: React.FC = () => {
                             checklistItems
                         }}
                         userEmail={userEmail}
-                        onRestore={(data) => {
-                            // Explicitly save to localStorage to ensure persistence before reload
-                            localStorage.setItem('minionData', JSON.stringify(data));
-                            alert("Restore complete! The application will now reload to reflect your changes.");
-                            window.location.reload();
-                        }}
+                        onRestore={handleRestoreState}
                     />
                 )}
                 {view === 'admin' && (
