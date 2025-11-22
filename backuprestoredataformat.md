@@ -12,6 +12,7 @@ The entire backup is a single JSON object. The keys at the root level correspond
 
 | Key                             | Type          | Description                                                                                             |
 | ------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| `userEmail`                     | `string`      | The email of the user who owns this data. Used for persona validation during restore.                   |
 | `userRole`                      | `string`      | The professional role defined in the Persona settings.                                                  |
 | `targetAudience`                | `string`      | The target audience defined in the Persona settings.                                                    |
 | `referenceWorldContent`         | `string`      | The core knowledge base from the Persona settings.                                                      |
@@ -29,30 +30,13 @@ The entire backup is a single JSON object. The keys at the root level correspond
 | `historicalPosts`               | `array`       | An array of posts that have already been published via the scheduler. See `QueuedPost` structure below. |
 | `schedulingInstructions`        | `string`      | The natural language instructions for the post scheduler.                                               |
 | `parsedSchedule`                | `array`       | An array of strings representing the parsed schedule times (e.g., `["08:00", "13:30"]`).              |
-| `ayrshareLog`                   | `array`       | A log of posts that have been successfully published. See `SentPost` structure below.                 |
 | `settings`                      | `object`      | Application settings, like API keys. See `AppSettings` structure below.                               |
 | `adminSettings`                 | `object`      | Admin-specific settings. See `AdminSettings` structure below.                                         |
 | `researchScript`                | `string`      | The master AI prompt for the Post Researcher feature.                                                   |
 | `researchedPosts`               | `array`\|`null` | The results from the last Post Researcher query.                                                        |
-| `headlineEvalCriteria`          | `string`      | The master AI prompt for evaluating generated headlines.                                                |
-| `headlineGenerationScript`      | `string`      | The master AI prompt for generating headlines.                                                          |
-| `generatedHeadlines`            | `array`\|`null` | The results from the last headline generation. See `GeneratedHeadline` structure below.                 |
-| `headlineSourceType`            | `string`      | The source type for headline generation (`'url'` or `'text'`).                                           |
-| `headlineSourceUrl`             | `string`      | The last used source URL for headline generation.                                                       |
-| `headlineSourceText`            | `string`      | The last used source text for headline generation.                                                      |
-| `generatedArticleIdeas`         | `array`\|`null` | The list of article ideas from the idea generator. See `ArticleIdea` structure below.                 |
-| `generateArticleWordCount`      | `number`      | The target word count for article generation (e.g., `1000`).                                            |
-| `generateArticleSourceType`     | `string`      | The source type for article generation (`'url'` or `'text'`).                                            |
-| `generateArticleSourceUrl`      | `string`      | The last used source URL for article generation.                                                        |
-| `generateArticleSourceText`     | `string`      | The last used source text for article generation.                                                       |
-| `generateArticleScript`         | `string`      | The master AI prompt for generating long-form articles.                                                 |
-| `recycleArticleText`            | `string`      | The last used article text for the Recycle Article feature.                                             |
-| `recycleArticleScript`          | `string`      | The AI prompt for the Recycle Article feature.                                                          |
-| `generatedArticleHistory`       | `array`       | An array of article versions from the iterative generation process. See `GeneratedArticle` below.     |
-| `currentArticleIterationIndex`  | `number`      | The index of the currently viewed article in `generatedArticleHistory`.                                 |
-| `generateArticleTitle`          | `string`      | The working title for the article generation.                                                           |
-| `endOfArticleSummary`           | `string`      | The standard summary/CTA appended to generated articles.                                                |
-| `articleEvalCriteria`           | `string`      | The master AI prompt for evaluating generated articles.                                                 |
+| `checklistItems`                | `array`       | List of user onboarding/setup tasks. See `ChecklistItem` structure below.                               |
+| `archivedAudioScripts`          | `array`       | Archive of generated audio scripts. See `GeneratedAudioScript` structure below.                         |
+| `archivedPodcastPlans`          | `array`       | Archive of generated podcast plans. See `PodcastPlan` structure below.                                  |
 
 ---
 
@@ -96,21 +80,8 @@ Each object in the `ayrshareQueue`, `scheduledPosts`, and `historicalPosts` arra
   "id": "uuid-string-here",
   "platforms": ["linkedin", "twitter"],
   "scheduledTime": "2024-08-15T08:00:00.000Z",
-  "status": "scheduled"
-}
-```
-
-### `SentPost`
-Each object in the `ayrshareLog` array.
-```json
-{
-  "title": "The Contrarian Take",
-  "content": "Another generated post...",
-  "assessment": "This post has a strong hook...",
-  "score": 92,
-  "id": "ayrshare-post-id-string",
-  "sentAt": "2024-07-22T10:30:00.000Z",
-  "platforms": ["linkedin"]
+  "status": "scheduled",
+  "sentAt": "2024-08-15T08:05:00.000Z" // Optional, for historical posts
 }
 ```
 
@@ -122,55 +93,38 @@ The `settings` object.
 }
 ```
 
-### `AdminSettings`
-The `adminSettings` object.
+### `ChecklistItem`
+Each object in the `checklistItems` array.
 ```json
 {
-  "authorizedEmails": ["user@example.com"],
-  "secretPassword": "a-secret-password"
+  "id": "uuid",
+  "text": "Define your target audience",
+  "url": "https://example.com/training",
+  "isCompleted": false
 }
 ```
 
-### `ArticleIdea`
-Each object in the `generatedArticleIdeas` array.
+### `GeneratedAudioScript`
+Each object in the `archivedAudioScripts` array.
 ```json
 {
-  "title": "The One Mistake That's Killing Your Team's Productivity",
-  "summary": "A deep dive into why asynchronous communication is often misunderstood and misapplied, leading to burnout.",
-  "keyPoints": [
-    "The difference between async-first and async-only cultures.",
-    "How to set clear expectations for response times.",
-    "Tools that actually improve async work (and which to avoid).",
-    "Why 'meeting-free Fridays' fail without systemic change.",
-    "A 3-step framework for auditing your team's communication stack."
-  ]
+  "id": "uuid",
+  "dateCreated": "2024-05-20T10:00:00Z",
+  "title": "The Future of AI",
+  "scriptContent": "Narrator: Welcome to the future...",
+  "estimatedDuration": "7 minutes",
+  "wordCount": 1050
 }
 ```
 
-### `GeneratedHeadline`
-Each object in the `generatedHeadlines` array.
+### `PodcastPlan`
+Each object in the `archivedPodcastPlans` array.
 ```json
 {
-  "id": "headline-12345",
-  "headline": "The One Mistake That's Killing Your Team's Productivity",
-  "score": 95,
-  "reasoning": "This headline uses strong trigger words..."
-}
-```
-
-### `GeneratedArticle`
-Each object in the `generatedArticleHistory` array.
-```json
-{
-  "title": "Why Most Digital Transformations Fail",
-  "content": "# Why Most Digital Transformations Fail\\n\\nIt's a common story...",
-  "evaluation": "The article effectively addresses the target audience...",
-  "score": 88,
-  "suggestions": [
-    {
-      "text": "Consider adding a personal anecdote to the introduction.",
-      "area": "Style"
-    }
-  ]
+  "id": "uuid",
+  "dateCreated": "2024-05-20T10:00:00Z",
+  "title": "Episode 1: The Beginning",
+  "fullPlan": "# Detailed Script...",
+  "outline": "- Intro\n- Main Point\n- Conclusion"
 }
 ```

@@ -10,104 +10,94 @@ interface PodcastPlanDisplayProps {
 
 const PodcastPlanDisplay: React.FC<PodcastPlanDisplayProps> = ({ plan }) => {
     const [copiedStates, setCopiedStates] = useState({
-        planMd: false,
-        planHtml: false,
-        outlineMd: false,
-        outlineHtml: false
+        md: false,
+        html: false
     });
 
-    const fullPlanRef = useRef<HTMLDivElement>(null);
-    const outlineRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
-    const handleCopy = (type: 'plan' | 'outline', format: 'md' | 'html') => {
-        const markdownContent = type === 'plan' ? plan.fullPlan : plan.outline;
-        const key = `${type}${format.charAt(0).toUpperCase() + format.slice(1)}` as keyof typeof copiedStates;
-
+    const handleCopy = (format: 'md' | 'html') => {
         if (format === 'md') {
-            navigator.clipboard.writeText(markdownContent).then(() => {
-                setCopiedStates(prev => ({ ...prev, [key]: true }));
-                setTimeout(() => setCopiedStates(prev => ({ ...prev, [key]: false })), 2000);
+            const combinedMarkdown = `# Podcast Outline\n\n${plan.outline}\n\n---\n\n# Full Episode Script\n\n${plan.fullPlan}`;
+            navigator.clipboard.writeText(combinedMarkdown).then(() => {
+                setCopiedStates(prev => ({ ...prev, md: true }));
+                setTimeout(() => setCopiedStates(prev => ({ ...prev, md: false })), 2000);
             });
         } else {
             // HTML Copy
-            const ref = type === 'plan' ? fullPlanRef : outlineRef;
-            if (ref.current) {
-                const htmlContent = ref.current.innerHTML;
+            if (contentRef.current) {
+                const htmlContent = contentRef.current.innerHTML;
                 
                 const listener = (e: ClipboardEvent) => {
                     e.preventDefault();
                     if (e.clipboardData) {
                         e.clipboardData.setData('text/html', htmlContent);
                         // Fallback to markdown for plain text paste
-                        e.clipboardData.setData('text/plain', markdownContent);
+                        const combinedMarkdown = `# Podcast Outline\n\n${plan.outline}\n\n---\n\n# Full Episode Script\n\n${plan.fullPlan}`;
+                        e.clipboardData.setData('text/plain', combinedMarkdown);
                     }
                 };
                 document.addEventListener('copy', listener);
                 document.execCommand('copy');
                 document.removeEventListener('copy', listener);
 
-                setCopiedStates(prev => ({ ...prev, [key]: true }));
-                setTimeout(() => setCopiedStates(prev => ({ ...prev, [key]: false })), 2000);
+                setCopiedStates(prev => ({ ...prev, html: true }));
+                setTimeout(() => setCopiedStates(prev => ({ ...prev, html: false })), 2000);
             }
         }
     };
 
     return (
-        <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-4 animate-fade-in">
-            <h2 className="text-2xl font-bold text-gray-200">Podcast Plan: {plan.title}</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Full Plan Box */}
-                <div className="space-y-3 flex flex-col h-full">
-                    <div className="flex justify-between items-center flex-wrap gap-2">
-                        <h3 className="text-lg font-semibold text-teal-300">Full Plan</h3>
-                        <div className="flex gap-2">
-                             <Button 
-                                onClick={() => handleCopy('plan', 'md')}
-                                className="bg-gray-700 hover:bg-gray-600 px-3 py-1 text-xs"
-                             >
-                                {copiedStates.planMd ? 'Copied MD!' : 'Copy MD'}
-                             </Button>
-                             <Button 
-                                onClick={() => handleCopy('plan', 'html')}
-                                className="bg-gray-700 hover:bg-gray-600 px-3 py-1 text-xs"
-                             >
-                                {copiedStates.planHtml ? 'Copied HTML!' : 'Copy HTML'}
-                             </Button>
-                        </div>
-                    </div>
-                    <div 
-                        className="prose prose-invert max-w-none bg-gray-900 p-4 rounded-lg border border-slate-700 h-96 overflow-y-auto"
-                        ref={fullPlanRef}
+        <div className="space-y-4 animate-fade-in">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h2 className="text-2xl font-bold text-gray-200">Podcast Plan: {plan.title}</h2>
+            </div>
+
+            {/* Unified Toolbar */}
+            <div className="bg-slate-800/80 border border-slate-700 rounded-t-xl p-4 flex items-center justify-end gap-4">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-2">Export Full Plan:</span>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        onClick={() => handleCopy('md')}
+                        className="bg-slate-700 hover:bg-slate-600 px-4 py-2 text-xs h-9 min-w-[100px]"
                     >
-                        <MarkdownRenderer content={plan.fullPlan} />
-                    </div>
+                        {copiedStates.md ? 'Copied All!' : 'Copy All (MD)'}
+                    </Button>
+                    <Button 
+                        onClick={() => handleCopy('html')}
+                        className="bg-slate-700 hover:bg-slate-600 px-4 py-2 text-xs h-9 min-w-[100px]"
+                    >
+                        {copiedStates.html ? 'Copied All!' : 'Copy All (HTML)'}
+                    </Button>
                 </div>
-                {/* Outline Box */}
-                <div className="space-y-3 flex flex-col h-full">
-                    <div className="flex justify-between items-center flex-wrap gap-2">
-                        <h3 className="text-lg font-semibold text-teal-300">Outline</h3>
-                        <div className="flex gap-2">
-                             <Button 
-                                onClick={() => handleCopy('outline', 'md')}
-                                className="bg-gray-700 hover:bg-gray-600 px-3 py-1 text-xs"
-                             >
-                                {copiedStates.outlineMd ? 'Copied MD!' : 'Copy MD'}
-                             </Button>
-                             <Button 
-                                onClick={() => handleCopy('outline', 'html')}
-                                className="bg-gray-700 hover:bg-gray-600 px-3 py-1 text-xs"
-                             >
-                                {copiedStates.outlineHtml ? 'Copied HTML!' : 'Copy HTML'}
-                             </Button>
-                        </div>
-                    </div>
-                     <div 
-                        className="prose prose-invert max-w-none bg-gray-900 p-4 rounded-lg border border-slate-700 h-96 overflow-y-auto"
-                        ref={outlineRef}
-                    >
+            </div>
+
+            {/* Single Text Box Content */}
+            <div ref={contentRef} className="bg-slate-900/80 border border-slate-700 border-t-0 rounded-b-xl p-8 h-[700px] overflow-y-auto custom-scrollbar shadow-inner">
+                
+                {/* Outline Section */}
+                <div className="mb-12">
+                    <h3 className="text-xl font-bold text-teal-300 mb-6 border-b border-teal-900/50 pb-2">Podcast Outline</h3>
+                    <div className="prose prose-invert max-w-none">
                         <MarkdownRenderer content={plan.outline} />
                     </div>
                 </div>
+
+                {/* Divider */}
+                <div className="flex items-center gap-4 my-12 opacity-50">
+                    <div className="h-px bg-slate-600 flex-grow"></div>
+                    <span className="text-slate-500 text-sm uppercase font-semibold tracking-widest">Full Script Below</span>
+                    <div className="h-px bg-slate-600 flex-grow"></div>
+                </div>
+
+                {/* Full Plan Section */}
+                <div>
+                    <h3 className="text-xl font-bold text-teal-300 mb-6 border-b border-teal-900/50 pb-2">Full Episode Script</h3>
+                    <div className="prose prose-invert max-w-none">
+                        <MarkdownRenderer content={plan.fullPlan} />
+                    </div>
+                </div>
+
             </div>
         </div>
     );

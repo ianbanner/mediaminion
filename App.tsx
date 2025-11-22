@@ -930,8 +930,9 @@ export const App: React.FC = () => {
                         }}
                         userEmail={userEmail}
                         onRestore={(data) => {
-                            if (data.userRole) setUserRole(data.userRole);
-                            alert("Restore complete! (Reload might be required for all changes to reflect)");
+                            // Explicitly save to localStorage to ensure persistence before reload
+                            localStorage.setItem('minionData', JSON.stringify(data));
+                            alert("Restore complete! The application will now reload to reflect your changes.");
                             window.location.reload();
                         }}
                     />
