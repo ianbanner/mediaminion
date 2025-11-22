@@ -37,8 +37,9 @@ const BackupRestorePanel: React.FC<BackupRestorePanelProps> = ({ backupData, onR
                 const data = JSON.parse(text);
                 
                 // VALIDATION 1: Check basic structure
-                if (!data.savedTemplates || !data.userRole) {
-                    throw new Error("This does not appear to be a valid backup file.");
+                // We check for undefined specifically for userRole because it might be an empty string for new users, which is falsy in JS.
+                if (!data.savedTemplates || typeof data.userRole !== 'string') {
+                    throw new Error("This does not appear to be a valid backup file. Missing templates or user role.");
                 }
 
                 // VALIDATION 2: Persona Safety Check
