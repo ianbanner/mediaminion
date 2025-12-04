@@ -138,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </svg>
                     <div className="flex flex-col">
                         <span>Social Media Minion</span>
-                        <span className="text-[10px] text-gray-500 font-mono font-normal mt-0.5">imagination 04.11.1963</span>
+                        <span className="text-[10px] text-gray-500 font-mono font-normal mt-0.5">vImagine 04.11</span>
                     </div>
                 </div>
                 <button onClick={() => setShowMobileMenu(false)} className="md:hidden text-gray-400 hover:text-white mt-1">
