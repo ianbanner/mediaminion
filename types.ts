@@ -64,7 +64,6 @@ export interface QueuedPost extends TopPostAssessment {
   scheduledTime?: string;
   platforms?: string[];
   status?: 'scheduled' | 'sent-to-ayrshare' | 'posted' | 'error';
-  // Fix: Add optional sentAt property to support displaying sent posts in the same component.
   sentAt?: string;
 }
 
@@ -96,11 +95,27 @@ export interface UserActivity {
   articles: number[]; // Array of timestamps
 }
 
+// --- NEW PERMISSION TYPES ---
+export interface UserPermissions {
+  canViewPosts: boolean;
+  canViewArticles: boolean;
+  canViewAudio: boolean;
+  canViewBiblicalCheck: boolean;
+  canViewNicheFinder: boolean;
+}
+
+export interface AuthorizedUser {
+  email: string;
+  permissions: UserPermissions;
+}
+
 export interface AdminSettings {
-  authorizedEmails: string[];
+  authorizedEmails?: string[]; // Deprecated, kept for safe migration
+  authorizedUsers: AuthorizedUser[]; // New main source of truth
   secretPassword: string;
   userActivity?: Record<string, UserActivity>;
 }
+// -----------------------------
 
 export interface Suggestion {
   text: string;
@@ -134,8 +149,10 @@ export interface ChecklistItem {
 
 export interface BackupData {
   userEmail?: string | null;
+  personaName?: string;
   userRole: string;
   targetAudience: string;
+  whatIWriteAbout?: string;
   referenceWorldContent?: string;
   thisIsHowIWriteArticles?: string;
   

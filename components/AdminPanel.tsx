@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { AdminSettings, UserActivity, ChecklistItem } from '../types.ts';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { AdminSettings, UserActivity, ChecklistItem, AuthorizedUser } from '../types.ts';
 import Button from './Button.tsx';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -24,7 +24,6 @@ interface ActivityStats {
 }
 
 const UserActivityTable: React.FC<{ activityData: Record<string, UserActivity> }> = ({ activityData }) => {
-    
     const calculatedStats: ActivityStats[] = useMemo(() => {
         const now = Date.now();
         const lastDay = now - 24 * 60 * 60 * 1000;
@@ -50,15 +49,8 @@ const UserActivityTable: React.FC<{ activityData: Record<string, UserActivity> }
     }, [activityData]);
 
     const handleDownload = useCallback(() => {
-        const headers = [
-            'User', 'Total Posts', 'Posts (Day)', 'Posts (Week)', 'Posts (Month)',
-            'Total Articles', 'Articles (Day)', 'Articles (Week)', 'Articles (Month)'
-        ];
-        const rows = calculatedStats.map(stats => [
-            stats.user, stats.totalPosts, stats.postsLastDay, stats.postsLastWeek, stats.postsLastMonth,
-            stats.totalArticles, stats.articlesLastDay, stats.articlesLastWeek, stats.articlesLastMonth
-        ].join(','));
-
+        const headers = ['User', 'Total Posts', 'Posts (Day)', 'Posts (Week)', 'Posts (Month)', 'Total Articles', 'Articles (Day)', 'Articles (Week)', 'Articles (Month)'];
+        const rows = calculatedStats.map(stats => [stats.user, stats.totalPosts, stats.postsLastDay, stats.postsLastWeek, stats.postsLastMonth, stats.totalArticles, stats.articlesLastDay, stats.articlesLastWeek, stats.articlesLastMonth].join(','));
         const csvContent = [headers.join(','), ...rows].join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -224,22 +216,51 @@ const ChecklistManager: React.FC<{ checklistItems: ChecklistItem[], onChecklistC
   );
 };
 
-
 const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, checklistItems, onChecklistChange }) => {
   const [password, setPassword] = useState(settings.secretPassword);
-  const [emails, setEmails] = useState(settings.authorizedEmails.join('\n'));
+  const [users, setUsers] = useState<AuthorizedUser[]>(settings.authorizedUsers || []);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  useEffect(() => {
+      if (settings.authorizedUsers) {
+          setUsers(settings.authorizedUsers);
+      }
+  }, [settings.authorizedUsers]);
 
   const handleSave = () => {
     setSaveStatus('saving');
-    const emailList = emails.split('\n').map(e => e.trim()).filter(Boolean);
     onSettingsChange({
       ...settings,
-      authorizedEmails: emailList,
+      authorizedUsers: users,
       secretPassword: password,
     });
     setSaveStatus('saved');
     setTimeout(() => setSaveStatus('idle'), 2000);
+  };
+
+  const handleAddUser = () => {
+      setUsers(prev => [...prev, {
+          email: '',
+          permissions: { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false }
+      }]);
+  };
+
+  const handleDeleteUser = (index: number) => {
+      setUsers(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUserChange = (index: number, field: string, value: any) => {
+      setUsers(prev => prev.map((user, i) => {
+          if (i !== index) return user;
+          if (field === 'email') return { ...user, email: value };
+          return {
+              ...user,
+              permissions: {
+                  ...user.permissions,
+                  [field]: value
+              }
+          };
+      }));
   };
 
   const buttonText = () => {
@@ -264,8 +285,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
 
       <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-6">
         <h3 className="text-xl font-bold">Access Management</h3>
-        <p className="text-gray-400 text-sm">Manage access for other users of the Social Media Minion.</p>
-        <div>
+        <p className="text-gray-400 text-sm">Manage authorized users and their specific feature permissions.</p>
+        
+        <div className="mb-6">
           <label htmlFor="secretPassword" className="block text-sm font-medium text-gray-300">Secret Password</label>
           <p className="text-xs text-gray-500 mb-1">All non-admin users will need this password to sign in.</p>
           <input
@@ -277,23 +299,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
           />
         </div>
 
-        <div>
-          <label htmlFor="authorizedEmails" className="block text-sm font-medium text-gray-300">Authorized Email Addresses</label>
-          <p className="text-xs text-gray-500 mb-1">Enter one email address per line. Only these users will be able to sign in.</p>
-          <textarea
-            id="authorizedEmails"
-            value={emails}
-            onChange={(e) => setEmails(e.target.value)}
-            rows={10}
-            className="mt-1 w-full p-2 bg-gray-900 border border-slate-600 rounded-md focus:ring-2 focus:ring-teal-400 font-mono text-sm"
-            placeholder="user1@example.com&#10;user2@example.com"
-          />
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-gray-300">Authorized Users & Permissions</label>
+                <Button onClick={handleAddUser} className="px-3 py-1 text-xs">Add User</Button>
+            </div>
+            
+            <div className="overflow-x-auto rounded-lg border border-slate-700">
+                <table className="min-w-full divide-y divide-slate-700">
+                    <thead className="bg-slate-800">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email Address</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Posts</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Articles</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Audio</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Biblical Check</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Niche Finder</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-slate-900/50 divide-y divide-slate-700">
+                        {users.map((user, index) => (
+                            <tr key={index}>
+                                <td className="px-4 py-2">
+                                    <input 
+                                        type="email" 
+                                        value={user.email} 
+                                        onChange={(e) => handleUserChange(index, 'email', e.target.value)}
+                                        className="w-full bg-transparent border-b border-transparent focus:border-teal-400 focus:outline-none text-sm text-white"
+                                        placeholder="user@example.com"
+                                    />
+                                </td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewPosts} onChange={(e) => handleUserChange(index, 'canViewPosts', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewArticles} onChange={(e) => handleUserChange(index, 'canViewArticles', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewAudio} onChange={(e) => handleUserChange(index, 'canViewAudio', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewBiblicalCheck} onChange={(e) => handleUserChange(index, 'canViewBiblicalCheck', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewNicheFinder} onChange={(e) => handleUserChange(index, 'canViewNicheFinder', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-right">
+                                    <button onClick={() => handleDeleteUser(index)} className="text-red-400 hover:text-red-300 text-sm font-bold">&times;</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                {users.length === 0 && <p className="text-center text-gray-500 text-sm py-4">No users configured.</p>}
+            </div>
         </div>
 
         <div className="pt-4 border-t border-slate-700/50 text-right">
-          <Button onClick={handleSave} isLoading={saveStatus === 'saving'}>
-            {buttonText()}
-          </Button>
+          <Button onClick={handleSave} isLoading={saveStatus === 'saving'}>{buttonText()}</Button>
         </div>
       </div>
     </div>

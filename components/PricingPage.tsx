@@ -7,10 +7,12 @@ interface PricingPageProps {
   onLoginClick: () => void;
   onNavigate: (page: string) => void;
   currentPage: string;
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
 }
 
 const CheckIcon = () => (
-    <svg className="h-5 w-5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <svg className="h-5 w-5 text-teal-500 dark:text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
     </svg>
 );
@@ -25,20 +27,24 @@ const PricingTier: React.FC<{
     isFeatured?: boolean;
     onButtonClick: () => void;
 }> = ({ name, icon, price, description, features, buttonText, isFeatured, onButtonClick }) => (
-    <div className={`p-8 rounded-2xl border ${isFeatured ? 'border-teal-500 bg-slate-900/50 shadow-lg shadow-teal-500/10' : 'border-slate-700 bg-slate-900'}`}>
+    <div className={`p-8 rounded-2xl border transition-colors ${
+        isFeatured 
+        ? 'border-teal-500 bg-white dark:bg-slate-900/50 shadow-lg shadow-teal-500/10' 
+        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900'
+    }`}>
         <div className="flex items-center gap-4">
-            <div className="text-teal-400">{icon}</div>
-            <h3 className="text-2xl font-bold">{name}</h3>
+            <div className="text-teal-500 dark:text-teal-400">{icon}</div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{name}</h3>
         </div>
-        <p className="mt-4 text-gray-400">{description}</p>
-        <p className="mt-6 text-4xl font-extrabold">{price}</p>
+        <p className="mt-4 text-gray-600 dark:text-gray-400">{description}</p>
+        <p className="mt-6 text-4xl font-extrabold text-gray-900 dark:text-white">{price}</p>
         <button 
             onClick={onButtonClick}
-            className={`w-full mt-8 py-3 font-semibold rounded-lg transition-colors ${isFeatured ? 'bg-teal-600 hover:bg-teal-500 text-white' : 'bg-slate-800 hover:bg-slate-700 text-gray-300'}`}
+            className={`w-full mt-8 py-3 font-semibold rounded-lg transition-colors ${isFeatured ? 'bg-teal-600 hover:bg-teal-500 text-white' : 'bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-900 dark:text-gray-300'}`}
         >
             {buttonText}
         </button>
-        <ul className="mt-8 space-y-4 text-gray-300">
+        <ul className="mt-8 space-y-4 text-gray-700 dark:text-gray-300">
             {features.map((feature, index) => (
                 <li key={index} className="flex items-start gap-3">
                     <CheckIcon />
@@ -50,16 +56,16 @@ const PricingTier: React.FC<{
 );
 
 
-const PricingPage: React.FC<PricingPageProps> = ({ onLoginClick, onNavigate, currentPage }) => {
+const PricingPage: React.FC<PricingPageProps> = ({ onLoginClick, onNavigate, currentPage, theme, toggleTheme }) => {
   return (
-    <div className="bg-gray-900 text-white min-h-screen font-sans">
-      <Header onLoginClick={onLoginClick} onNavigate={onNavigate} currentPage={currentPage} />
+    <div className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen font-sans transition-colors duration-200">
+      <Header onLoginClick={onLoginClick} onNavigate={onNavigate} currentPage={currentPage} theme={theme} toggleTheme={toggleTheme} />
       <main className="py-20 px-6">
         <div className="max-w-5xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-indigo-400">
+          <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-indigo-600 dark:from-teal-300 dark:to-indigo-400">
             Find the Plan That's Right for You
           </h1>
-          <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto text-gray-300">
+          <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto text-gray-600 dark:text-gray-300">
             Start for free, then scale as you grow. All plans are designed to save you time and amplify your voice.
           </p>
         </div>

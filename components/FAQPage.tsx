@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Header from './Header.tsx';
 import Footer from './Footer.tsx';
@@ -6,6 +7,8 @@ interface FAQPageProps {
   onLoginClick: () => void;
   onNavigate: (page: string) => void;
   currentPage: string;
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
 }
 
 const faqs = [
@@ -38,15 +41,15 @@ const faqs = [
 const FAQItem: React.FC<{ q: string, a: string }> = ({ q, a }) => {
     const [isOpen, setIsOpen] = useState(false);
     return (
-        <div className="border-b border-slate-700 py-6">
+        <div className="border-b border-gray-200 dark:border-slate-700 py-6">
             <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-center text-left">
-                <h3 className="text-lg font-semibold text-gray-200">{q}</h3>
-                <svg className={`w-6 h-6 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">{q}</h3>
+                <svg className={`w-6 h-6 transform transition-transform text-gray-500 dark:text-gray-400 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
             </button>
             {isOpen && (
-                <div className="mt-4 text-gray-300 prose prose-invert max-w-none animate-fade-in-fast">
+                <div className="mt-4 text-gray-600 dark:text-gray-300 prose prose-lg dark:prose-invert max-w-none animate-fade-in-fast">
                     <p>{a}</p>
                 </div>
             )}
@@ -54,17 +57,17 @@ const FAQItem: React.FC<{ q: string, a: string }> = ({ q, a }) => {
     );
 };
 
-const FAQPage: React.FC<FAQPageProps> = ({ onLoginClick, onNavigate, currentPage }) => {
+const FAQPage: React.FC<FAQPageProps> = ({ onLoginClick, onNavigate, currentPage, theme, toggleTheme }) => {
     return (
-        <div className="bg-gray-900 text-white min-h-screen font-sans">
-            <Header onLoginClick={onLoginClick} onNavigate={onNavigate} currentPage={currentPage} />
+        <div className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen font-sans transition-colors duration-200">
+            <Header onLoginClick={onLoginClick} onNavigate={onNavigate} currentPage={currentPage} theme={theme} toggleTheme={toggleTheme} />
             <main className="py-20 px-6">
                 <div className="max-w-3xl mx-auto">
                     <div className="text-center">
-                        <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-indigo-400">
+                        <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-indigo-600 dark:from-teal-300 dark:to-indigo-400">
                             Frequently Asked Questions
                         </h1>
-                        <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto text-gray-300">
+                        <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto text-gray-600 dark:text-gray-300">
                             Have a question? We've got answers. If you can't find what you're looking for, feel free to contact us.
                         </p>
                     </div>

@@ -81,9 +81,11 @@ interface LandingPageProps {
   onLoginClick: () => void;
   onNavigate: (page: string) => void;
   currentPage: string;
+  theme: 'dark' | 'light';
+  toggleTheme: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onNavigate, currentPage }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onNavigate, currentPage, theme, toggleTheme }) => {
   const calculatorRef = useRef<HTMLElement>(null);
 
   const scrollToCalculator = () => {
@@ -91,16 +93,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onNavigate, cur
   };
 
   return (
-    <div className="bg-gray-900 text-white min-h-screen font-sans">
-      <Header onLoginClick={onLoginClick} onNavigate={onNavigate} currentPage={currentPage} />
+    <div className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen font-sans transition-colors duration-200">
+      <Header onLoginClick={onLoginClick} onNavigate={onNavigate} currentPage={currentPage} theme={theme} toggleTheme={toggleTheme} />
 
       <main>
         {/* Hero Section */}
-        <section className="text-center py-20 px-6 bg-slate-900/50">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-indigo-400">
+        <section className="text-center py-20 px-6 bg-white/50 dark:bg-slate-900/50">
+          <h1 className="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-indigo-600 dark:from-teal-300 dark:to-indigo-400">
             Stop Churning Content.<br />Start Building Authority.
           </h1>
-          <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto text-gray-300">
+          <p className="mt-4 text-lg md:text-xl max-w-3xl mx-auto text-gray-600 dark:text-gray-300">
             Social Media Minion is your AI-powered content partner, designed for coaches and experts to create high-quality, authentic social media content in a fraction of the time.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-6">
@@ -122,19 +124,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onNavigate, cur
         {/* Content Section */}
         <section className="py-16 px-6 md:px-12">
           <div className="max-w-4xl mx-auto">
-              <div className="prose prose-invert lg:prose-xl max-w-none">
+              <div className="prose prose-lg dark:prose-invert lg:prose-xl max-w-none text-gray-700 dark:text-gray-300">
                 <MarkdownRenderer content={LANDING_CONTENT} />
               </div>
           </div>
         </section>
 
         {/* ROI Calculator Section */}
-        <section ref={calculatorRef} id="roi-calculator" className="py-16 px-6 md:px-12 bg-slate-900/50 scroll-mt-20">
+        <section ref={calculatorRef} id="roi-calculator" className="py-16 px-6 md:px-12 bg-white/50 dark:bg-slate-900/50 scroll-mt-20">
             <div className="max-w-4xl mx-auto text-center">
-              <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-indigo-400">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-indigo-600 dark:from-teal-300 dark:to-indigo-400">
                 Calculate Your ROI
               </h2>
-              <p className="mt-4 text-lg text-gray-300 max-w-3xl mx-auto">
+              <p className="mt-4 text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
                 What took an hour now takes 10 minutes. Use the calculator below to see how much time and money you can save.
               </p>
             </div>

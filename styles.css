@@ -1,7 +1,5 @@
 /* Basic body styles for fallback */
 body {
-  background-color: #111827; /* bg-gray-900 */
-  color: #ffffff; /* text-white */
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
