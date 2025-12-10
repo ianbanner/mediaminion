@@ -392,6 +392,10 @@ export const App: React.FC = () => {
                 if (data.mediaSummaryScript) setMediaSummaryScript(data.mediaSummaryScript);
                 if (data.chapterRewriteScript) setChapterRewriteScript(data.chapterRewriteScript);
                 
+                // Admin Settings & Checklist
+                if (data.adminSettings) setAdminSettings(data.adminSettings);
+                if (data.checklist) setChecklistItems(data.checklist);
+
                 // Active Context (if not overridden by a loaded persona later)
                 if (data.userRole) setUserRole(data.userRole);
                 if (data.targetAudience) setTargetAudience(data.targetAudience);
@@ -437,6 +441,7 @@ export const App: React.FC = () => {
                 displayName: user.displayName || '',
                 settings: data.settings || {},
                 checklist: data.checklistItems || [],
+                adminSettings: data.adminSettings || {},
                 activePersonaId: data.activePersonaId || null,
                 lastMigrated: new Date().toISOString(),
                 // Migrate scripts too
@@ -499,6 +504,7 @@ export const App: React.FC = () => {
                 const data = docSnapshot.data();
                 if (data && data.settings) setSettings(data.settings);
                 if (data && data.checklist) setChecklistItems(data.checklist);
+                if (data && data.adminSettings) setAdminSettings(data.adminSettings);
                 if (data && data.activePersonaId) setActivePersonaId(data.activePersonaId);
             }
         });
@@ -1139,6 +1145,15 @@ export const App: React.FC = () => {
         }
     };
 
+    // --- Persist Admin Settings & Checklist Changes ---
+    const handleAdminSettingsChange = (newSettings: AdminSettings) => {
+        setAdminSettings(newSettings);
+        if (auth.currentUser) {
+            db.collection("users").doc(auth.currentUser.uid).set({ adminSettings: newSettings }, { merge: true })
+                .catch(err => console.error("Error saving admin settings:", err));
+        }
+    };
+
     const renderContent = () => {
         switch (view) {
             case 'landing':
@@ -1347,7 +1362,18 @@ export const App: React.FC = () => {
             case 'posting-guides':
                 return <PostingGuides />;
             case 'admin':
-                return <AdminPanel settings={adminSettings} onSettingsChange={setAdminSettings} checklistItems={checklistItems} onChecklistChange={setChecklistItems} />;
+                return <AdminPanel 
+                    settings={adminSettings} 
+                    onSettingsChange={handleAdminSettingsChange} 
+                    checklistItems={checklistItems} 
+                    onChecklistChange={(items) => {
+                        setChecklistItems(items);
+                        if(auth.currentUser) {
+                            db.collection("users").doc(auth.currentUser.uid).set({ checklist: items }, { merge: true })
+                                .catch(err => console.error("Error saving checklist:", err));
+                        }
+                    }} 
+                />;
             case 'settings':
                 return <SettingsPanel settings={settings} onSettingsChange={setSettings} isAdmin={isAdmin} />;
             case 'persona':
