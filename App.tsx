@@ -310,8 +310,6 @@ export const App: React.FC = () => {
         useEffect(() => {
             if (!auth.currentUser) return;
             // Only save if value is defined/not empty (to prevent overwriting with initial state on load)
-            // But we might want to save empty strings if user deleted text. 
-            // The initial load logic below prevents initial state overwrite issues.
             const handler = setTimeout(() => {
                 saveUserDocField(field, value);
             }, delay);
@@ -406,6 +404,26 @@ export const App: React.FC = () => {
                 // Texts
                 if (data.standardStarterText) setStandardStarterText(data.standardStarterText);
                 if (data.standardSummaryText) setStandardSummaryText(data.standardSummaryText);
+
+                // Restore Working Session (Transient Data)
+                if (data.generatedArticleHistory) setGeneratedArticleHistory(data.generatedArticleHistory);
+                if (data.generatedArticleIdeas) setGeneratedArticleIdeas(data.generatedArticleIdeas);
+                if (data.generatedPodcastIdeas) setGeneratedPodcastIdeas(data.generatedPodcastIdeas);
+                if (data.generatedAdjacentPodcastIdeas) setGeneratedAdjacentPodcastIdeas(data.generatedAdjacentPodcastIdeas);
+                if (data.generatedPodcastPlan) setGeneratedPodcastPlan(data.generatedPodcastPlan);
+                if (data.generatedAudioScript) setGeneratedAudioScript(data.generatedAudioScript);
+                
+                // Restore Input Fields
+                if (data.articleUrl) setArticleUrl(data.articleUrl);
+                if (data.articleText) setArticleText(data.articleText);
+                if (data.postSourceType) setPostSourceType(data.postSourceType);
+                if (data.headlineSourceUrl) setHeadlineSourceUrl(data.headlineSourceUrl);
+                if (data.headlineSourceText) setHeadlineSourceText(data.headlineSourceText);
+                if (data.generateArticleSourceUrl) setGenerateArticleSourceUrl(data.generateArticleSourceUrl);
+                if (data.generateArticleSourceText) setGenerateArticleSourceText(data.generateArticleSourceText);
+                if (data.podcastSourceUrl) setPodcastSourceUrl(data.podcastSourceUrl);
+                if (data.podcastSourceText) setPodcastSourceText(data.podcastSourceText);
+                if (data.audioScriptSourceText) setAudioScriptSourceText(data.audioScriptSourceText);
             }
         } catch (e) {
             console.error("Error loading initial config:", e);
@@ -522,8 +540,6 @@ export const App: React.FC = () => {
         db.collection("users").doc(user.uid).collection("postTemplates").onSnapshot((snapshot) => {
             const templates: SavedTemplate[] = [];
             snapshot.forEach(doc => templates.push(doc.data() as SavedTemplate));
-            // Merge with initial if empty? Or just replace. 
-            // For now, replacing allows cloud sync.
             if (templates.length > 0) setSavedTemplates(templates);
         });
 
@@ -546,6 +562,20 @@ export const App: React.FC = () => {
              const templates: SavedArticleTemplate[] = [];
              snapshot.forEach(doc => templates.push(doc.data() as SavedArticleTemplate));
              if (templates.length > 0) setSavedArticleTemplates(templates);
+        });
+
+        // Listen to Audio Scripts (Archives)
+        db.collection("users").doc(user.uid).collection("audioScripts").orderBy("dateCreated", "desc").onSnapshot((snapshot) => {
+            const scripts: GeneratedAudioScript[] = [];
+            snapshot.forEach(doc => scripts.push(doc.data() as GeneratedAudioScript));
+            if (scripts.length > 0) setArchivedAudioScripts(scripts);
+        });
+
+        // Listen to Podcast Plans (Archives)
+        db.collection("users").doc(user.uid).collection("podcasts").orderBy("dateCreated", "desc").onSnapshot((snapshot) => {
+            const plans: PodcastPlan[] = [];
+            snapshot.forEach(doc => plans.push(doc.data() as PodcastPlan));
+            if (plans.length > 0) setArchivedPodcastPlans(plans);
         });
     };
 
@@ -665,7 +695,37 @@ export const App: React.FC = () => {
         }
     };
 
+    const saveUserSessionData = async () => {
+        if (!auth.currentUser) return;
+        try {
+            await db.collection("users").doc(auth.currentUser.uid).set({
+                // Transient Session Data
+                generatedArticleHistory,
+                generatedArticleIdeas,
+                generatedPodcastIdeas,
+                generatedAdjacentPodcastIdeas,
+                generatedPodcastPlan, // Current working plan
+                generatedAudioScript, // Current working script
+                
+                // Active Inputs (already debounced but good to force save)
+                articleUrl, articleText, postSourceType,
+                headlineSourceUrl, headlineSourceText,
+                generateArticleSourceUrl, generateArticleSourceText,
+                podcastSourceUrl, podcastSourceText,
+                audioScriptSourceText,
+                
+                lastSaved: new Date().toISOString()
+            }, { merge: true });
+        } catch (e) {
+            console.error("Error saving session:", e);
+        }
+    };
+
     const handleSignOut = async () => {
+        if (auth.currentUser) {
+            // Save transient session data before logout
+            await saveUserSessionData(); 
+        }
         await auth.signOut();
         setCurrentUser(null);
         setView('landing');
@@ -1007,7 +1067,14 @@ export const App: React.FC = () => {
                 targetAudience
             });
             setGeneratedAudioScript(result);
-            setArchivedAudioScripts(prev => [{...result, id: uuidv4(), dateCreated: new Date().toISOString()}, ...prev]);
+            const archivedItem = {...result, id: uuidv4(), dateCreated: new Date().toISOString()};
+            setArchivedAudioScripts(prev => [archivedItem, ...prev]);
+            
+            // Persist immediately
+            if (auth.currentUser) {
+                db.collection("users").doc(auth.currentUser.uid).collection("audioScripts").doc(archivedItem.id).set(archivedItem)
+                    .catch(e => console.error("Error saving audio script:", e));
+            }
         } catch (e: any) {
             setError(e.message);
         } finally {
@@ -1062,7 +1129,14 @@ export const App: React.FC = () => {
                 script: GENERATE_PODCAST_PLAN_SCRIPT
             });
             setGeneratedPodcastPlan(plan);
-            setArchivedPodcastPlans(prev => [{...plan, id: uuidv4(), dateCreated: new Date().toISOString()}, ...prev]);
+            const archivedItem = {...plan, id: uuidv4(), dateCreated: new Date().toISOString()};
+            setArchivedPodcastPlans(prev => [archivedItem, ...prev]);
+            
+            // Persist immediately
+            if (auth.currentUser) {
+                db.collection("users").doc(auth.currentUser.uid).collection("podcasts").doc(archivedItem.id).set(archivedItem)
+                    .catch(e => console.error("Error saving podcast plan:", e));
+            }
         } catch (e: any) {
             setError(e.message);
         } finally {
