@@ -30,6 +30,11 @@ export interface GeneratedAudioScript {
     wordCount: number;
 }
 
+export interface ChapterRewriteResult {
+    rewrittenText: string;
+    changeSummary: string;
+}
+
 export interface TopPostAssessment {
     title: string;
     content: string;
@@ -63,7 +68,7 @@ export interface QueuedPost extends TopPostAssessment {
   id: string;
   scheduledTime?: string;
   platforms?: string[];
-  status?: 'scheduled' | 'sent-to-ayrshare' | 'posted' | 'error';
+  status?: 'draft' | 'scheduled' | 'sent-to-ayrshare' | 'posted' | 'error';
   sentAt?: string;
 }
 
@@ -102,6 +107,8 @@ export interface UserPermissions {
   canViewAudio: boolean;
   canViewBiblicalCheck: boolean;
   canViewNicheFinder: boolean;
+  canViewMediaSummary: boolean;
+  canViewChapterRewrite: boolean;
 }
 
 export interface AuthorizedUser {
@@ -147,8 +154,23 @@ export interface ChecklistItem {
   isCompleted: boolean;
 }
 
+// --- NEW PERSONA TYPES ---
+export interface PersonaProfile {
+  id: string;
+  name: string;
+  role: string;
+  targetAudience: string;
+  whatIWriteAbout: string;
+  referenceWorldContent: string;
+  thisIsHowIWriteArticles: string;
+  lastModified?: string;
+}
+// -------------------------
+
 export interface BackupData {
   userEmail?: string | null;
+  
+  // Active Persona State
   personaName?: string;
   userRole: string;
   targetAudience: string;
@@ -156,6 +178,10 @@ export interface BackupData {
   referenceWorldContent?: string;
   thisIsHowIWriteArticles?: string;
   
+  // Persona Library
+  savedPersonas?: PersonaProfile[];
+  activePersonaId?: string | null;
+
   articleUrl: string;
   articleText: string;
   postSourceType: 'url' | 'text';
@@ -232,4 +258,11 @@ export interface BackupData {
 
   // Checklist State
   checklistItems?: ChecklistItem[];
+
+  // Media Summary State
+  mediaSummaryUrl?: string;
+  mediaSummaryScript?: string;
+
+  // Chapter Rewrite State
+  chapterRewriteScript?: string;
 }

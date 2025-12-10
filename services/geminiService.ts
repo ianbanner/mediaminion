@@ -18,7 +18,7 @@ import {
   GENERATE_PODCAST_PLAN_SCRIPT,
   GENERATE_PODCAST_TITLE_SUGGESTIONS_SCRIPT,
 } from './scriptService.ts';
-import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea, ArticleDestination, PodcastIdea, PodcastPlan, GeneratedAudioScript } from "../types.ts";
+import { SavedTemplate, TopPostAssessment, GeneratedArticle, GeneratedHeadline, Suggestion, SavedArticleTemplate, ArticleIdea, ArticleDestination, PodcastIdea, PodcastPlan, GeneratedAudioScript, ChapterRewriteResult } from "../types.ts";
 
 export interface SocialPost {
   platform: string;
@@ -868,5 +868,69 @@ export async function generateAudioScript({ sourceText, duration, wordCount, scr
             throw new Error(`Failed to generate audio script. Error: ${error.message}`);
         }
         throw new Error("Failed to generate audio script. An unknown error occurred.");
+    }
+}
+
+export async function summarizeMedia({ url, script, userRole, targetAudience }: { url: string; script: string; userRole: string; targetAudience: string }): Promise<string> {
+    try {
+        const ai = getAI();
+        const prompt = script
+            .replace('{media_url}', url)
+            .replace('{user_role}', userRole)
+            .replace('{target_audience}', targetAudience);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                tools: [{ googleSearch: {} }],
+                // Note: We expect Markdown output, not JSON, so no responseSchema here.
+            },
+        });
+
+        if (!response.text) {
+            throw new Error("No summary generated.");
+        }
+        return response.text;
+
+    } catch (error) {
+        console.error("Error summarizing media:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to summarize media. Error: ${error.message}`);
+        }
+        throw new Error("Failed to summarize media. An unknown error occurred.");
+    }
+}
+
+export async function rewriteChapter({ sourceText, script }: { sourceText: string; script: string }): Promise<ChapterRewriteResult> {
+    try {
+        const ai = getAI();
+        const prompt = script.replace('{source_text}', sourceText);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro', // Using pro for high-quality editing
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        rewrittenText: { type: Type.STRING },
+                        changeSummary: { type: Type.STRING },
+                    },
+                    required: ['rewrittenText', 'changeSummary'],
+                },
+            },
+        });
+
+        const result: ChapterRewriteResult = JSON.parse(response.text);
+        return result;
+
+    } catch (error) {
+        console.error("Error rewriting chapter:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to rewrite chapter. Error: ${error.message}`);
+        }
+        throw new Error("Failed to rewrite chapter. An unknown error occurred.");
     }
 }

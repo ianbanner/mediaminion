@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { QueuedPost } from '../types.ts';
 
@@ -12,6 +13,7 @@ interface QueuedPostsDisplayProps {
   postingNowId?: string | null;
   error?: React.ReactNode | null;
   onClearError?: () => void;
+  onAddPostClick?: () => void; // New prop
 }
 
 const platforms = ['linkedin', 'facebook', 'twitter'];
@@ -48,9 +50,24 @@ const PostItem: React.FC<{
 
     const targetPlatforms = post.platforms || [];
 
+    const statusMap = {
+        draft: { text: 'Draft', color: 'bg-gray-700 text-gray-300 border-gray-600' },
+        scheduled: { text: 'Scheduled', color: 'bg-blue-900/50 text-blue-300 border-blue-700' },
+        'sent-to-ayrshare': { text: 'With Ayrshare', color: 'bg-yellow-900/50 text-yellow-300 border-yellow-700' },
+        posted: { text: 'Posted', color: 'bg-green-900/50 text-green-300 border-green-700' },
+        error: { text: 'Error', color: 'bg-red-900/50 text-red-300 border-red-700' },
+    };
+    
+    const badge = statusMap[post.status || 'scheduled'] || statusMap.scheduled;
+
     return (
         <div className="p-4 bg-slate-900/50 border border-slate-700 rounded-lg space-y-3">
-            <h4 className="font-semibold text-teal-300">{post.title}</h4>
+            <div className="flex justify-between items-start">
+                <h4 className="font-semibold text-teal-300">{post.title}</h4>
+                <span className={`px-2 py-0.5 text-xs font-bold rounded-full border ${badge.color}`}>
+                    {badge.text}
+                </span>
+            </div>
             {readOnly ? (
                  <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans p-2 bg-gray-800/50 rounded-md">{post.content}</pre>
             ) : (
@@ -126,12 +143,24 @@ const QueuedPostsDisplay: React.FC<QueuedPostsDisplayProps> = ({
   onPostNow,
   postingNowId,
   error,
-  onClearError
+  onClearError,
+  onAddPostClick
 }) => {
   return (
     <div className="space-y-8 animate-fade-in">
         <div className="p-6 bg-slate-800/50 border border-slate-700 rounded-xl shadow-lg space-y-4">
-            <h2 className="text-2xl font-bold text-gray-200">{title}</h2>
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-200">{title}</h2>
+                {onAddPostClick && !readOnly && (
+                    <button 
+                        onClick={onAddPostClick} 
+                        className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors"
+                    >
+                        + Add Manual Post
+                    </button>
+                )}
+            </div>
+            
             {error && !readOnly && (
                 <div className="bg-red-900/50 p-4 rounded-lg border border-red-700 text-sm text-red-300 flex justify-between items-center">
                     <span>{error}</span>

@@ -45,16 +45,16 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
     if (['generation', 'queue', 'scheduler', 'templates', 'researcher'].includes(view)) setOpenSection('posts');
     else if (['headline-generator', 'generate-articles-panel', 'refine-article', 'article-templates', 'recycle-article'].includes(view)) setOpenSection('articles');
     else if (['audio-script', 'audio-script-archive', 'podcast-plan', 'podcast-plan-archive'].includes(view)) setOpenSection('audio');
-    else if (['biblical-check', 'niche-finder'].includes(view)) setOpenSection('tools');
+    else if (['biblical-check', 'niche-finder', 'media-summary', 'chapter-rewrite'].includes(view)) setOpenSection('tools');
     else if (['posting-guides', 'checklist', 'new-user-guide'].includes(view)) setOpenSection('guides');
-    else if (['persona', 'settings', 'backup-restore', 'admin'].includes(view)) setOpenSection('admin');
+    else if (['persona', 'settings', 'backup-restore', 'firestore-migration', 'admin'].includes(view)) setOpenSection('admin');
   }, [view]);
 
   const toggleSection = (section: string) => setOpenSection(prev => prev === section ? null : section);
   const handleNav = (newView: string) => { setView(newView); setShowMobileMenu(false); };
 
-  const perms = permissions || { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false };
-  const showToolsSection = perms.canViewBiblicalCheck || perms.canViewNicheFinder;
+  const perms = permissions || { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false, canViewMediaSummary: false, canViewChapterRewrite: false };
+  const showToolsSection = perms.canViewBiblicalCheck || perms.canViewNicheFinder || perms.canViewMediaSummary || perms.canViewChapterRewrite;
 
   return (
     <>
@@ -101,6 +101,8 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
                 <SidebarSection title="Tools" isOpen={openSection === 'tools'} onToggle={() => toggleSection('tools')}>
                     {perms.canViewBiblicalCheck && <NavItem label="Biblical Soundness Check" active={view === 'biblical-check'} onClick={() => handleNav('biblical-check')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>} />}
                     {perms.canViewNicheFinder && <NavItem label="Find My Niche" active={view === 'niche-finder'} onClick={() => handleNav('niche-finder')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>} />}
+                    {perms.canViewMediaSummary && <NavItem label="Media Summary" active={view === 'media-summary'} onClick={() => handleNav('media-summary')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>} />}
+                    {perms.canViewChapterRewrite && <NavItem label="Chapter Rewrite" active={view === 'chapter-rewrite'} onClick={() => handleNav('chapter-rewrite')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" /></svg>} />}
                 </SidebarSection>
             )}
             <SidebarSection title="Guides" isOpen={openSection === 'guides'} onToggle={() => toggleSection('guides')}>
@@ -112,6 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
                 <NavItem label="Persona" active={view === 'persona'} onClick={() => handleNav('persona')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>} />
                 <NavItem label="Settings" active={view === 'settings'} onClick={() => handleNav('settings')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
                 <NavItem label="Backup / Restore" active={view === 'backup-restore'} onClick={() => handleNav('backup-restore')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>} />
+                <NavItem label="Cloud Sync" active={view === 'firestore-migration'} onClick={() => handleNav('firestore-migration')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3 3m0 0l-3 3m3-3v12" /></svg>} />
                 {isAdmin && <NavItem label="Admin Panel" active={view === 'admin'} onClick={() => handleNav('admin')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>} />}
             </SidebarSection>
         </nav>

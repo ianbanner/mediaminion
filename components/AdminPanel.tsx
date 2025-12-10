@@ -241,7 +241,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
   const handleAddUser = () => {
       setUsers(prev => [...prev, {
           email: '',
-          permissions: { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false }
+          permissions: { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false, canViewMediaSummary: false, canViewChapterRewrite: false }
       }]);
   };
 
@@ -313,8 +313,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Posts</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Articles</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Audio</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Biblical Check</th>
-                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Niche Finder</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Biblical Check">Bible</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Find My Niche">Niche</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Media Summary">Media Sum.</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Chapter Rewrite">Rewriter</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-300 uppercase tracking-wider">Action</th>
                         </tr>
                     </thead>
@@ -335,6 +337,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewAudio} onChange={(e) => handleUserChange(index, 'canViewAudio', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewBiblicalCheck} onChange={(e) => handleUserChange(index, 'canViewBiblicalCheck', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewNicheFinder} onChange={(e) => handleUserChange(index, 'canViewNicheFinder', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewMediaSummary} onChange={(e) => handleUserChange(index, 'canViewMediaSummary', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewChapterRewrite} onChange={(e) => handleUserChange(index, 'canViewChapterRewrite', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-right">
                                     <button onClick={() => handleDeleteUser(index)} className="text-red-400 hover:text-red-300 text-sm font-bold">&times;</button>
                                 </td>
