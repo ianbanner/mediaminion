@@ -28,6 +28,7 @@ const NavItem: React.FC<{ label: string; active: boolean; onClick: () => void; i
   </button>
 );
 
+// FIX: Replaced semicolon with comma in props destructuring to correctly extract parameters.
 const SidebarSection: React.FC<{ title: string; isOpen: boolean; onToggle: () => void; children: React.ReactNode; }> = ({ title, isOpen, onToggle, children }) => (
   <div className="mb-1">
     <button onClick={onToggle} type="button" className={`w-full flex items-center justify-between px-4 py-3 text-xs font-bold uppercase tracking-wider transition-colors rounded-lg ${isOpen ? 'text-gray-900 dark:text-white bg-gray-100 dark:bg-slate-800' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800/50'}`}>
@@ -44,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
   useEffect(() => {
     if (['generation', 'queue', 'scheduler', 'templates', 'researcher'].includes(view)) setOpenSection('posts');
     else if (['headline-generator', 'generate-articles-panel', 'refine-article', 'article-templates', 'recycle-article'].includes(view)) setOpenSection('articles');
-    else if (['audio-script', 'audio-script-archive', 'podcast-plan', 'podcast-plan-archive'].includes(view)) setOpenSection('audio');
+    else if (['audio-script', 'audio-script-archive', 'podcast-plan', 'podcast-plan-archive', 'transcription'].includes(view)) setOpenSection('audio');
     else if (['biblical-check', 'niche-finder', 'media-summary', 'chapter-rewrite'].includes(view)) setOpenSection('tools');
     else if (['posting-guides', 'checklist', 'new-user-guide'].includes(view)) setOpenSection('guides');
     else if (['persona', 'settings', 'backup-restore', 'firestore-migration', 'admin'].includes(view)) setOpenSection('admin');
@@ -53,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
   const toggleSection = (section: string) => setOpenSection(prev => prev === section ? null : section);
   const handleNav = (newView: string) => { setView(newView); setShowMobileMenu(false); };
 
-  const perms = permissions || { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false, canViewMediaSummary: false, canViewChapterRewrite: false };
+  const perms = permissions || { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false, canViewMediaSummary: false, canViewChapterRewrite: false, canViewTranscription: true };
   const showToolsSection = perms.canViewBiblicalCheck || perms.canViewNicheFinder || perms.canViewMediaSummary || perms.canViewChapterRewrite;
 
   return (
@@ -95,6 +96,7 @@ const Sidebar: React.FC<SidebarProps> = ({ view, setView, onSignOut, userEmail, 
                     <NavItem label="Audio Script Archive" active={view === 'audio-script-archive'} onClick={() => handleNav('audio-script-archive')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>} indent />
                     <NavItem label="Podcast Plan Creation" active={view === 'podcast-plan'} onClick={() => handleNav('podcast-plan')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>} />
                     <NavItem label="Podcast Plan Archive" active={view === 'podcast-plan-archive'} onClick={() => handleNav('podcast-plan-archive')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>} indent />
+                    <NavItem label="Transcribe Podcast/Video" active={view === 'transcription'} onClick={() => handleNav('transcription')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" /></svg>} />
                 </SidebarSection>
             )}
             {showToolsSection && (

@@ -41,6 +41,7 @@ import QuickArticlePanel from './components/QuickArticlePanel.tsx';
 import BiblicalCheckPanel from './components/BiblicalCheckPanel.tsx';
 import NicheFinderPanel from './components/NicheFinderPanel.tsx';
 import MediaSummaryPanel from './components/MediaSummaryPanel.tsx';
+import TranscriptionPanel from './components/TranscriptionPanel.tsx';
 import AddPostModal from './components/AddPostModal.tsx';
 import MobileCompanionPanel from './components/MobileCompanionPanel.tsx';
 import MobileViewToggleDialog from './components/MobileViewToggleDialog.tsx';
@@ -53,7 +54,7 @@ import {
   generateArticle, enhanceArticle, polishArticle, createArticleTemplateFromText, 
   generateHeadlinesForArticle, recycleArticle, generatePodcastIdeas, 
   generateAdjacentPodcastIdeas, generatePodcastPlan, generateAudioScript,
-  generatePodcastTitleSuggestions, summarizeMedia, rewriteChapter
+  generatePodcastTitleSuggestions, summarizeMedia, transcribeMedia, rewriteChapter
 } from './services/geminiService.ts';
 import { postToAyrshare } from './services/ayrshareService.ts';
 import { initialTemplates } from './services/templateData.ts';
@@ -72,6 +73,7 @@ import {
   DESTINATION_GUIDELINES_MAP,
   DEFAULT_ARTICLE_EVAL_CRITERIA,
   MEDIA_SUMMARY_SCRIPT,
+  TRANSCRIBE_MEDIA_SCRIPT,
   CHAPTER_REWRITE_SCRIPT
 } from './services/scriptService.ts';
 
@@ -80,7 +82,7 @@ import {
   SavedTemplate, SavedArticleTemplate, QueuedPost, SentPost, AppSettings, AdminSettings, 
   BackupData, ArticleIdea, GeneratedArticle, GeneratedHeadline, Suggestion, PodcastIdea, 
   PodcastPlan, GeneratedAudioScript, ChecklistItem, ArticleDestination,
-  UserActivity, AuthorizedUser, PersonaProfile, ChapterRewriteResult
+  UserActivity, AuthorizedUser, PersonaProfile, ChapterRewriteResult, GroundingSource
 } from './types.ts';
 
 const DEFAULT_CHECKLIST: ChecklistItem[] = [
@@ -264,6 +266,12 @@ export const App: React.FC = () => {
     const [mediaSummaryScript, setMediaSummaryScript] = useState(MEDIA_SUMMARY_SCRIPT);
     const [mediaSummaryResult, setMediaSummaryResult] = useState<string | null>(null);
 
+    // Transcription
+    const [transcriptionUrl, setTranscriptionUrl] = useState('');
+    const [transcriptionScript, setTranscriptionScript] = useState(TRANSCRIBE_MEDIA_SCRIPT);
+    const [transcriptionResult, setTranscriptionResult] = useState<string | null>(null);
+    const [transcriptionSources, setTranscriptionSources] = useState<GroundingSource[]>([]);
+
     // Chapter Rewrite
     const [chapterRewriteSourceText, setChapterRewriteSourceText] = useState('');
     const [chapterRewriteScript, setChapterRewriteScript] = useState(CHAPTER_REWRITE_SCRIPT);
@@ -332,6 +340,7 @@ export const App: React.FC = () => {
     useDebouncedSave(generateAudioScriptScript, 'generateAudioScriptScript');
     
     useDebouncedSave(mediaSummaryScript, 'mediaSummaryScript');
+    useDebouncedSave(transcriptionScript, 'transcriptionScript');
     useDebouncedSave(chapterRewriteScript, 'chapterRewriteScript');
     
     useDebouncedSave(thisIsHowIWriteArticles, 'thisIsHowIWriteArticles');
@@ -388,6 +397,7 @@ export const App: React.FC = () => {
                 if (data.generatePodcastIdeasScript) setGeneratePodcastIdeasScript(data.generatePodcastIdeasScript);
                 if (data.generateAudioScriptScript) setGenerateAudioScriptScript(data.generateAudioScriptScript);
                 if (data.mediaSummaryScript) setMediaSummaryScript(data.mediaSummaryScript);
+                if (data.transcriptionScript) setTranscriptionScript(data.transcriptionScript);
                 if (data.chapterRewriteScript) setChapterRewriteScript(data.chapterRewriteScript);
                 
                 // Admin Settings & Checklist
@@ -424,6 +434,7 @@ export const App: React.FC = () => {
                 if (data.podcastSourceUrl) setPodcastSourceUrl(data.podcastSourceUrl);
                 if (data.podcastSourceText) setPodcastSourceText(data.podcastSourceText);
                 if (data.audioScriptSourceText) setAudioScriptSourceText(data.audioScriptSourceText);
+                if (data.transcriptionUrl) setTranscriptionUrl(data.transcriptionUrl);
             }
         } catch (e) {
             console.error("Error loading initial config:", e);
@@ -600,7 +611,8 @@ export const App: React.FC = () => {
                 canViewBiblicalCheck: true,
                 canViewNicheFinder: true,
                 canViewMediaSummary: true,
-                canViewChapterRewrite: true
+                canViewChapterRewrite: true,
+                canViewTranscription: true
             };
         }
 
@@ -695,6 +707,14 @@ export const App: React.FC = () => {
         }
     };
 
+    const handleQuickLogin = (email: string) => {
+        console.log("Quick login triggered for:", email);
+        setCurrentUser(email);
+        setShowLoginModal(false);
+        setView('queue');
+        setAuthError(null);
+    };
+
     const saveUserSessionData = async () => {
         if (!auth.currentUser) return;
         try {
@@ -713,6 +733,7 @@ export const App: React.FC = () => {
                 generateArticleSourceUrl, generateArticleSourceText,
                 podcastSourceUrl, podcastSourceText,
                 audioScriptSourceText,
+                transcriptionUrl,
                 
                 lastSaved: new Date().toISOString()
             }, { merge: true });
@@ -1162,6 +1183,25 @@ export const App: React.FC = () => {
         }
     };
 
+    const handleTranscribe = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const result = await transcribeMedia({
+                url: transcriptionUrl,
+                script: transcriptionScript,
+                userRole,
+                targetAudience
+            });
+            setTranscriptionResult(result.text);
+            setTranscriptionSources(result.sources);
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleChapterRewrite = async () => {
         setIsLoading(true);
         setError(null);
@@ -1232,7 +1272,7 @@ export const App: React.FC = () => {
         switch (view) {
             case 'landing':
             case 'home':
-                return <LandingPage onLoginClick={() => setShowLoginModal(true)} onNavigate={setView} currentPage={view} theme={theme} toggleTheme={toggleTheme} />;
+                return <LandingPage onQuickLogin={handleQuickLogin} onLoginClick={() => setShowLoginModal(true)} onNavigate={setView} currentPage={view} theme={theme} toggleTheme={toggleTheme} />;
             case 'pricing':
                 return <PricingPage onLoginClick={() => setShowLoginModal(true)} onNavigate={setView} currentPage={view} theme={theme} toggleTheme={toggleTheme} />;
             case 'questions':
@@ -1313,7 +1353,7 @@ export const App: React.FC = () => {
                         setGenerateArticleTitle(idea.title);
                         setGenerateArticleSourceType('text');
                         setGenerateArticleSourceText(`Title: ${idea.title}\nSummary: ${idea.summary}\nKey Points:\n${idea.keyPoints.join('\n- ')}`);
-                        setView('generate-articles-panel');
+                        setView('generate-articles-panel-articles-panel');
                     }}
                     generateArticleIdeasScript={generateArticleIdeasScript}
                     onGenerateArticleIdeasScriptChange={setGenerateArticleIdeasScript}
@@ -1413,6 +1453,17 @@ export const App: React.FC = () => {
                 />;
             case 'podcast-plan-archive':
                 return <ArchivePanel title="Podcast Plan Archive" type="podcast" items={archivedPodcastPlans} />;
+            case 'transcription':
+                return <TranscriptionPanel 
+                    url={transcriptionUrl}
+                    onUrlChange={setTranscriptionUrl}
+                    script={transcriptionScript}
+                    onScriptChange={setTranscriptionScript}
+                    onTranscribe={handleTranscribe}
+                    isLoading={isLoading}
+                    result={transcriptionResult}
+                    sources={transcriptionSources}
+                />;
             case 'biblical-check':
                 return <BiblicalCheckPanel />;
             case 'niche-finder':
@@ -1479,7 +1530,7 @@ export const App: React.FC = () => {
                     userEmail={currentUser}
                 />;
             default:
-                return <LandingPage onLoginClick={() => setShowLoginModal(true)} onNavigate={setView} currentPage={view} theme={theme} toggleTheme={toggleTheme} />;
+                return <LandingPage onQuickLogin={handleQuickLogin} onLoginClick={() => setShowLoginModal(true)} onNavigate={setView} currentPage={view} theme={theme} toggleTheme={toggleTheme} />;
         }
     };
 

@@ -82,6 +82,16 @@ export interface RecycleArticleParams {
     evalCriteria: string;
 }
 
+export interface GroundingSource {
+    uri: string;
+    title: string;
+}
+
+export interface TranscriptionResult {
+    text: string;
+    sources: GroundingSource[];
+}
+
 
 // Helper function to get AI instance and handle API key
 const getAI = () => {
@@ -899,6 +909,57 @@ export async function summarizeMedia({ url, script, userRole, targetAudience }: 
             throw new Error(`Failed to summarize media. Error: ${error.message}`);
         }
         throw new Error("Failed to summarize media. An unknown error occurred.");
+    }
+}
+
+export async function transcribeMedia({ url, script, userRole, targetAudience }: { url: string; script: string; userRole: string; targetAudience: string }): Promise<TranscriptionResult> {
+    try {
+        const ai = getAI();
+        const prompt = script
+            .replace('{media_url}', url)
+            .replace('{user_role}', userRole)
+            .replace('{target_audience}', targetAudience);
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+                tools: [{ googleSearch: {} }],
+            },
+        });
+
+        if (!response.text) {
+            throw new Error("No transcription generated.");
+        }
+
+        // Extract grounding chunks for sources
+        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        const sources: GroundingSource[] = [];
+        if (groundingChunks) {
+            groundingChunks.forEach((chunk: any) => {
+                if (chunk.web) {
+                    sources.push({
+                        title: chunk.web.title || 'Web Source',
+                        uri: chunk.web.uri
+                    });
+                }
+            });
+        }
+
+        // De-duplicate sources
+        const uniqueSources = Array.from(new Map(sources.map(s => [s.uri, s])).values());
+
+        return {
+            text: response.text,
+            sources: uniqueSources
+        };
+
+    } catch (error) {
+        console.error("Error transcribing media:", error);
+        if (error instanceof Error) {
+            throw new Error(`Failed to transcribe media. Error: ${error.message}`);
+        }
+        throw new Error("Failed to transcribe media. An unknown error occurred.");
     }
 }
 

@@ -241,7 +241,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
   const handleAddUser = () => {
       setUsers(prev => [...prev, {
           email: '',
-          permissions: { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false, canViewMediaSummary: false, canViewChapterRewrite: false }
+          permissions: { canViewPosts: true, canViewArticles: true, canViewAudio: true, canViewBiblicalCheck: false, canViewNicheFinder: false, canViewMediaSummary: false, canViewChapterRewrite: false, canViewTranscription: true }
       }]);
   };
 
@@ -313,6 +313,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Posts</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Articles</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">Audio</th>
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Transcription">Trans.</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Biblical Check">Bible</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Find My Niche">Niche</th>
                             <th className="px-4 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider" title="Media Summary">Media Sum.</th>
@@ -335,6 +336,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, onSettingsChange, che
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewPosts} onChange={(e) => handleUserChange(index, 'canViewPosts', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewArticles} onChange={(e) => handleUserChange(index, 'canViewArticles', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewAudio} onChange={(e) => handleUserChange(index, 'canViewAudio', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
+                                <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewTranscription} onChange={(e) => handleUserChange(index, 'canViewTranscription', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewBiblicalCheck} onChange={(e) => handleUserChange(index, 'canViewBiblicalCheck', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewNicheFinder} onChange={(e) => handleUserChange(index, 'canViewNicheFinder', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>
                                 <td className="px-4 py-2 text-center"><input type="checkbox" checked={user.permissions.canViewMediaSummary} onChange={(e) => handleUserChange(index, 'canViewMediaSummary', e.target.checked)} className="rounded border-gray-600 bg-gray-700 text-teal-600 focus:ring-teal-500" /></td>

@@ -79,13 +79,14 @@ If you're ready to transform your content process from a chore into a strategic 
 
 interface LandingPageProps {
   onLoginClick: () => void;
+  onQuickLogin: (email: string) => void;
   onNavigate: (page: string) => void;
   currentPage: string;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onNavigate, currentPage, theme, toggleTheme }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onQuickLogin, onNavigate, currentPage, theme, toggleTheme }) => {
   const calculatorRef = useRef<HTMLElement>(null);
 
   const scrollToCalculator = () => {
@@ -94,7 +95,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onNavigate, cur
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen font-sans transition-colors duration-200">
-      <Header onLoginClick={onLoginClick} onNavigate={onNavigate} currentPage={currentPage} theme={theme} toggleTheme={toggleTheme} />
+      <Header onLoginClick={onLoginClick} onQuickLogin={onQuickLogin} onNavigate={onNavigate} currentPage={currentPage} theme={theme} toggleTheme={toggleTheme} />
 
       <main>
         {/* Hero Section */}

@@ -449,7 +449,7 @@ Your task is to generate 10 high-quality, distinct headline options for the prov
 3.  **Add Sub-headlines:** For each headline, create a compelling, optional \`subheadline\` that provides additional context or benefit.
 4.  **Evaluate Each Headline:** Score each of the 10 headlines from 0-100 based on the provided evaluation criteria.
 5.  **Provide Rationale:** For each headline, write a brief \`reasoning\` explaining its score and why it works (or doesn't).
-6.  **Format Output:** Return a single JSON object with a key "headlines", which is an array of 10 objects. Each object must contain \`headline\`, \`subheadline\` (optional), \`score\`, and \`reasoning\`.
+6.  **Format Output:** Return a single JSON object with a key "headlines", which is an array of 10 objects. Each object must contain \`headline\`, \`subheadline\`, \`score\`, and \`reasoning\`.
 
 **Evaluation Criteria:**
 ---
@@ -672,6 +672,25 @@ Analyze the content at the provided URL (Video or Audio) and generate a comprehe
 **Tone:** Professional, insightful, and comprehensive.
 
 **Output:** Return the summary in clean Markdown format.
+`;
+
+export const TRANSCRIBE_MEDIA_SCRIPT = `
+You are an expert media transcriptionist and content analyst for {user_role}. 
+Your task is to find and extract the transcript or a highly granular timestamped breakdown of the audio/video at the provided URL.
+
+**Media URL:** {media_url}
+
+**CRITICAL INSTRUCTIONS:**
+1. Use Google Search to find existing verbatim transcripts, official captions, or detailed episode notes for this specific URL.
+2. **DO NOT GUESS OR RECONSTRUCT.** If you cannot find information about this specific piece of media, simply state "COULD NOT LOCATE TRANSCRIPT DATA VIA WEB SEARCH" and explain why (e.g., video is too new, private, or not indexed).
+3. If information is found, provide a "Timestamped Breakdown":
+    - Use timestamps every 2-3 minutes or at major topic shifts.
+    - Format: [MM:SS] Topic: Detailed factual summary of what was said.
+4. Maintain a completely factual tone. Do not interpret meaning through your persona during the transcription phase. Use the {user_role} perspective ONLY if explicitly asked to analyze the content *after* the transcript is provided.
+
+**Target Audience:** {target_audience}.
+
+**Output Format:** Clean Markdown.
 `;
 
 export const CHAPTER_REWRITE_SCRIPT = `

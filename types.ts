@@ -35,6 +35,11 @@ export interface ChapterRewriteResult {
     changeSummary: string;
 }
 
+export interface GroundingSource {
+    uri: string;
+    title: string;
+}
+
 export interface TopPostAssessment {
     title: string;
     content: string;
@@ -109,6 +114,7 @@ export interface UserPermissions {
   canViewNicheFinder: boolean;
   canViewMediaSummary: boolean;
   canViewChapterRewrite: boolean;
+  canViewTranscription: boolean;
 }
 
 export interface AuthorizedUser {
